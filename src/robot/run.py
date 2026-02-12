@@ -16,7 +16,7 @@ from robot.Robot import (
     DEFAULT_ROBOT_FREQ,
     DEFAULT_AXES_COMMANDED,
 )
-from util.Utility import (
+from reforge_core.util.Utility import (
     DEFAULT_SINE_MIN_FREQ,
     DEFAULT_SINE_MAX_FREQ,
     DEFAULT_FREQ_SPACING,
@@ -24,9 +24,9 @@ from util.Utility import (
     DEFAULT_DWELL_TIME,
 )
 from robot.RobotInterface import RobotInterface, BOT_ID
-from calibration.api import ReforgeAPIManager
+from reforge_core.calibration.api import ReforgeAPIManager
 
-from unit_tests.vibration_test import run_vibration_test
+# from unit_tests.vibration_test import run_vibration_test
 
 
 def _build_parser() -> argparse.ArgumentParser:
