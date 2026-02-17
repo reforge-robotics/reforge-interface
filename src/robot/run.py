@@ -4,7 +4,7 @@
 # Version: 1.0
 import argparse
 import traceback
-from robot.Robot import (
+from robot.robot_shell import (
     DEFAULT_MAX_DISP,
     DEFAULT_MAX_VEL,
     DEFAULT_MAX_ACC,
@@ -23,7 +23,7 @@ from util.Utility import (
     DEFAULT_SINE_CYCLES,
     DEFAULT_DWELL_TIME,
 )
-from robot.RobotInterface import RobotInterface, BOT_ID
+from robot.robot_interface import RobotInterface, BOT_ID
 from calibration.api import ReforgeAPIManager
 
 from unit_tests.vibration_test import run_vibration_test

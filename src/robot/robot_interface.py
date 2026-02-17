@@ -1,4 +1,4 @@
-# src/robot/RobotInterface.py
+# src/robot/robot_interface.py
 # Author: Reforge Robotics (Nosa Edoimioya)
 # Description: Specific code to create calibration interface for any Python Robot.
 # Version: 1.0
@@ -10,16 +10,16 @@ from importlib.resources import files, as_file
 from util.Utility import TrajParams, SystemIdParams, polar_to_cartesian
 from util.Trajectory import Trajectory
 from typing import Any, Deque, List, Dict, Tuple
-from robot.Robot import Robot, DataRecorder
+from robot.robot_shell import Robot, DataRecorder
 
-from robot.Robot import (
+from robot.robot_shell import (
     get_polar_coordinates,
     store_parameters_in_data_folder,
     store_recorder_data_in_data_folder,
 )
 from util.RobotDynamics import Dynamics
 
-from robot.Robot import (
+from robot.robot_shell import (
     DEFAULT_MAX_DISP,
     DEFAULT_MAX_VEL,
     DEFAULT_MAX_ACC,
@@ -53,7 +53,7 @@ from util.Utility import (
 #    system identification and calibration workflow. The rest of the methods are pre-defined and should not
 #    need to be changed.
 # 3. The code contains examples for Standard Bots' robots, which can be used as a reference.
-# 4. If you opt to use ROS for publishing joint positions, you can use the RosManager.py file
+# 4. If you opt to use ROS for publishing joint positions, you can use the ros_manager.py file
 # in the robots folder. See detailed instructions in that file.
 
 # {~.~} Import robot's Python SDK with required modules here
@@ -418,10 +418,10 @@ class RobotInterface(Robot):
             Robot connection is active and ROS control is enabled.
         """
         # {~.~} Publish joint positions to the robot
-        # [YOUR CODE HERE -- see example with RosManager.py below]
+        # [YOUR CODE HERE -- see example with ros_manager.py below]
 
         # ------------------------------ EXAMPLE (joint pub) ------------------------------
-        # from robot.RosManager import (
+        # from robot.ros_manager import (
         #     JointTrajectoryController,
         #     rclpy,
         #     threading,
@@ -469,7 +469,7 @@ class RobotInterface(Robot):
         # 'angular_velocity': [gyro_x,gyro_y,gyro_z],
         # 'orientation': [w,x,y,z]}
 
-        # Leave the field empty if not available, but have a row entry for each time step (see RosManager.py for example)
+        # Leave the field empty if not available, but have a row entry for each time step (see ros_manager.py for example)
         data_log: Deque[Dict] = (
             deque()
         )  # {'cmd_time','input_positions','output_positions','velocities','efforts','imu_time','linear_acceleration','angular_velocity','orientation'}
@@ -942,6 +942,6 @@ class RobotInterface(Robot):
         Preconditions:
             ROS is initialized.
         """
-        from robot.RosManager import rclpy
+        from robot.ros_manager import rclpy
 
         rclpy.spin(node=node)
