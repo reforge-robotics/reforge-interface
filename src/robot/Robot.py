@@ -8,8 +8,8 @@ import os
 import numpy as np
 from abc import ABC, abstractmethod
 from typing import Deque, List, Dict, Tuple
-from reforge_core.util.Utility import TrajParams, SystemIdParams
-from reforge_core.util.Utility import (
+from reforge_util.Utility import TrajParams, SystemIdParams
+from reforge_util.Utility import (
     DEFAULT_CONFIG,
     DEFAULT_BCB_RUNTIME,
     DEFAULT_SYSID_TYPE,
@@ -19,7 +19,8 @@ from reforge_core.util.Utility import (
     DEFAULT_DWELL_TIME,
     DEFAULT_SINE_CYCLES,
 )
-from reforge_core.util.Trajectory import Trajectory
+from reforge_util.Trajectory import Trajectory
+from reforge_core.control.python.CovalentWrapper import ShaperInterface
 
 
 M_PI = math.pi

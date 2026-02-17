@@ -16,7 +16,7 @@ from robot.Robot import (
     DEFAULT_ROBOT_FREQ,
     DEFAULT_AXES_COMMANDED,
 )
-from reforge_core.util.Utility import (
+from reforge_util.Utility import (
     DEFAULT_SINE_MIN_FREQ,
     DEFAULT_SINE_MAX_FREQ,
     DEFAULT_FREQ_SPACING,

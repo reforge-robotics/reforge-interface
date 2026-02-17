@@ -3,6 +3,7 @@ pydantic
 scipy
 --index-url https://test.pypi.org/simple/
 --extra-index-url https://pypi.org/simple
-reforge-core==1.0.3
+reforge-core
+reforge-util
 xarm-python-sdk
 git+https://github.com/twtoner/pimu.git

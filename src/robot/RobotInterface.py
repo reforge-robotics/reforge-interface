@@ -7,8 +7,8 @@ import datetime
 import numpy as np
 from collections import deque
 from importlib.resources import files, as_file
-from reforge_core.util.Utility import TrajParams, SystemIdParams, polar_to_cartesian
-from reforge_core.util.Trajectory import Trajectory
+from reforge_util.Utility import TrajParams, SystemIdParams, polar_to_cartesian
+from reforge_util.Trajectory import Trajectory
 from typing import Any, Deque, List, Dict, Tuple
 from robot.Robot import Robot, DataRecorder
 
@@ -17,7 +17,7 @@ from robot.Robot import (
     store_parameters_in_data_folder,
     store_recorder_data_in_data_folder,
 )
-from reforge_core.util.RobotDynamics import Dynamics
+from reforge_util.RobotDynamics import Dynamics
 
 from robot.Robot import (
     DEFAULT_MAX_DISP,
@@ -30,7 +30,7 @@ from robot.Robot import (
 )
 
 
-from reforge_core.util.Utility import (
+from reforge_util.Utility import (
     DEFAULT_CONFIG,
     DEFAULT_BCB_RUNTIME,
     DEFAULT_SYSID_TYPE,
