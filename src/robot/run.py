@@ -4,7 +4,8 @@
 # Version: 1.0
 import argparse
 import traceback
-from robot.robot_shell import (
+import warnings
+from robot.robot_base import (
     DEFAULT_MAX_DISP,
     DEFAULT_MAX_VEL,
     DEFAULT_MAX_ACC,
@@ -15,8 +16,9 @@ from robot.robot_shell import (
     DEFAULT_FIRST_POSE,
     DEFAULT_ROBOT_FREQ,
     DEFAULT_AXES_COMMANDED,
+    DEFAULT_TCP_PAYLOAD,
 )
-from util.Utility import (
+from reforge_core.util.utility import (
     DEFAULT_SINE_MIN_FREQ,
     DEFAULT_SINE_MAX_FREQ,
     DEFAULT_FREQ_SPACING,
@@ -24,9 +26,42 @@ from util.Utility import (
     DEFAULT_DWELL_TIME,
 )
 from robot.robot_interface import RobotInterface, BOT_ID
-from calibration.api import ReforgeAPIManager
+from reforge_core.calibration.api import ROBOT_MODELS_PATH, ReforgeAPIManager
+from reforgr_core.util.vibration_test import run_vibration_test
 
-from unit_tests.vibration_test import run_vibration_test
+
+def _run_model_generation_with_fine_tune_fallback(
+    api_manager: ReforgeAPIManager, data_folder: str, fine_tune: bool
+) -> None:
+    """Run cloud model generation with optional fine-tune fallback to identification.
+
+    Args:
+        api_manager: Cloud API manager with credentials.
+        data_folder: Folder containing calibration data.
+        fine_tune: If `True`, attempt fine-tuning first.
+
+    Returns:
+        `None`.
+
+    Side Effects:
+        May upload data, run remote jobs, and write local model files.
+
+    Raises:
+        Exception: Propagates API and filesystem errors from cloud model generation.
+
+    Preconditions:
+        `data_folder` exists and is readable.
+    """
+    if fine_tune and not api_manager.has_local_models():
+        warnings.warn(
+            f"No existing models found in {ROBOT_MODELS_PATH} for fine-tuning. Running identification first...",
+            UserWarning,
+        )
+        fine_tune = False
+
+    return api_manager.run_cloud_model_generation(
+        data_folder=data_folder, fine_tune=fine_tune
+    )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -201,6 +236,35 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_FIRST_POSE,
         help="Index of the first pose (default: %(default)s)",
     )
+    # payload parameters
+    calibrate.add_argument(
+        "--tcp_payload",
+        dest="tcp_payload",
+        type=float,
+        default=DEFAULT_TCP_PAYLOAD,
+        help="TCP payload in the same units as your URDF inertia (default: %(default)s [urdf units (e.g., kg)])",
+    )
+    calibrate.add_argument(
+        "--tcp_payload_com_x",
+        dest="tcp_payload_com_x",
+        type=float,
+        default=0.0,
+        help="TCP payload COM x [m] in TCP frame (default: %(default)s)",
+    )
+    calibrate.add_argument(
+        "--tcp_payload_com_y",
+        dest="tcp_payload_com_y",
+        type=float,
+        default=0.0,
+        help="TCP payload COM y [m] in TCP frame (default: %(default)s)",
+    )
+    calibrate.add_argument(
+        "--tcp_payload_com_z",
+        dest="tcp_payload_com_z",
+        type=float,
+        default=0.0,
+        help="TCP payload COM z [m] in TCP frame (default: %(default)s)",
+    )
     # automatic identification/fine-tuning after calibration
     calibrate.add_argument(
         "--identify",
@@ -249,6 +313,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default=PLACEHOLDER_IP,
         help="API token to use robot's SDK, if necessary",
     )
+    vibration_test.add_argument(
+        "--robot_id",
+        dest="robot_id",
+        type=str,
+        default=BOT_ID,
+        help="Reforge robot ID, if necessary",
+    )
     # timing parameters
     vibration_test.add_argument(
         "--freq",
@@ -278,6 +349,34 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=DEFAULT_MAX_ACC,
         help="Max acceleration for trajectory (default: %(default)s rad/s^2) ",
+    )
+    vibration_test.add_argument(
+        "--tcp_payload",
+        dest="tcp_payload",
+        type=float,
+        default=DEFAULT_TCP_PAYLOAD,
+        help="TCP payload in the same units as your URDF inertia (default: %(default)s [urdf units (e.g., kg)])",
+    )
+    vibration_test.add_argument(
+        "--tcp_payload_com_x",
+        dest="tcp_payload_com_x",
+        type=float,
+        default=0.0,
+        help="TCP payload COM x [m] in TCP frame (default: %(default)s)",
+    )
+    vibration_test.add_argument(
+        "--tcp_payload_com_y",
+        dest="tcp_payload_com_y",
+        type=float,
+        default=0.0,
+        help="TCP payload COM y [m] in TCP frame (default: %(default)s)",
+    )
+    vibration_test.add_argument(
+        "--tcp_payload_com_z",
+        dest="tcp_payload_com_z",
+        type=float,
+        default=0.0,
+        help="TCP payload COM z [m] in TCP frame (default: %(default)s)",
     )
 
     # ======================== Route: fine_tune =====================================
@@ -314,10 +413,19 @@ def route_user_input(args: argparse.Namespace) -> None:
     Preconditions:
         `args.route` is a valid subcommand.
     """
+    # Set payload center of mass (default [0.0, 0.0, 0.0])
+    tcp_payload_com = [
+        args.tcp_payload_com_x if hasattr(args, "tcp_payload_com_x") else 0.0,
+        args.tcp_payload_com_y if hasattr(args, "tcp_payload_com_y") else 0.0,
+        args.tcp_payload_com_z if hasattr(args, "tcp_payload_com_z") else 0.0,
+    ]
+
     if args.route == "connect_test":
         try:
             robot_interface = RobotInterface(
                 robot_ip=args.robot_ip,
+                tcp_payload=DEFAULT_TCP_PAYLOAD,
+                tcp_payload_com=tcp_payload_com,
                 local_ip=args.local_ip,
                 sdk_token=args.sdk_token,
                 robot_id=args.robot_id,
@@ -333,6 +441,8 @@ def route_user_input(args: argparse.Namespace) -> None:
         try:
             robot_interface = RobotInterface(
                 robot_ip=args.robot_ip,
+                tcp_payload=args.tcp_payload,
+                tcp_payload_com=tcp_payload_com,
                 local_ip=args.local_ip,
                 sdk_token=args.sdk_token,
                 robot_id=args.robot_id,
@@ -362,15 +472,20 @@ def route_user_input(args: argparse.Namespace) -> None:
                 api_manager = ReforgeAPIManager(
                     reforge_api_token=args.fine_tune_api_token, robot_id=args.robot_id
                 )
-                # TO-DO: Edit the run_fine_tuning function
-                return api_manager.run_fine_tuning(data_folder=data_folder)
-                pass
+                return _run_model_generation_with_fine_tune_fallback(
+                    api_manager=api_manager,
+                    data_folder=data_folder,
+                    fine_tune=True,
+                )
             elif args.identify_api_token:
                 api_manager = ReforgeAPIManager(
                     reforge_api_token=args.identify_api_token, robot_id=args.robot_id
                 )
-                # TO-DO: Edit the run_identification function
-                return api_manager.run_identification(data_folder=data_folder)
+                return _run_model_generation_with_fine_tune_fallback(
+                    api_manager=api_manager,
+                    data_folder=data_folder,
+                    fine_tune=False,
+                )
             return
         except Exception:
             traceback.print_exc()
@@ -378,12 +493,18 @@ def route_user_input(args: argparse.Namespace) -> None:
         api_manager = ReforgeAPIManager(
             reforge_api_token=args.identify_api_token, robot_id=args.robot_id
         )
-        # TO-DO: Edit the run_identification function
-        return api_manager.run_identification(data_folder=args.data_folder)
+        return _run_model_generation_with_fine_tune_fallback(
+            api_manager=api_manager,
+            data_folder=args.data_folder,
+            fine_tune=False,
+        )
+
     elif args.route == "vibration_test":
         try:
             robot_interface = RobotInterface(
                 robot_ip=args.robot_ip,
+                tcp_payload=args.tcp_payload,
+                tcp_payload_com=tcp_payload_com,
                 local_ip=args.local_ip,
                 sdk_token=args.sdk_token,
                 robot_id=args.robot_id,
@@ -402,8 +523,11 @@ def route_user_input(args: argparse.Namespace) -> None:
         api_manager = ReforgeAPIManager(
             reforge_api_token=args.fine_tune_api_token, robot_id=args.robot_id
         )
-        return api_manager.run_fine_tuning(data_folder=args.data_folder)
-        pass
+        return _run_model_generation_with_fine_tune_fallback(
+            api_manager=api_manager,
+            data_folder=args.data_folder,
+            fine_tune=True,
+        )
     else:
         raise ValueError("Invalid route specified.")
 

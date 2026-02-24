@@ -1,0 +1,30 @@
+[build-system]
+requires = [
+    "setuptools>=68",
+    "wheel",
+]
+
+[project]
+name = "reforge-interface"
+version = "1.0.0"
+description = "Reforge Interface by Reforge Robotics"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Reforge Robotics", email = "info@reforgerobotics.com" }]
+dependencies = []
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["*"]
+
+[tool.setuptools.package-data]
+robot = [
+  "models/current/*.pt",
+  "urdf/*.urdf",
+  "urdf/**/*.urdf",
+  "urdf/**/*.xacro",
+  "urdf/**/*.stl",
+  "urdf/**/*.dae"
+]

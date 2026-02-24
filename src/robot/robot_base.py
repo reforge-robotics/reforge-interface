@@ -1,4 +1,4 @@
-# src/util/Robot.py
+# src/robot/robot_base.py
 # This module defines an abstract base class for robots, which can be extended by specific robot implementations
 # to provide functionality for movement, command execution, and trajectory handling.
 
@@ -8,8 +8,8 @@ import os
 import numpy as np
 from abc import ABC, abstractmethod
 from typing import Deque, List, Dict, Tuple
-from util.Utility import TrajParams, SystemIdParams
-from util.Utility import (
+from reforge_core.util.utility import TrajParams, SystemIdParams
+from reforge_core.util.utility import (
     DEFAULT_CONFIG,
     DEFAULT_BCB_RUNTIME,
     DEFAULT_SYSID_TYPE,
@@ -19,7 +19,7 @@ from util.Utility import (
     DEFAULT_DWELL_TIME,
     DEFAULT_SINE_CYCLES,
 )
-from util.Trajectory import Trajectory
+from reforge_core.util.trajectory import Trajectory
 
 
 M_PI = math.pi
@@ -27,11 +27,11 @@ DEFAULT_MAX_DISP = M_PI / 18.0  # [rad]
 DEFAULT_MAX_VEL = 18.0  # [rad/s]
 DEFAULT_MAX_ACC = 2.0  # [rad/s^2]
 DEFAULT_SYSID_ANGLES = (
-    8 + 2
-)  # number of joint angles (from the stretched horizontal position)
+    8  # number of joint angles (from the stretched horizontal position)
+)
 DEFAULT_SYSID_RADII = (
-    4 * 2
-)  # number of radii (from the center of the robot base to the end-effector)
+    4  # number of radii (from the center of the robot base to the end-effector)
+)
 DEFAULT_HOME_SIGN = 1  # sign of shoulder joint angle at home position
 DEFAULT_FIRST_POSE = 0  # starting pose index for calibration (enables resuming calibration from a specific pose)
 DEFAULT_AXES_COMMANDED = 3  # number of axes to command during calibration
@@ -49,6 +49,12 @@ DEFAULT_MIN_CALIBRATION_RADIUS_SCALE = (
 DEFAULT_MAX_CALIBRATION_RADIUS_SCALE = (
     0.8  # [%] of robot's max reach for the calibration pose with minimum radius
 )
+DEFAULT_TCP_PAYLOAD = (
+    0.0  # additional payload at the TCP, same units as the URDF inertias (mostly kg)
+)
+DEFAULT_IMU_TO_TCP_X = 0.0  # [m] IMU->TCP translation resolved in IMU frame
+DEFAULT_IMU_TO_TCP_Y = 0.0  # [m] IMU->TCP translation resolved in IMU frame
+DEFAULT_IMU_TO_TCP_Z = 0.0  # [m] IMU->TCP translation resolved in IMU frame
 
 
 class DataRecorder:
@@ -649,6 +655,13 @@ def store_parameters_in_data_folder(
     base_height: float,
     robot_name: str,
     data_folder: str,
+    tcp_payload: float = DEFAULT_TCP_PAYLOAD,
+    tcp_payload_com_x: float = 0.0,
+    tcp_payload_com_y: float = 0.0,
+    tcp_payload_com_z: float = 0.0,
+    imu_to_tcp_x: float = DEFAULT_IMU_TO_TCP_X,
+    imu_to_tcp_y: float = DEFAULT_IMU_TO_TCP_Y,
+    imu_to_tcp_z: float = DEFAULT_IMU_TO_TCP_Z,
 ) -> None:
     """Persist identification parameters to a CSV file.
 
@@ -663,6 +676,13 @@ def store_parameters_in_data_folder(
         base_height: Base height [m].
         robot_name: Robot name identifier.
         data_folder: Output directory for the parameters file.
+        tcp_payload: TCP payload mass in URDF mass units (typically kg).
+        tcp_payload_com_x: X component of TCP payload center of mass [m].
+        tcp_payload_com_y: Y component of TCP payload center of mass [m].
+        tcp_payload_com_z: Z component of TCP payload center of mass [m].
+        imu_to_tcp_x: X component of IMU->TCP translation [m].
+        imu_to_tcp_y: Y component of IMU->TCP translation [m].
+        imu_to_tcp_z: Z component of IMU->TCP translation [m].
 
     Returns:
         `None`.
@@ -699,6 +719,13 @@ def store_parameters_in_data_folder(
         "shoulder_len",
         "base_height",
         "robot_name",
+        "tcp_payload",
+        "tcp_payload_com_x",
+        "tcp_payload_com_y",
+        "tcp_payload_com_z",
+        "imu_to_tcp_x",
+        "imu_to_tcp_y",
+        "imu_to_tcp_z",
     ]
 
     parameter_data_rows = []
@@ -725,6 +752,13 @@ def store_parameters_in_data_folder(
             shoulder_len,
             base_height,
             robot_name,  # string
+            tcp_payload,
+            tcp_payload_com_x,
+            tcp_payload_com_y,
+            tcp_payload_com_z,
+            imu_to_tcp_x,
+            imu_to_tcp_y,
+            imu_to_tcp_z,
         ]
     )
 

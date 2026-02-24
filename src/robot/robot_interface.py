@@ -6,20 +6,21 @@
 import datetime
 import numpy as np
 from collections import deque
+from typing import Any, Deque, List, Dict, Tuple, Sequence
 from importlib.resources import files, as_file
-from util.Utility import TrajParams, SystemIdParams, polar_to_cartesian
-from util.Trajectory import Trajectory
-from typing import Any, Deque, List, Dict, Tuple
-from robot.robot_shell import Robot, DataRecorder
 
-from robot.robot_shell import (
+from robot.robot_base import Robot, DataRecorder
+from robot.robot_base import (
     get_polar_coordinates,
     store_parameters_in_data_folder,
     store_recorder_data_in_data_folder,
 )
-from util.RobotDynamics import Dynamics
 
-from robot.robot_shell import (
+from reforge_core.util.utility import TrajParams, SystemIdParams, polar_to_cartesian
+from reforge_core.util.trajectory import Trajectory
+from reforge_core.util.robot_dynamics import Dynamics
+
+from robot.robot_base import (
     DEFAULT_MAX_DISP,
     DEFAULT_MAX_VEL,
     DEFAULT_MAX_ACC,
@@ -27,10 +28,9 @@ from robot.robot_shell import (
     DEFAULT_SYSID_RADII,
     DEFAULT_HOME_SIGN,
     DEFAULT_FIRST_POSE,
+    DEFAULT_TCP_PAYLOAD,
 )
-
-
-from util.Utility import (
+from reforge_core.util.utility import (
     DEFAULT_CONFIG,
     DEFAULT_BCB_RUNTIME,
     DEFAULT_SYSID_TYPE,
@@ -65,7 +65,7 @@ from util.Utility import (
 
 
 # User constants - EDITS REQUIRED
-BOT_ID = ""  # {~.~} [CHANGE TO ROBOT's ID, IF NECESSARY] - can also enter as CLI argument (see autoCalibration.py --help)
+BOT_ID = ""  # {~.~} [CHANGE TO ROBOT's ID, IF NECESSARY] - can also enter as CLI argument (see run.py --help)
 URDF_PATH = "urdf/test_robot.urdf"  # {~.~} [CHANGE TO YOUR ROBOT'S URDF FILE PATH]
 ROBOT_MAX_FREQ = 1000  # {~.~} [CHANGE TO ROBOT'S MAX SAMPLING FREQUENCY] in [Hz]
 
@@ -86,6 +86,10 @@ class RobotInterface(Robot):
 
     Args:
         robot_ip: Robot internet protocol address or `sim` for simulator mode.
+        tcp_payload: Optional payload of the robot for NN prediction of
+            payload changes.
+        tcp_payload_com: Optional 3x1 center of mass location of the
+            payload, defined relative to the origin of the TCP [meters].
         local_ip: Local internet protocol address for networked setups.
         sdk_token: Authentication token for the robot software development kit.
         robot_id: Identifier for the robot in the control stack.
@@ -106,6 +110,8 @@ class RobotInterface(Robot):
     def __init__(
         self,
         robot_ip: str,
+        tcp_payload: float = DEFAULT_TCP_PAYLOAD,
+        tcp_payload_com: Sequence[float] | None = None,
         local_ip: str = "",
         sdk_token: str = "",
         robot_id: str = BOT_ID,
@@ -114,6 +120,8 @@ class RobotInterface(Robot):
 
         Args:
             robot_ip: Robot IP address or `sim` for simulator mode.
+            tcp_payload: Payload of the tcp (default=0)
+            tcp_payload_com: Optional 3x1 center of mass of the tcp payload.
             local_ip: Local machine IP address if required by the SDK.
             sdk_token: SDK authentication token.
             robot_id: Identifier used by the control stack.
@@ -147,7 +155,11 @@ class RobotInterface(Robot):
 
         # Load robot model from URDF
         if not self.model_is_loaded:
-            self.initialize_model_from_urdf(urdf_path=self.urdf_path)
+            self.initialize_model_from_urdf(
+                urdf_path=self.urdf_path,
+                tcp_payload=tcp_payload,
+                tcp_payload_com=tcp_payload_com,
+            )
             # Use the model joint count as the ground truth for downstream
             # dynamics calls (the hardware may report extra fixed joints/grippers).
             self.num_joints = self.model.num_joints
@@ -611,6 +623,8 @@ class RobotInterface(Robot):
         data_folder = f"{DATA_LOCATION_PREFIX}/{now.year}-{now.month}-{now.day}"
 
         # Store trajectory and system ID parameters in data folder
+        tcp_payload = float(getattr(self.model, "tcp_payload", 0.0))
+        tcp_payload_com = getattr(self.model, "tcp_payload_com", np.zeros(3))
         store_parameters_in_data_folder(
             traj_params=t_params,
             sysid_params=s_params,
@@ -622,6 +636,10 @@ class RobotInterface(Robot):
             base_height=self.initial_height,
             robot_name=self.name,
             data_folder=data_folder,
+            tcp_payload=tcp_payload,
+            tcp_payload_com_x=float(tcp_payload_com[0]),
+            tcp_payload_com_y=float(tcp_payload_com[1]),
+            tcp_payload_com_z=float(tcp_payload_com[2]),
         )
 
         # Loop through angles and radii
@@ -696,7 +714,12 @@ class RobotInterface(Robot):
 
         return data_folder
 
-    def initialize_model_from_urdf(self, urdf_path: str) -> None:
+    def initialize_model_from_urdf(
+        self,
+        urdf_path: str,
+        tcp_payload: float | None = DEFAULT_TCP_PAYLOAD,
+        tcp_payload_com: Sequence[float] | None = None,
+    ) -> None:
         """Initialize the robot dynamics model from a URDF file.
 
         Args:
@@ -720,7 +743,12 @@ class RobotInterface(Robot):
         )
 
         # Load the robot model from the URDF file
-        self.model = Dynamics(urdf_file=urdf_path, initialize=True)
+        self.model = Dynamics(
+            urdf_file=urdf_path,
+            initialize=True,
+            tcp_payload=tcp_payload,
+            tcp_payload_com=tcp_payload_com,
+        )
         self.model_is_loaded = True
 
         print("Robot model loaded successfully.")
