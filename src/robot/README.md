@@ -21,8 +21,8 @@ The calibration flow expects strict method signatures, units, and logged data sc
 
 ### Required methods in `RobotInterface`
 
-- `__get_joint_positions(self) -> List`
-- `__get_tcp_pose(self) -> List`
+- `_get_joint_positions(self) -> List`
+- `_get_tcp_pose(self) -> List`
 - `move_to_joint(self, target_joint: Tuple[float, ...]) -> None`
 - `move_to_pose(self, target_quat: List[float], target_xyz: List[float]) -> None`
 - `publish_and_record_joint_positions(...) -> Deque[Dict]`

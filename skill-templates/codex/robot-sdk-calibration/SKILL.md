@@ -32,8 +32,8 @@ Implement robot SDK integration in `src/robot/robot_interface.py` for calibratio
 - Keep `sim` behavior unchanged.
 
 4. Implement required methods using SDK APIs.
-- `__get_joint_positions`
-- `__get_tcp_pose`
+- `_get_joint_positions`
+- `_get_tcp_pose`
 - `move_to_joint`
 - `move_to_pose`
 - `publish_and_record_joint_positions`

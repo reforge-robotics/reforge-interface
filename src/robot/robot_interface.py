@@ -206,8 +206,8 @@ class RobotInterface(Robot):
                 # Set ID for robot
                 self.id = robot_id
 
-                self.num_joints = len(self.__get_joint_positions())
-                self.pose_length = len(self.__get_tcp_pose())
+                self.num_joints = len(self._get_joint_positions())
+                self.pose_length = len(self._get_tcp_pose())
             else:
                 self.id = robot_id
                 self.num_joints = 6
@@ -254,7 +254,7 @@ class RobotInterface(Robot):
         return self._urdf_path
 
     # {~.~} REQUIRED METHODS
-    def __get_joint_positions(self) -> List:
+    def _get_joint_positions(self) -> List:
         """Get the current joint positions of the robot.
 
         Returns:
@@ -291,7 +291,7 @@ class RobotInterface(Robot):
         # Return joint positions [rad] as a list
         return joint_angles
 
-    def __get_tcp_pose(self) -> List:
+    def _get_tcp_pose(self) -> List:
         """Get the current tool center point pose.
 
         Returns:
@@ -599,13 +599,13 @@ class RobotInterface(Robot):
 
         # Get starting joint positions - need base joint angle
         # for polar to cartesian computation
-        initial_q = self.__get_joint_positions()
+        initial_q = self._get_joint_positions()
         base_angle = initial_q[0]
 
         # Initialize system ID variables for experiment
         # ===============================================================
         # Current x-, y-, and z-axis (and r,p,y) location of the robot
-        current_pose = self.__get_tcp_pose()
+        current_pose = self._get_tcp_pose()
 
         # Create a trajectory with the trajectory and system id parameters
         trajectory = Trajectory(t_params, s_params)
@@ -674,7 +674,7 @@ class RobotInterface(Robot):
                     self.move_point_to_point_xyz(current_pose, new_xyz.tolist())
 
                     # Get the initial joint positions after the robot move
-                    current_q = self.__get_joint_positions()
+                    current_q = self._get_joint_positions()
 
                     # Compute the current mass matrix and update current mass diagonals
                     current_mass_matrix = self.model.get_mass_matrix(
@@ -781,7 +781,7 @@ class RobotInterface(Robot):
 
         # Store the home x-, y-, and z-axis (and r,p,y) parameters of the robot
         self.robot_home = (
-            self.__get_tcp_pose() if HOME_POSE_OVERRIDE is None else HOME_POSE_OVERRIDE
+            self._get_tcp_pose() if HOME_POSE_OVERRIDE is None else HOME_POSE_OVERRIDE
         )
         self.home_xyz = np.array(self.robot_home, dtype=np.float32)[0:3]
 
