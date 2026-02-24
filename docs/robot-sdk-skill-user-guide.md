@@ -26,8 +26,8 @@ The skill updates `src/robot/robot_interface.py` by replacing all `# {~.~}` sect
 - Robot constants (`BOT_ID`, `URDF_PATH`, `ROBOT_MAX_FREQ`, home constants)
 - SDK client initialization in `__init__`
 - Required robot methods:
-  - `_get_joint_positions`
-  - `_get_tcp_pose`
+  - `__get_joint_positions`
+  - `__get_tcp_pose`
   - `move_to_joint`
   - `move_to_pose`
   - `publish_and_record_joint_positions`

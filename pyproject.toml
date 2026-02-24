@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "reforge-interface"
-version = "1.0.0"
+version = "0.0.5"
 description = "Reforge Interface by Reforge Robotics"
 readme = "README.md"
 license = { text = "MIT" }
