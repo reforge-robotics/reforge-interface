@@ -27,7 +27,7 @@ from reforge_core.util.utility import (
 )
 from robot.robot_interface import RobotInterface, BOT_ID
 from reforge_core.calibration.api import ROBOT_MODELS_PATH, ReforgeAPIManager
-from reforgr_core.util.vibration_test import run_vibration_test
+from reforge_core.util.vibration_test import run_vibration_test
 
 
 def _run_model_generation_with_fine_tune_fallback(
