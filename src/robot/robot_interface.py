@@ -1,16 +1,15 @@
-# src/robot/robot_interface.py
+# src/robot/RobotInterface.py
 # Author: Reforge Robotics (Nosa Edoimioya)
 # Description: Specific code to create calibration interface for any Python Robot.
 # Version: 1.0
 
 import datetime
 import numpy as np
-from collections import deque
-from typing import Any, Deque, List, Dict, Tuple, Sequence
 from importlib.resources import files, as_file
+from typing import Any, Deque, List, Dict, Tuple, Sequence
+from src.robot.robot_base import Robot, DataRecorder
 
-from robot.robot_base import Robot, DataRecorder
-from robot.robot_base import (
+from src.robot.robot_base import (
     get_polar_coordinates,
     store_parameters_in_data_folder,
     store_recorder_data_in_data_folder,
@@ -20,7 +19,7 @@ from reforge_core.util.utility import TrajParams, SystemIdParams, polar_to_carte
 from reforge_core.util.trajectory import Trajectory
 from reforge_core.util.robot_dynamics import Dynamics
 
-from robot.robot_base import (
+from src.robot.robot_base import (
     DEFAULT_MAX_DISP,
     DEFAULT_MAX_VEL,
     DEFAULT_MAX_ACC,
@@ -30,6 +29,8 @@ from robot.robot_base import (
     DEFAULT_FIRST_POSE,
     DEFAULT_TCP_PAYLOAD,
 )
+
+
 from reforge_core.util.utility import (
     DEFAULT_CONFIG,
     DEFAULT_BCB_RUNTIME,
@@ -53,31 +54,34 @@ from reforge_core.util.utility import (
 #    system identification and calibration workflow. The rest of the methods are pre-defined and should not
 #    need to be changed.
 # 3. The code contains examples for Standard Bots' robots, which can be used as a reference.
-# 4. If you opt to use ROS for publishing joint positions, you can use the ros_manager.py file
+# 4. If you opt to use ROS for publishing joint positions, you can use the RosManager.py file
 # in the robots folder. See detailed instructions in that file.
 
 # {~.~} Import robot's Python SDK with required modules here
 
-# ------------------------------- EXAMPLE -------------------------------
-# from standardbots import StandardBotsRobot, models
-# https://docs.standardbots.com/docs/latest/-/rest/intro/configuring-sdk
-# -----------------------------------------------------------------------
+from xarm import XArmAPI
+from scipy.spatial.transform import Rotation as R
+from pimu.client import ImuReader
+from robot.arm_imu_manager import ArmImuManager # {~.~} Edit as necessary
 
 
-# User constants - EDITS REQUIRED
-BOT_ID = ""  # {~.~} [CHANGE TO ROBOT's ID, IF NECESSARY] - can also enter as CLI argument (see run.py --help)
-URDF_PATH = "urdf/test_robot.urdf"  # {~.~} [CHANGE TO YOUR ROBOT'S URDF FILE PATH]
-ROBOT_MAX_FREQ = 1000  # {~.~} [CHANGE TO ROBOT'S MAX SAMPLING FREQUENCY] in [Hz]
+BOT_ID = "" #{~.~} (not for this robot?) [CHANGE TO ROBOT's ID, IF NECESSARY] - can also enter as CLI argument (see autoCalibration.py --help)
+URDF_PATH = "urdf/uf850.urdf"
+ROBOT_MAX_FREQ = 250 # [Hz]
 
 # Home position of the robot
-HOME_SHOULDER_ANGLE = np.pi / 2  # {~.~} [rad]
-HOME_XYZ = [1.28989, 0.36866, 0.171]  # {~.~} [m]
-HOME_QUAT = [0.499, 0.499, 0.499, 0.499]  # {~.~} [1]
-HOME_JOINTS = [0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0]  # {~.~} [rad]
-HOME_POSE_OVERRIDE = None  # {~.~} list of home pose (xyz and quaternion) to override additional height not in base height
+HOME_SHOULDER_ANGLE = 0.0 # [rad]
+HOME_XYZ = [0.814, 0.0007, 0.425]  # [m]
+HOME_QUAT = [0.0, 0.0, 0.0, 1.0] # [1]
+HOME_JOINTS = [0.0, -np.pi/2, -np.pi, 0.0, -np.pi/2, 0.0] # [rad]
+HOME_POSE_OVERRIDE = [0.814, 0.0007, 0.364]
+# HOME_POSE_OVERRIDE = None
+
+# IMU information
+IMU_IP = "10.0.0.106"
 
 # General constants
-IS_DEGREES = False  # {~.~} [CHANGE TO TRUE IF ROBOT USES DEGREES]
+IS_DEGREES = False
 DATA_LOCATION_PREFIX = "src/robot/data"  # {~.~} [CHANGE TO LOCATION DESIRED - will be robot/DATA_LOCATION_PREFIX/*]
 
 
@@ -156,61 +160,35 @@ class RobotInterface(Robot):
         # Load robot model from URDF
         if not self.model_is_loaded:
             self.initialize_model_from_urdf(
-                urdf_path=self.urdf_path,
+                self._urdf_path,
                 tcp_payload=tcp_payload,
                 tcp_payload_com=tcp_payload_com,
             )
             # Use the model joint count as the ground truth for downstream
-            # dynamics calls (the hardware may report extra fixed joints/grippers).
+            # dynamics calls (the hardware may report extra joints/grippers).
             self.num_joints = self.model.num_joints
 
         try:
             if robot_ip != "sim":
-                # {~.~} Instantiate robot
-                self.robot = None  # [CHANGE THIS LINE]
+                # Instantiate robot API and connect to robot
+                self.robot = XArmAPI(robot_ip, is_radian=not IS_DEGREES)
 
-                # ------------------- EXAMPLE --------------------
-                # self.robot = StandardBotsRobot(
-                #     url=robot_ip,
-                #     token=sdk_token,
-                #     robot_kind=StandardBotsRobot.RobotKind.Live,
-                # )
-                # ------------------------------------------------
-
-                # {~.~} Enable ROS control, if necessary
-                # [YOUR CODE HERE]
-
-                # ------------------------------ EXAMPLE -------------------------------
-                # with self.robot.connection():
-                #     ## Set teleoperation/ROS control state
-                #     self.robot.ros.control.update_ros_control_state(
-                #         models.ROSControlUpdateRequest(
-                #             action=models.ROSControlStateEnum.Enabled,
-                #             # to disable: action=models.ROSControlStateEnum.Disabled,
-                #         )
-                #     )
-
-                #     # Get teleoperation state
-                #     self.state = self.robot.ros.status.get_ros_control_state().ok()
-                #     # Enable the robot, make sure the E-stop is released before enabling
-                #     print("Enabling live robot...")
-                # -----------------------------------------------------------------------
-
-                # {~.~} Unbrake the robot if not operational
-                # [YOUR CODE HERE]
-
-                # --------------- EXAMPLE -----------------
-                # self.robot.movement.brakes.unbrake().ok()
-                # -----------------------------------------
+                # Enable robot and set to "motion" state (0)
+                self.robot.motion_enable(enable=True)
+                self.robot.set_state(state=0)
 
                 # Set ID for robot
                 self.id = robot_id
 
-                self.num_joints = len(self.__get_joint_positions())
+                # Override any hardware-reported count with the model's moving joints
+                self.num_joints = self.model.num_joints
                 self.pose_length = len(self.__get_tcp_pose())
+
+                # Create IMU reader
+                self.imu = ImuReader(ip=IMU_IP)
             else:
                 self.id = robot_id
-                self.num_joints = 6
+                self.num_joints = self.model.num_joints
                 self.pose_length = 7
 
         except Exception as e:
@@ -252,8 +230,18 @@ class RobotInterface(Robot):
             The URDF path has been initialized.
         """
         return self._urdf_path
+    
+    def _enter_position_mode(self) -> Tuple[int, int]:
+        """
+        Ensure the controller is in position mode (0) before issuing queued P2P moves.
+        Returns the mode/state codes so they can be inspected when debugging.
+        """
+        code_mode = self.robot.set_mode(0)
+        code_state = self.robot.set_state(0)
+        print(f"[ufactory850] set_mode(0)->{code_mode}, set_state(0)->{code_state}")
+        return code_mode, code_state
 
-    # {~.~} REQUIRED METHODS
+    # {~.~} REQUIRED 
     def __get_joint_positions(self) -> List:
         """Get the current joint positions of the robot.
 
@@ -270,14 +258,12 @@ class RobotInterface(Robot):
         Preconditions:
             The robot connection is active.
         """
-        joint_angles: list[float] = []
+        code, joint_angles = self.robot.get_servo_angle()
 
-        # --------------------------- EXAMPLE ---------------------------
-        # position = self.robot.movement.position.get_arm_position().ok()
-        # joint_angles = list(position.joint_rotations)
-        # ---------------------------------------------------------------
+        if code != 0:
+            raise Exception(f"Unreliable joint angles! Return code {code}")  # TODO: improved exception type and message
 
-        if IS_DEGREES:
+        if not self.robot._is_radian:
             joint_angles = [np.deg2rad(angle) for angle in joint_angles]
 
         # Hardware may return more joints than the URDF dynamics model (e.g., gripper).
@@ -306,21 +292,28 @@ class RobotInterface(Robot):
         Preconditions:
             The robot connection is active.
         """
-        pose: list[float] = []
+        # Extract pose = [x, y, z, rx, ry, rz] where the latter three are axis-angle
+        # Position coordinates are in mm and rotation coordinates are in self.robot._is_radian.
+        code, pose = self.robot.get_position_aa()
 
-        # --------------------------- EXAMPLE ---------------------------
-        # position = self.robot.movement.position.get_arm_position().ok()
-        # pose = [position.tooltip_position.position.x,
-        #         position.tooltip_position.position.y,
-        #         position.tooltip_position.position.z,
-        #         position.tooltip_position.orientation.quaternion.x,
-        #         position.tooltip_position.orientation.quaternion.y,
-        #         position.tooltip_position.orientation.quaternion.z,
-        #         position.tooltip_position.orientation.quaternion.w]
-        # ---------------------------------------------------------------
+        if code != 0:
+            raise Exception(f"Unreliable TCP pose! Return code {code}")  # TODO: improved exception type and message
 
+        # Decompose pose
+        position, axang = pose[:3], pose[3:]
+
+        # Convert position coordinates to meters
+        position = [coord / 1000.0 for coord in position]
+
+        # Convert rotation coordinates to radians, if necessary
+        if not self.robot._is_radian:
+            axang = [np.deg2rad(coord) for coord in axang]
+
+        # Convert axis-angle to quaternion 
+        quat = R.from_rotvec(axang).as_quat().tolist()
+        
         # Return tooltip pose as a list
-        return pose
+        return [*position, *quat]
 
     def move_to_joint(self, target_joint: Tuple[float, ...]) -> None:
         """Move the robot to the specified joint positions.
@@ -340,18 +333,24 @@ class RobotInterface(Robot):
         Preconditions:
             The robot connection is active.
         """
-        if IS_DEGREES:
+        self._enter_position_mode()
+
+        # Convert to units expected by API
+        if not self.robot._is_radian:
             target_joint = tuple(np.rad2deg(angle) for angle in target_joint)
+        
+        # Send to robot
+        code = self.robot.set_servo_angle(
+            angle=target_joint,
+            speed=None,
+            mvacc=None,
+            mvtime=None,
+            wait=True
+        )
+        print(f"[ufactory850] set_servo_angle -> {code}")
 
-        # ------------------------------------ EXAMPLE -------------------------------------
-        # update_request = models.ArmPositionUpdateRequest(
-        #     kind=models.ArmPositionUpdateRequestKindEnum.JointRotation,
-        #     joint_rotation=models.ArmJointRotations(
-        #         joints=target_joint)
-        # )
-
-        # response = self.robot.movement.position.set_arm_position(body=update_request).ok()
-        # ----------------------------------------------------------------------------------
+        if code != 0:
+            raise Exception(f"Unable to send to {target_joint=}! Return code {code}")  # TODO: improved exception type and message
 
     def move_to_pose(self, target_quat: List[float], target_xyz: List[float]) -> None:
         """Move the robot to the specified Cartesian pose.
@@ -372,33 +371,33 @@ class RobotInterface(Robot):
         Preconditions:
             The robot connection is active.
         """
-        # ---------------------------------- EXAMPLE ------------------------------------
-        # quatx, quaty, quatz, quatw = target_quat
-        # move_quat = models.Orientation(
-        #                 kind=models.OrientationKindEnum.Quaternion,
-        #                 quaternion=models.Quaternion(x=quatx,
-        #                                              y=quaty,
-        #                                              z=quatz,
-        #                                              w=quatw
-        #                                              ),
-        #             )
-        # x, y, z = target_xyz
-        # move_xyz = models.Position(
-        #                 unit_kind=models.LinearUnitKind.Meters,
-        #                 x=x,
-        #                 y=y,
-        #                 z=z
-        #             )
+        # Convert quaternion to axis-angle, as expected by API
+        axang = R.from_quat(target_quat).as_rotvec().tolist()
+        
+        # Servo mode from realtime streaming blocks set_position_* APIs; switch back to position mode.
+        self._enter_position_mode()
 
-        # update_request = models.ArmPositionUpdateRequest(
-        #     kind=models.ArmPositionUpdateRequestKindEnum.TooltipPosition,
-        #     tooltip_position=models.PositionAndOrientation(
-        #         position=move_xyz,
-        #         orientation=move_quat)
-        # )
+        # Convert to degrees, if expected by API
+        if not self.robot._is_radian:
+            axang = [np.rad2deg(coord) for coord in axang]
+        
+        # Convert xyz to millimeters, as expected by API
+        position = [coord * 1000.0 for coord in target_xyz]
 
-        # response = self.robot.movement.position.set_arm_position(body=update_request).ok()
-        # ----------------------------------------------------------------------------------
+        # Send command
+        pose = [*position, *axang]
+        code = self.robot.set_position_aa(
+            axis_angle_pose=pose,
+            speed=None,
+            mvacc=None,
+            mvtime=None,
+            motion_type=1,
+            wait=True
+        )
+        print(f"[ufactory850] set_position_aa -> {code}")
+
+        if code != 0:
+            raise RuntimeError(f"Pose command failed with code {code} for target quat={target_quat}, xyz={target_xyz}")
 
     def publish_and_record_joint_positions(
         self,
@@ -429,76 +428,21 @@ class RobotInterface(Robot):
         Preconditions:
             Robot connection is active and ROS control is enabled.
         """
-        # {~.~} Publish joint positions to the robot
-        # [YOUR CODE HERE -- see example with ros_manager.py below]
+        if Ts is None: Ts = 1/ROBOT_MAX_FREQ
 
-        # ------------------------------ EXAMPLE (joint pub) ------------------------------
-        # from robot.ros_manager import (
-        #     JointTrajectoryController,
-        #     rclpy,
-        #     threading,
-        # )
+        # Initialize arm/IMU manager
+        mgr = ArmImuManager(arm=self.robot, imu=self.imu, Ts=Ts, 
+                            time_data=time_data, 
+                            position_data=position_stream)
 
-        # rclpy.init()
+        # Publish reference and record robot/IMU state
+        mgr.publish_and_record()
 
-        # publish_complete_event = threading.Event()
+        # Extract data
+        data_log = mgr.aligned_log
 
-        # joint_controller = JointTrajectoryController(
-        #     f"{self.id}/ro1/hardware", # ROS topic
-        #     Ts,
-        #     time_data,
-        #     position_stream,
-        #     velocity_stream,
-        #     acceleration_stream,
-        #     publish_complete_event
-        # )
-
-        # thread = threading.Thread(target=self.spin_thread, args=(joint_controller, ), daemon=True)
-        # thread.start()
-
-        # # wait until trajectory publishing finishes
-        # publish_complete_event.wait()
-        # rclpy.shutdown()
-        # thread.join()
-        # END of joint pub example
-        # -------------------------------------------------------------------------------
-
-        # {~.~} Store the recorded data in a deque and return
-        # Data log must have the following structure:
-        # {'cmd_time','input_positions','output_positions','velocities','efforts',
-        # 'imu_time','linear_acceleration','angular_velocity','orientation'}
-
-        # STRUCTURE:
-        # {'cmd_time': servo_timestamp,
-        # 'input_positions': [j0_pos_cmd,j1_pos_cmd,j2_pos_cmd,
-        #                     j3_pos_cmd,j4_pos_cmd,j5_pos_cmd],
-        # 'output_positions': [j0_pos_enc,j1_pos_enc,j2_pos_enc,
-        #                      j3_pos_enc,j4_pos_enc,j5_pos_enc],
-        # 'velocities': [j0_vel,j1_vel,j2_vel,j3_vel,j4_vel,j5_vel],
-        # 'efforts': [j0_current,j1_current,j2_current,j3_current,j4_current,j5_current],
-        # 'imu_time': imu_timestamp,
-        # 'linear_acceleration': [acc_x,acc_y,acc_z],
-        # 'angular_velocity': [gyro_x,gyro_y,gyro_z],
-        # 'orientation': [w,x,y,z]}
-
-        # Leave the field empty if not available, but have a row entry for each time step (see ros_manager.py for example)
-        data_log: Deque[Dict] = (
-            deque()
-        )  # {'cmd_time','input_positions','output_positions','velocities','efforts','imu_time','linear_acceleration','angular_velocity','orientation'}
-
-        # ------- EXAMPLE (record joint and imu data) ------
-        # data_log = joint_controller.aligned_log
-        #
-        # Destroy the node explicitly after recording data
-        # joint_controller.destroy_node()
-        #
-        # END of record data example
-        # --------------------------------------------------
-
-        return (
-            data_log  # {'cmd_time','input_positions','output_positions','velocities',
-        )
-        # 'efforts','imu_time','linear_acceleration','angular_velocity','orientation'}
+        return data_log # {'cmd_time','input_positions','output_positions','velocities',
+                         # 'efforts','imu_time','linear_acceleration','angular_velocity','orientation'}
 
     # {~.~} END OF REQUIRED METHODS
 
@@ -623,8 +567,6 @@ class RobotInterface(Robot):
         data_folder = f"{DATA_LOCATION_PREFIX}/{now.year}-{now.month}-{now.day}"
 
         # Store trajectory and system ID parameters in data folder
-        tcp_payload = float(getattr(self.model, "tcp_payload", 0.0))
-        tcp_payload_com = getattr(self.model, "tcp_payload_com", np.zeros(3))
         store_parameters_in_data_folder(
             traj_params=t_params,
             sysid_params=s_params,
@@ -636,10 +578,6 @@ class RobotInterface(Robot):
             base_height=self.initial_height,
             robot_name=self.name,
             data_folder=data_folder,
-            tcp_payload=tcp_payload,
-            tcp_payload_com_x=float(tcp_payload_com[0]),
-            tcp_payload_com_y=float(tcp_payload_com[1]),
-            tcp_payload_com_z=float(tcp_payload_com[2]),
         )
 
         # Loop through angles and radii
@@ -715,11 +653,11 @@ class RobotInterface(Robot):
         return data_folder
 
     def initialize_model_from_urdf(
-        self,
-        urdf_path: str,
-        tcp_payload: float | None = DEFAULT_TCP_PAYLOAD,
-        tcp_payload_com: Sequence[float] | None = None,
-    ) -> None:
+            self, 
+            urdf_path: str,
+            tcp_payload: float | None = DEFAULT_TCP_PAYLOAD,
+            tcp_payload_com: Sequence[float] | None = None,
+        ) -> None:
         """Initialize the robot dynamics model from a URDF file.
 
         Args:
@@ -743,12 +681,7 @@ class RobotInterface(Robot):
         )
 
         # Load the robot model from the URDF file
-        self.model = Dynamics(
-            urdf_file=urdf_path,
-            initialize=True,
-            tcp_payload=tcp_payload,
-            tcp_payload_com=tcp_payload_com,
-        )
+        self.model = Dynamics(urdf_file=urdf_path, initialize=True)
         self.model_is_loaded = True
 
         print("Robot model loaded successfully.")
@@ -970,6 +903,6 @@ class RobotInterface(Robot):
         Preconditions:
             ROS is initialized.
         """
-        from robot.ros_manager import rclpy
+        from src.robot.ros_manager import rclpy
 
         rclpy.spin(node=node)
