@@ -23,8 +23,8 @@ Use this skill to implement robot SDK support in `src/robot/robot_interface.py`.
 2. Add SDK import and client initialization in `RobotInterface.__init__`.
 3. Keep simulator path (`robot_ip == "sim"`) unchanged.
 4. Implement required methods:
-- `_get_joint_positions`
-- `_get_tcp_pose`
+- `__get_joint_positions`
+- `__get_tcp_pose`
 - `move_to_joint`
 - `move_to_pose`
 - `publish_and_record_joint_positions`
