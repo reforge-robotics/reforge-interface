@@ -35,6 +35,9 @@ reforge-interface/
 1. Install dependencies.
 
 ```bash
+python3 -m venv venv
+source venv/bin/activate
+source /opt/ros/jazzy/setup.bash # Your ROS installation
 pip install -r requirements.txt
 pip install -e .
 ```
@@ -55,6 +58,9 @@ Use this when you want a fast first calibration run with minimal options.
 
 ```bash
 # 1) Install
+python3 -m venv venv
+source venv/bin/activate
+source /opt/ros/jazzy/setup.bash # Your ROS installation
 pip install -r requirements.txt
 pip install -e .
 
