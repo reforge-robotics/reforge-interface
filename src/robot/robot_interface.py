@@ -140,7 +140,7 @@ class RobotInterface(Robot):
         Preconditions:
             The URDF file is available and the SDK is installed.
         """
-        super().__init__("My Robot")  # {~.~} [Edit to your robot's name, if desired]
+        super().__init__("ufactory")
         # Initialize Robot attributes
         self.recorder = DataRecorder()
 
