@@ -74,7 +74,11 @@ HOME_SHOULDER_ANGLE = np.pi / 2  # {~.~} [rad]
 HOME_XYZ = [1.28989, 0.36866, 0.171]  # {~.~} [m]
 HOME_QUAT = [0.499, 0.499, 0.499, 0.499]  # {~.~} [1]
 HOME_JOINTS = [0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0]  # {~.~} [rad]
-HOME_POSE_OVERRIDE = None  # {~.~} list of home pose (xyz and quaternion) to override additional height not in base height
+
+# {~.~} List of home pose (xyz) where z-axis value only has the base height.
+# This is used to override additional vertical offsets of robot (e.g., vertical 
+# offset between the shoulder and elbow joint positions)
+HOME_POSE_OVERRIDE = None  
 
 # General constants
 IS_DEGREES = False  # {~.~} [CHANGE TO TRUE IF ROBOT USES DEGREES]
