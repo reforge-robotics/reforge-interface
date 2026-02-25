@@ -3,3 +3,4 @@ pydantic
 scipy
 --index-url https://pypi.org/simple/
 reforge-core
+standardbots

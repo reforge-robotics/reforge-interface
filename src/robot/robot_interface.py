@@ -6,7 +6,7 @@
 import datetime
 import numpy as np
 from collections import deque
-from typing import Any, Deque, List, Dict, Tuple, Sequence
+from typing import Deque, List, Dict, Tuple, Optional, TypeVar, cast, Sequence
 from importlib.resources import files, as_file
 
 from robot.robot_base import Robot, DataRecorder
@@ -56,29 +56,26 @@ from reforge_core.util.utility import (
 # 4. If you opt to use ROS for publishing joint positions, you can use the ros_manager.py file
 # in the robots folder. See detailed instructions in that file.
 
-# {~.~} Import robot's Python SDK with required modules here
-
-# ------------------------------- EXAMPLE -------------------------------
-# from standardbots import StandardBotsRobot, models
-# https://docs.standardbots.com/docs/latest/-/rest/intro/configuring-sdk
-# -----------------------------------------------------------------------
-
+from standardbots import StandardBotsRobot, models
 
 # User constants - EDITS REQUIRED
-BOT_ID = ""  # {~.~} [CHANGE TO ROBOT's ID, IF NECESSARY] - can also enter as CLI argument (see run.py --help)
-URDF_PATH = "urdf/test_robot.urdf"  # {~.~} [CHANGE TO YOUR ROBOT'S URDF FILE PATH]
-ROBOT_MAX_FREQ = 1000  # {~.~} [CHANGE TO ROBOT'S MAX SAMPLING FREQUENCY] in [Hz]
+BOT_ID = "bot_0sapi_D9lfDQKWSUUaXogOBejf"
+URDF_PATH = "urdf/modelone.urdf" 
+ROBOT_MAX_FREQ = 200
 
 # Home position of the robot
-HOME_SHOULDER_ANGLE = np.pi / 2  # {~.~} [rad]
-HOME_XYZ = [1.28989, 0.36866, 0.171]  # {~.~} [m]
-HOME_QUAT = [0.499, 0.499, 0.499, 0.499]  # {~.~} [1]
-HOME_JOINTS = [0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0]  # {~.~} [rad]
-HOME_POSE_OVERRIDE = None  # {~.~} list of home pose (xyz and quaternion) to override additional height not in base height
+HOME_SHOULDER_ANGLE = np.pi / 2  # [rad]
+HOME_XYZ = [1.28989, 0.36866, 0.171]  # [m]
+HOME_QUAT = [0.499, 0.499, 0.499, 0.499]  # [1]
+HOME_JOINTS = [0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0]  # [rad]
+HOME_POSE_OVERRIDE = None 
 
 # General constants
 IS_DEGREES = False  # {~.~} [CHANGE TO TRUE IF ROBOT USES DEGREES]
 DATA_LOCATION_PREFIX = "src/robot/data"  # {~.~} [CHANGE TO LOCATION DESIRED - will be robot/DATA_LOCATION_PREFIX/*]
+
+HTTP_HEADER = "http://"
+T = TypeVar("T")
 
 
 class RobotInterface(Robot):
@@ -166,44 +163,31 @@ class RobotInterface(Robot):
 
         try:
             if robot_ip != "sim":
-                # {~.~} Instantiate robot
-                self.robot = None  # [CHANGE THIS LINE]
+                self.robot = StandardBotsRobot(
+                    url=HTTP_HEADER + robot_ip,
+                    token=sdk_token,
+                    robot_kind=StandardBotsRobot.RobotKind.Live,
+                )
 
-                # ------------------- EXAMPLE --------------------
-                # self.robot = StandardBotsRobot(
-                #     url=robot_ip,
-                #     token=sdk_token,
-                #     robot_kind=StandardBotsRobot.RobotKind.Live,
-                # )
-                # ------------------------------------------------
+                # Enable ROS control, if necessary
+                with self.robot.connection():
+                    # Set teleoperation/ROS control state
+                    self.robot.ros.control.update_ros_control_state(
+                        models.ROSControlUpdateRequest(
+                            action=models.ROSControlStateEnum.Enabled,
+                            # to disable: action=models.ROSControlStateEnum.Disabled,
+                        )
+                    )
 
-                # {~.~} Enable ROS control, if necessary
-                # [YOUR CODE HERE]
+                    # Get teleoperation state
+                    self.state = self.robot.ros.status.get_ros_control_state().ok()
+                    # Enable the robot, make sure the E-stop is released before enabling
+                    print("Enabling live robot...")
 
-                # ------------------------------ EXAMPLE -------------------------------
-                # with self.robot.connection():
-                #     ## Set teleoperation/ROS control state
-                #     self.robot.ros.control.update_ros_control_state(
-                #         models.ROSControlUpdateRequest(
-                #             action=models.ROSControlStateEnum.Enabled,
-                #             # to disable: action=models.ROSControlStateEnum.Disabled,
-                #         )
-                #     )
+                # Unbrake the robot if not operational
+                self.robot.movement.brakes.unbrake().ok()
 
-                #     # Get teleoperation state
-                #     self.state = self.robot.ros.status.get_ros_control_state().ok()
-                #     # Enable the robot, make sure the E-stop is released before enabling
-                #     print("Enabling live robot...")
-                # -----------------------------------------------------------------------
-
-                # {~.~} Unbrake the robot if not operational
-                # [YOUR CODE HERE]
-
-                # --------------- EXAMPLE -----------------
-                # self.robot.movement.brakes.unbrake().ok()
-                # -----------------------------------------
-
-                # Set ID for robot
+                # Set ID for ROS robot
                 self.id = robot_id
 
                 self.num_joints = len(self.__get_joint_positions())
@@ -252,6 +236,30 @@ class RobotInterface(Robot):
             The URDF path has been initialized.
         """
         return self._urdf_path
+    
+    @staticmethod
+    def _require(value: Optional[T], message: str) -> T:
+        """Return the value or raise if it is None.
+
+        Args:
+            value: Value to validate.
+            message: Error message for missing values.
+
+        Returns:
+            `T` value if not None.
+
+        Side Effects:
+            None.
+
+        Raises:
+            RuntimeError: If `value` is None.
+
+        Preconditions:
+            None.
+        """
+        if value is None:
+            raise RuntimeError(message)
+        return value
 
     # {~.~} REQUIRED METHODS
     def __get_joint_positions(self) -> List:
@@ -270,12 +278,13 @@ class RobotInterface(Robot):
         Preconditions:
             The robot connection is active.
         """
-        joint_angles: list[float] = []
+        position = self.robot.movement.position.get_arm_position().ok()
+        joint_rotations = position.joint_rotations
 
-        # --------------------------- EXAMPLE ---------------------------
-        # position = self.robot.movement.position.get_arm_position().ok()
-        # joint_angles = list(position.joint_rotations)
-        # ---------------------------------------------------------------
+        if joint_rotations is None:
+            raise RuntimeError("Robot returned no joint rotations")
+
+        joint_angles = list(joint_rotations)
 
         if IS_DEGREES:
             joint_angles = [np.deg2rad(angle) for angle in joint_angles]
@@ -306,21 +315,29 @@ class RobotInterface(Robot):
         Preconditions:
             The robot connection is active.
         """
-        pose: list[float] = []
+        position = self.robot.movement.position.get_arm_position().ok()
+        tooltip_position = self._require(
+            position.tooltip_position, "Robot returned no tooltip positions"
+        )
+        cartesian_position = self._require(
+            tooltip_position.position, "Robot returned no cartesian positions"
+        )
+        orientation = self._require(
+            tooltip_position.orientation, "Robot returned no orientations"
+        )
+        quaternion = self._require(
+            orientation.quaternion, "Robot returned no quaternions"
+        )
 
-        # --------------------------- EXAMPLE ---------------------------
-        # position = self.robot.movement.position.get_arm_position().ok()
-        # pose = [position.tooltip_position.position.x,
-        #         position.tooltip_position.position.y,
-        #         position.tooltip_position.position.z,
-        #         position.tooltip_position.orientation.quaternion.x,
-        #         position.tooltip_position.orientation.quaternion.y,
-        #         position.tooltip_position.orientation.quaternion.z,
-        #         position.tooltip_position.orientation.quaternion.w]
-        # ---------------------------------------------------------------
-
-        # Return tooltip pose as a list
-        return pose
+        return [
+            cartesian_position.x,
+            cartesian_position.y,
+            cartesian_position.z,
+            quaternion.x,
+            quaternion.y,
+            quaternion.z,
+            quaternion.w,
+        ]
 
     def move_to_joint(self, target_joint: Tuple[float, ...]) -> None:
         """Move the robot to the specified joint positions.
@@ -340,18 +357,22 @@ class RobotInterface(Robot):
         Preconditions:
             The robot connection is active.
         """
+        if len(target_joint) != self.num_joints:
+            raise ValueError(
+                f"Expected {self.num_joints} joint values, received {len(target_joint)}"
+            )
+
         if IS_DEGREES:
             target_joint = tuple(np.rad2deg(angle) for angle in target_joint)
 
-        # ------------------------------------ EXAMPLE -------------------------------------
-        # update_request = models.ArmPositionUpdateRequest(
-        #     kind=models.ArmPositionUpdateRequestKindEnum.JointRotation,
-        #     joint_rotation=models.ArmJointRotations(
-        #         joints=target_joint)
-        # )
+        joints = cast(models.JointRotations, tuple(target_joint))
 
-        # response = self.robot.movement.position.set_arm_position(body=update_request).ok()
-        # ----------------------------------------------------------------------------------
+        update_request = models.ArmPositionUpdateRequest(
+            kind=models.ArmPositionUpdateRequestKindEnum.JointRotation,
+            joint_rotation=models.ArmJointRotations(joints=joints),
+        )
+
+        self.robot.movement.position.set_arm_position(body=update_request).ok()
 
     def move_to_pose(self, target_quat: List[float], target_xyz: List[float]) -> None:
         """Move the robot to the specified Cartesian pose.
@@ -372,33 +393,24 @@ class RobotInterface(Robot):
         Preconditions:
             The robot connection is active.
         """
-        # ---------------------------------- EXAMPLE ------------------------------------
-        # quatx, quaty, quatz, quatw = target_quat
-        # move_quat = models.Orientation(
-        #                 kind=models.OrientationKindEnum.Quaternion,
-        #                 quaternion=models.Quaternion(x=quatx,
-        #                                              y=quaty,
-        #                                              z=quatz,
-        #                                              w=quatw
-        #                                              ),
-        #             )
-        # x, y, z = target_xyz
-        # move_xyz = models.Position(
-        #                 unit_kind=models.LinearUnitKind.Meters,
-        #                 x=x,
-        #                 y=y,
-        #                 z=z
-        #             )
+        quatx, quaty, quatz, quatw = target_quat
+        move_quat = models.Orientation(
+            kind=models.OrientationKindEnum.Quaternion,
+            quaternion=models.Quaternion(x=quatx, y=quaty, z=quatz, w=quatw),
+        )
+        x, y, z = target_xyz
+        move_xyz = models.Position(
+            unit_kind=models.LinearUnitKind.Meters, x=x, y=y, z=z
+        )
 
-        # update_request = models.ArmPositionUpdateRequest(
-        #     kind=models.ArmPositionUpdateRequestKindEnum.TooltipPosition,
-        #     tooltip_position=models.PositionAndOrientation(
-        #         position=move_xyz,
-        #         orientation=move_quat)
-        # )
+        update_request = models.ArmPositionUpdateRequest(
+            kind=models.ArmPositionUpdateRequestKindEnum.TooltipPosition,
+            tooltip_position=models.PositionAndOrientation(
+                position=move_xyz, orientation=move_quat
+            ),
+        )
 
-        # response = self.robot.movement.position.set_arm_position(body=update_request).ok()
-        # ----------------------------------------------------------------------------------
+        self.robot.movement.position.set_arm_position(body=update_request).ok()
 
     def publish_and_record_joint_positions(
         self,
@@ -429,76 +441,60 @@ class RobotInterface(Robot):
         Preconditions:
             Robot connection is active and ROS control is enabled.
         """
-        # {~.~} Publish joint positions to the robot
-        # [YOUR CODE HERE -- see example with ros_manager.py below]
+        # Reinitiate ROS mode
+        with self.robot.connection():
+            # Set teleoperation/ROS control state
+            # Enable ROS control to allow streaming joint trajectories.
+            self.robot.ros.control.update_ros_control_state(
+                models.ROSControlUpdateRequest(
+                    action=models.ROSControlStateEnum.Enabled,
+                )
+            )
 
-        # ------------------------------ EXAMPLE (joint pub) ------------------------------
-        # from robot.ros_manager import (
-        #     JointTrajectoryController,
-        #     rclpy,
-        #     threading,
-        # )
+        from robot.ros_manager import (
+            JointTrajectoryController,
+            rclpy,
+            threading,
+        )
 
-        # rclpy.init()
+        rclpy.init()
 
-        # publish_complete_event = threading.Event()
+        publish_complete_event = threading.Event()
+        stop_spin_event = threading.Event()
 
-        # joint_controller = JointTrajectoryController(
-        #     f"{self.id}/ro1/hardware", # ROS topic
-        #     Ts,
-        #     time_data,
-        #     position_stream,
-        #     velocity_stream,
-        #     acceleration_stream,
-        #     publish_complete_event
-        # )
+        joint_controller = JointTrajectoryController(
+            f"{self.id}/ro1/hardware",
+            Ts,
+            time_data,
+            position_stream,
+            velocity_stream,
+            acceleration_stream,
+            publish_complete_event,
+        )
 
-        # thread = threading.Thread(target=self.spin_thread, args=(joint_controller, ), daemon=True)
-        # thread.start()
+        thread = threading.Thread(
+            target=self.spin_thread,
+            args=(joint_controller, stop_spin_event),
+            daemon=True,
+        )
+        thread.start()
 
-        # # wait until trajectory publishing finishes
-        # publish_complete_event.wait()
-        # rclpy.shutdown()
-        # thread.join()
-        # END of joint pub example
-        # -------------------------------------------------------------------------------
+        # wait until trajectory publishing finishes
+        publish_complete_event.wait()
+        stop_spin_event.set()
+        rclpy.shutdown()
+        thread.join()
 
-        # {~.~} Store the recorded data in a deque and return
-        # Data log must have the following structure:
-        # {'cmd_time','input_positions','output_positions','velocities','efforts',
-        # 'imu_time','linear_acceleration','angular_velocity','orientation'}
+        # {'cmd_time','input_positions','output_positions','velocities',
+        # 'efforts','imu_time','linear_acceleration','angular_velocity','orientation'}
+        data_log = joint_controller.aligned_log
 
-        # STRUCTURE:
-        # {'cmd_time': servo_timestamp,
-        # 'input_positions': [j0_pos_cmd,j1_pos_cmd,j2_pos_cmd,
-        #                     j3_pos_cmd,j4_pos_cmd,j5_pos_cmd],
-        # 'output_positions': [j0_pos_enc,j1_pos_enc,j2_pos_enc,
-        #                      j3_pos_enc,j4_pos_enc,j5_pos_enc],
-        # 'velocities': [j0_vel,j1_vel,j2_vel,j3_vel,j4_vel,j5_vel],
-        # 'efforts': [j0_current,j1_current,j2_current,j3_current,j4_current,j5_current],
-        # 'imu_time': imu_timestamp,
-        # 'linear_acceleration': [acc_x,acc_y,acc_z],
-        # 'angular_velocity': [gyro_x,gyro_y,gyro_z],
-        # 'orientation': [w,x,y,z]}
-
-        # Leave the field empty if not available, but have a row entry for each time step (see ros_manager.py for example)
-        data_log: Deque[Dict] = (
-            deque()
-        )  # {'cmd_time','input_positions','output_positions','velocities','efforts','imu_time','linear_acceleration','angular_velocity','orientation'}
-
-        # ------- EXAMPLE (record joint and imu data) ------
-        # data_log = joint_controller.aligned_log
-        #
         # Destroy the node explicitly after recording data
-        # joint_controller.destroy_node()
-        #
-        # END of record data example
-        # --------------------------------------------------
+        joint_controller.destroy_node()
 
         return (
-            data_log  # {'cmd_time','input_positions','output_positions','velocities',
+            data_log  
         )
-        # 'efforts','imu_time','linear_acceleration','angular_velocity','orientation'}
 
     # {~.~} END OF REQUIRED METHODS
 
@@ -971,5 +967,16 @@ class RobotInterface(Robot):
             ROS is initialized.
         """
         from robot.ros_manager import rclpy
+        from rclpy.executors import SingleThreadedExecutor, ExternalShutdownException
 
-        rclpy.spin(node=node)
+        executor = SingleThreadedExecutor()
+        executor.add_node(node)
+        try:
+            while rclpy.ok() and not stop_event.is_set():
+                executor.spin_once(timeout_sec=0.1)
+        except ExternalShutdownException:
+            # Expected when rclpy.shutdown() is called from another thread.
+            pass
+        finally:
+            executor.remove_node(node)
+            executor.shutdown()
