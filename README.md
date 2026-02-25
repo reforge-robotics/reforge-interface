@@ -85,8 +85,8 @@ python -m robot.run calibrate <robot_ip> --robot_id <robot_id> --freq 200
 
 2. Add SDK client setup in `RobotInterface.__init__`.
 3. Implement required SDK-bound methods:
-- `_get_joint_positions`
-- `_get_tcp_pose`
+- `__get_joint_positions`
+- `__get_tcp_pose`
 - `move_to_joint`
 - `move_to_pose`
 - `publish_and_record_joint_positions`
