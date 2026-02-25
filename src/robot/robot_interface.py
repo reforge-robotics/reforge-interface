@@ -5,8 +5,7 @@
 
 import datetime
 import numpy as np
-from collections import deque
-from typing import Deque, List, Dict, Tuple, Optional, TypeVar, cast, Sequence
+from typing import Deque, List, Dict, Tuple, Optional, TypeVar, cast, Sequence, Any
 from importlib.resources import files, as_file
 
 from robot.robot_base import Robot, DataRecorder
@@ -948,11 +947,12 @@ class RobotInterface(Robot):
     # END OF PRE-DEFINED METHODS
 
     # OPTIONAL METHODS
-    def spin_thread(self, node: Any) -> None:
+    def spin_thread(self, node, stop_event):
         """Spin a ROS node in a background thread.
 
         Args:
             node: ROS node to spin.
+            stop_event: threading.Event used to signal shutdown.
 
         Returns:
             `None`.
