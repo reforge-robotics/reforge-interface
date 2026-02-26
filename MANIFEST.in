@@ -1,0 +1,1 @@
+recursive-include src/robot/urdf *.urdf *.xacro *.stl *.dae
