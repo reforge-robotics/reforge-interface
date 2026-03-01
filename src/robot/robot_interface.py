@@ -76,9 +76,9 @@ HOME_QUAT = [0.499, 0.499, 0.499, 0.499]  # {~.~} [1]
 HOME_JOINTS = [0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0]  # {~.~} [rad]
 
 # {~.~} List of home pose (xyz) where z-axis value only has the base height.
-# This is used to override additional vertical offsets of robot (e.g., vertical 
+# This is used to override additional vertical offsets of robot (e.g., vertical
 # offset between the shoulder and elbow joint positions)
-HOME_POSE_OVERRIDE = None  
+HOME_POSE_OVERRIDE = None
 
 # General constants
 IS_DEGREES = False  # {~.~} [CHANGE TO TRUE IF ROBOT USES DEGREES]
@@ -562,10 +562,8 @@ class RobotInterface(Robot):
         """
         # Check to make sure the sampling frequency is not larger than the max sampling frequency
         if ROBOT_MAX_FREQ < (1 / Ts):
-            raise RuntimeError(
-                f"The sample time exceeds the maximum robot\
-                                sampling frequency of {ROBOT_MAX_FREQ} Hz."
-            )
+            raise RuntimeError(f"The sample time exceeds the maximum robot\
+                                sampling frequency of {ROBOT_MAX_FREQ} Hz.")
 
         # Initialize parameters for robot trajectory generation
         # ==================================================================

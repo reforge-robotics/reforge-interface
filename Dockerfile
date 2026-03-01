@@ -1,5 +1,6 @@
 # {~.~} Include for robots that require ROS2 
-FROM ros:jazzy 
+# FROM ros:jazzy
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=UTC
@@ -20,14 +21,14 @@ RUN apt-get update && \
       zlib1g-dev
 
 # {~.~} Use ROS2 packages only when needed
-RUN apt-get install -y \
-      ros-jazzy-rmw-cyclonedds-cpp \
-      ros-jazzy-trajectory-msgs \
-      ros-jazzy-std-msgs \
-      ros-jazzy-builtin-interfaces \
-      ros-jazzy-geometry-msgs \
-      ros-jazzy-sensor-msgs \
-      ros-jazzy-rclcpp 
+# RUN apt-get install -y \
+#       ros-jazzy-rmw-cyclonedds-cpp \
+#       ros-jazzy-trajectory-msgs \
+#       ros-jazzy-std-msgs \
+#       ros-jazzy-builtin-interfaces \
+#       ros-jazzy-geometry-msgs \
+#       ros-jazzy-sensor-msgs \
+#       ros-jazzy-rclcpp 
 
 RUN rm -rf /var/lib/apt/lists/*
 
@@ -43,7 +44,7 @@ COPY requirements.txt pyproject.toml MANIFEST.in ./
 RUN python -m pip install --no-cache-dir -r requirements.txt
 
 # {~.~} source ROS2 packages
-RUN . /opt/ros/jazzy/setup.sh
+# RUN . /opt/ros/jazzy/setup.sh
 
 COPY . .
 RUN python -m pip install --no-cache-dir .
@@ -51,7 +52,7 @@ RUN python -m pip install --no-cache-dir .
 # {~.~} Set environment variables for ROS2 and Python
 ENV PYTHONPATH=/control-box-bot/reforge-interface:/control-box-bot/reforge-interface/src
 ENV RMW_IMPLEMENTATION rmw_cyclonedds_cpp
-ENV CYCLONEDDS_URI="/etc/standardbots/configuration/cyclonedds.xml"
+ENV CYCLONEDDS_URI=""
 ENV PYTHONUNBUFFERED=1
 
 # Enable core dumps for debugging
