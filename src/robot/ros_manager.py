@@ -1,5 +1,4 @@
 import numpy as np
-import time
 import threading
 from collections import deque
 from pydantic import BaseModel
@@ -82,26 +81,24 @@ class ImuSample(BaseModel):
 
 
 class JointTrajectoryController(Node):
-    """Publish joint trajectories and record aligned state/IMU data.
-
+    """Publish joint trajectories while recording aligned encoder and IMU data.
     Args:
         bot_id: Robot identifier used to build ROS topic names.
-        Ts: Sampling time [s].
-        time_data: Command timestamps.
-        position_data: Joint position commands.
-        velocity_data: Joint velocity commands.
-        acceleration_data: Joint acceleration commands.
-        publish_complete_event: Optional event signaled after publishing completes.
-        buffer_len_s: Buffer length in seconds for stored data.
-
+        Ts: Sampling period for command publishing [s].
+        time_data: Command timestamps [s].
+        position_data: Joint position commands [rad].
+        velocity_data: Joint velocity commands [rad/s].
+        acceleration_data: Joint acceleration commands [rad/s^2].
+        publish_complete_event: Event signaled after publishing completes.
+        buffer_len_s: Buffer length for stored data [s].
+    Returns:
+        `None`.
     Side Effects:
-        Creates ROS publishers/subscribers and buffers data.
-
+        Creates ROS publishers/subscribers, timers, and data buffers.
     Raises:
         None.
-
     Preconditions:
-        ROS is initialized and topic names are valid.
+        ROS is initialized and topic names are valid for the robot.
     """
 
     def __init__(
@@ -115,29 +112,27 @@ class JointTrajectoryController(Node):
         publish_complete_event: Optional[threading.Event] = None,
         buffer_len_s: float = 3600,  # 60 minutes
     ) -> None:
-        """Initialize ROS publishers, subscribers, and data buffers.
-
+        """Initialize ROS publishers, subscribers, timers, and data buffers.
         Args:
             bot_id: Robot identifier used to build ROS topic names.
-            Ts: Sampling time [s].
-            time_data: Command timestamps.
-            position_data: Joint position commands.
-            velocity_data: Joint velocity commands.
-            acceleration_data: Joint acceleration commands.
-            publish_complete_event: Optional event signaled after publishing completes.
-            buffer_len_s: Buffer length in seconds for stored data.
-
+            Ts: Sampling period for command publishing [s].
+            time_data: Command timestamps [s].
+            position_data: Joint position commands [rad].
+            velocity_data: Joint velocity commands [rad/s].
+            acceleration_data: Joint acceleration commands [rad/s^2].
+            publish_complete_event: Event signaled after publishing completes.
+            buffer_len_s: Buffer length for stored data [s].
+        Returns:
+            `None`.
         Side Effects:
             Creates ROS publishers/subscribers and allocates buffers.
-
         Raises:
             None.
-
         Preconditions:
             ROS is initialized and topic names are valid.
         """
         super().__init__("joint_trajectory_controller")
-        self.bot_id = bot_id
+        self.bot_id = bot_id  # Robot identifier used for topic name construction.
 
         # Callback groups so timer and subs can run in parallel
         cb = ReentrantCallbackGroup()
@@ -176,43 +171,93 @@ class JointTrajectoryController(Node):
 
         # Buffers to store incoming data
         maxlen = int(buffer_len_s * (1.0 / Ts))
-        self.state_data: deque[JointStateSample] = deque(maxlen=maxlen)
-        self.imu_data: deque[ImuSample] = deque(maxlen=maxlen)
+        self.state_data: deque[JointStateSample] = deque(
+            maxlen=maxlen
+        )  # Encoder buffer.
+        self.imu_data: deque[ImuSample] = deque(maxlen=maxlen)  # IMU buffer.
 
         # We'll keep raw command-time stamps as well
-        self.cmd_times: list[float] = []
-        self.cmd_points: list[JointTrajectoryPoint] = []
+        self.cmd_times: list[float] = []  # Command timestamps [s] aligned to publish.
+        self.cmd_points: list[JointTrajectoryPoint] = []  # Commanded points per tick.
 
         # aligned logs: tuples of (timestamp, command_point, state_sample, imu_sample)
-        self.aligned_log: deque[Any] = deque(maxlen=maxlen)
+        self.aligned_log: deque[Any] = deque(
+            maxlen=maxlen
+        )  # Aligned sensor/command log.
 
         # Trajectory to send
-        self.time_data = time_data
-        self.position_data = position_data
-        self.velocity_data = velocity_data
-        self.acceleration_data = acceleration_data
-        self.publish_complete_event = publish_complete_event
+        self.time_data = time_data  # Command timestamps [s].
+        self.position_data = position_data  # Position commands [rad].
+        self.velocity_data = velocity_data  # Velocity commands [rad/s].
+        self.acceleration_data = acceleration_data  # Acceleration commands [rad/s^2].
+        self.publish_complete_event = (
+            publish_complete_event  # Signals publish completion.
+        )
 
         # Timer to publish joint trajectory points and immediately sample data at Ts
         self.index = 0
-        self.timer = self.create_timer(Ts, self.publish_and_record)
-        self.get_logger().info("Joint Controller has Started.")
+        self.timer = None  # Active publish timer after sensors are ready.
+        self._start_timer = None  # Startup timer that waits for sensor readiness.
+        self._waiting_logged = False  # Log once while waiting for readiness.
+        self._start_timer = self.create_timer(0.05, self._wait_for_ready_start)
+        self._publish_period = Ts  # Publish period [s] used once ready.
 
-    def joint_state_callback(self, msg: JointState) -> None:
-        """Handle incoming joint state messages.
-
+    def _now_ros(self) -> float:
+        """Return the current ROS time.
         Args:
-            msg: ROS JointState message.
-
+            None.
         Returns:
-            `None`.
-
+            `float` current ROS time [s].
         Side Effects:
-            Appends a `JointStateSample` to `self.state_data`.
-
+            None.
         Raises:
             None.
+        Preconditions:
+            ROS clock is initialized.
+        """
+        return self.get_clock().now().nanoseconds * 1e-9
 
+    def _wait_for_ready_start(self) -> None:
+        """Gate trajectory publishing until encoder and IMU data are live.
+        Args:
+            None.
+        Returns:
+            `None`.
+        Side Effects:
+            Starts the publish timer once readiness is satisfied.
+        Raises:
+            None.
+        Preconditions:
+            Encoder and IMU callbacks are registered.
+        """
+        if (not self.encoder_is_ready()) or (not self.imu_is_ready()):
+            if not self._waiting_logged:
+                self.get_logger().info(
+                    "Waiting for encoder/imu before starting trajectory publish..."
+                )
+                self._waiting_logged = True
+            return
+
+        if self._start_timer is not None:
+            self._start_timer.cancel()
+            self._start_timer = None
+
+        if self.timer is None:
+            self.timer = self.create_timer(
+                self._publish_period, self.publish_and_record
+            )
+            self.get_logger().info("Joint Controller has Started.")
+
+    def joint_state_callback(self, msg: JointState) -> None:
+        """Append a joint state sample with receive timing.
+        Args:
+            msg: ROS JointState message.
+        Returns:
+            `None`.
+        Side Effects:
+            Appends a `JointStateSample` to `self.state_data`.
+        Raises:
+            None.
         Preconditions:
             ROS node is active.
         """
@@ -226,39 +271,31 @@ class JointTrajectoryController(Node):
         self.state_data.append(sample)
 
     def encoder_is_ready(self) -> bool:
-        """Check if recent joint state data has been received.
-
+        """Check whether recent joint state data is available.
+        Args:
+            None.
         Returns:
-            `bool` indicating whether encoder data is fresh.
-
+            `bool` True when encoder data is fresh.
         Side Effects:
             None.
-
         Raises:
             None.
-
         Preconditions:
             `self.state_data` is being populated by callbacks.
         """
-        return (
-            len(self.state_data) > 0 and self.state_data[-1].recv_time > time.time() - 1
-        )
+        now = self._now_ros()
+        return len(self.state_data) > 0 and self.state_data[-1].recv_time > now - 1
 
     def imu_callback(self, msg: Imu) -> None:
-        """Handle incoming IMU messages.
-
+        """Append an IMU sample with receive timing.
         Args:
             msg: ROS Imu message.
-
         Returns:
             `None`.
-
         Side Effects:
             Appends an `ImuSample` to `self.imu_data`.
-
         Raises:
             None.
-
         Preconditions:
             ROS node is active.
         """
@@ -288,34 +325,31 @@ class JointTrajectoryController(Node):
         self.imu_data.append(sample)
 
     def imu_is_ready(self) -> bool:
-        """Check if recent IMU data has been received.
-
+        """Check whether recent IMU data is available.
+        Args:
+            None.
         Returns:
-            `bool` indicating whether IMU data is fresh.
-
+            `bool` True when IMU data is fresh.
         Side Effects:
             None.
-
         Raises:
             None.
-
         Preconditions:
             `self.imu_data` is being populated by callbacks.
         """
-        return len(self.imu_data) > 0 and self.imu_data[-1].recv_time > time.time() - 1
+        now = self._now_ros()
+        return len(self.imu_data) > 0 and self.imu_data[-1].recv_time > now - 1
 
     def publish_and_record(self) -> None:
-        """Publish trajectory points and record synchronized data.
-
+        """Publish the next trajectory point and record aligned data.
+        Args:
+            None.
         Returns:
             `None`.
-
         Side Effects:
             Publishes ROS messages, updates buffers, and signals completion.
-
         Raises:
             None.
-
         Preconditions:
             `encoder_is_ready()` and `imu_is_ready()` return True before publishing.
         """
@@ -343,6 +377,7 @@ class JointTrajectoryController(Node):
                 sec=int(now.nanoseconds * 1e-9), nanosec=int(now.nanoseconds % 1e9)
             )
 
+            # Publish exactly one point per tick to preserve the command cadence.
             msg = JointTrajectory()
             msg.joint_names = [f"joint{i}" for i in range(len(point.positions))]
             msg.points.append(point)
@@ -355,7 +390,8 @@ class JointTrajectoryController(Node):
             self.index += 1
         else:
             # Once the trajectory is complete, cancel the timer
-            self.timer.cancel()
+            if self.timer is not None:
+                self.timer.cancel()
             self.get_logger().info("Trajectory publishing complete")
             # Align the data
             self.align_offline()
@@ -364,17 +400,15 @@ class JointTrajectoryController(Node):
                 self.publish_complete_event.set()
 
     def align_offline(self) -> None:
-        """Align recorded state and IMU data to command timestamps.
-
+        """Align recorded encoder and IMU data to command timestamps.
+        Args:
+            None.
         Returns:
             `None`.
-
         Side Effects:
             Appends aligned records to `self.aligned_log`.
-
         Raises:
             RuntimeError: If `time_data` is not provided.
-
         Preconditions:
             `self.cmd_times` and sensor buffers are populated.
         """
@@ -385,12 +419,14 @@ class JointTrajectoryController(Node):
         def extract(
             deq: deque[JointStateSample] | deque[ImuSample],
             key: str,
+            time_field: str,
         ) -> tuple[np.ndarray, np.ndarray]:
             """Extract timestamped arrays for a given field.
 
             Args:
                 deq: Deque of samples.
                 key: Attribute name to extract.
+                time_field: Timestamp field to align against.
 
             Returns:
                 `tuple[np.ndarray, np.ndarray]` of timestamps and values.
@@ -402,42 +438,40 @@ class JointTrajectoryController(Node):
                 AttributeError: If samples do not contain the requested field.
 
             Preconditions:
-                `deq` contains objects with a `send_time` field and `key` attribute.
+                `deq` contains objects with `time_field` and `key` attributes.
             """
+            # Align with receive time to keep a single ROS-time base across streams.
             arr = np.array([getattr(d, key) for d in deq])
-            stamps = np.array([getattr(d, "send_time") for d in deq])
+            stamps = np.array([getattr(d, time_field) for d in deq])
             return stamps, arr
 
         # Joint states
-        t_state, pos_state = extract(self.state_data, "positions")
-        _, vel_state = extract(self.state_data, "velocities")
-        _, eff_state = extract(self.state_data, "efforts")
+        # Use receive time for all sensor streams to avoid header-stamp drift.
+        t_state, pos_state = extract(self.state_data, "positions", "recv_time")
+        _, vel_state = extract(self.state_data, "velocities", "recv_time")
+        _, eff_state = extract(self.state_data, "efforts", "recv_time")
 
         # IMU
-        t_imu, accel_imu = extract(self.imu_data, "linear_acceleration")
-        _, angvel_imu = extract(self.imu_data, "angular_velocity")
-        _, quat_imu = extract(self.imu_data, "orientation")
+        t_imu, accel_imu = extract(self.imu_data, "linear_acceleration", "recv_time")
+        _, angvel_imu = extract(self.imu_data, "angular_velocity", "recv_time")
+        _, quat_imu = extract(self.imu_data, "orientation", "recv_time")
 
         # For each command time, interpolate latest sensor readings
+        # Each iteration aligns one command point with the nearest sensor samples.
         for t_cmd, point in zip(self.cmd_times, self.cmd_points):
 
             # find nearest or interpolate
             def interp(t: np.ndarray, x: np.ndarray) -> float:
                 """Interpolate values at the command time.
-
                 Args:
-                    t: Time stamps array.
+                    t: Time stamps array [s].
                     x: Values array aligned with `t`.
-
                 Returns:
                     `float` interpolated value at the current command time.
-
                 Side Effects:
                     None.
-
                 Raises:
                     None.
-
                 Preconditions:
                     `t` and `x` are the same length and sorted by time.
                 """
