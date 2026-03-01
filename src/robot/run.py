@@ -278,13 +278,19 @@ def _build_parser() -> argparse.ArgumentParser:
         type=str,
         help="API token for HTTP request to Reforge Cloud to run model fine-tuning after calibration",
     )
+    calibrate.add_argument(
+        "--reforge_robot_id",
+        dest="reforge_robot_id",
+        type=str,
+        help="Reforge robot ID for HTTP request to Reforge Cloud",
+    )
 
     # ======================== Route: identify =====================================
     identify = sub.add_parser("identify", help="Run system identification routine.")
     identify.add_argument(
         "identify_api_token", help="API token for HTTP request to Reforge Cloud."
     )
-    identify.add_argument("robot_id", help="Reforge robot ID.")
+    identify.add_argument("reforge_robot_id", help="Reforge robot ID for HTTP request to Reforge Cloud")
     identify.add_argument(
         "data_folder", help="Folder containing calibration data CSVs."
     )
@@ -387,7 +393,7 @@ def _build_parser() -> argparse.ArgumentParser:
     fine_tune.add_argument(
         "fine_tune_api_token", help="API token for HTTP request to Reforge Cloud."
     )
-    fine_tune.add_argument("robot_id", help="Reforge robot ID.")
+    fine_tune.add_argument("reforge_robot_id", help="Reforge robot ID for HTTP request to Reforge Cloud.")
     fine_tune.add_argument(
         "data_folder", help="Folder containing calibration data CSVs."
     )
@@ -468,18 +474,18 @@ def route_user_input(args: argparse.Namespace) -> None:
             )
 
             # Optional: Call system identification or fine-tuning after calibration
-            if args.fine_tune_api_token:
+            if args.fine_tune_api_token and args.reforge_robot_id:
                 api_manager = ReforgeAPIManager(
-                    reforge_api_token=args.fine_tune_api_token, robot_id=args.robot_id
+                    reforge_api_token=args.fine_tune_api_token, robot_id=args.reforge_robot_id
                 )
                 return _run_model_generation_with_fine_tune_fallback(
                     api_manager=api_manager,
                     data_folder=data_folder,
                     fine_tune=True,
                 )
-            elif args.identify_api_token:
+            elif args.identify_api_token and args.reforge_robot_id:
                 api_manager = ReforgeAPIManager(
-                    reforge_api_token=args.identify_api_token, robot_id=args.robot_id
+                    reforge_api_token=args.identify_api_token, robot_id=args.reforge_robot_id
                 )
                 return _run_model_generation_with_fine_tune_fallback(
                     api_manager=api_manager,
@@ -491,7 +497,7 @@ def route_user_input(args: argparse.Namespace) -> None:
             traceback.print_exc()
     elif args.route == "identify":
         api_manager = ReforgeAPIManager(
-            reforge_api_token=args.identify_api_token, robot_id=args.robot_id
+            reforge_api_token=args.identify_api_token, robot_id=args.reforge_robot_id
         )
         return _run_model_generation_with_fine_tune_fallback(
             api_manager=api_manager,
@@ -521,7 +527,7 @@ def route_user_input(args: argparse.Namespace) -> None:
             traceback.print_exc()
     elif args.route == "fine_tune":
         api_manager = ReforgeAPIManager(
-            reforge_api_token=args.fine_tune_api_token, robot_id=args.robot_id
+            reforge_api_token=args.fine_tune_api_token, robot_id=args.reforge_robot_id
         )
         return _run_model_generation_with_fine_tune_fallback(
             api_manager=api_manager,
