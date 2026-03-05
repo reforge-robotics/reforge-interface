@@ -32,52 +32,70 @@ reforge-interface/
 
 ## Quick Start
 
-1. Install dependencies.
+1. Add your robot URDF to `src/robot/urdf/`.
+2. Add your robot SDK dependency to `requirements.txt` (or vendor it into the repo).
+3. Integrate the SDK in `src/robot/robot_interface.py` by replacing all `# {~.~}` markers.
+4. Validate the integration.
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m py_compile src/robot/robot_interface.py
+rg "\{~\.~\}" src/robot/robot_interface.py
+```
+5. Install dependencies (venv or docker [on the robot control box]).
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+source /opt/ros/jazzy/setup.bash # Your ROS installation
 pip install -r requirements.txt
 pip install -e .
 ```
-
-2. Add your robot URDF to `src/robot/urdf/`.
-3. Add your robot SDK dependency to `requirements.txt` (or vendor it into the repo).
-4. Integrate the SDK in `src/robot/robot_interface.py` by replacing all `# {~.~}` markers.
-5. Validate the integration.
-
+or 
 ```bash
-python -m py_compile src/robot/robot_interface.py
-rg "\{~\.~\}" src/robot/robot_interface.py
+ssh <user>@<control_box_ip>
+git clone https://github.com/reforge-robotics/reforge-interface.git
+cd reforge-interface/
+git checkout standardbots-sdk
+docker build -t reforge-interface:latest .
 ```
+
 
 ## 5-Minute Happy Path
 
 Use this when you want a fast first calibration run with minimal options.
 
 ```bash
-# 1) Install
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-pip install -e .
-
-# 2) Add your robot URDF (example filename)
+# 1) Add your robot URDF (example filename)
 cp /path/to/my_robot.urdf src/robot/urdf/my_robot.urdf
 
-# 3) Integrate SDK in src/robot/robot_interface.py
+# 2) Integrate SDK in src/robot/robot_interface.py
 #    - set URDF_PATH="urdf/my_robot.urdf"
 #    - replace all # {~.~} markers
 
-# 4) Validate interface wiring
-python -m py_compile src/robot/robot_interface.py
+# 3) Validate interface wiring
+python3 -m py_compile src/robot/robot_interface.py
 rg "\{~\.~\}" src/robot/robot_interface.py
 
+# 4) Install
+python3 -m venv .venv
+source .venv/bin/activate
+source /opt/ros/jazzy/setup.bash # Your ROS installation
+pip install -r requirements.txt
+pip install -e .
+
 # 5) Test connection (no trajectory execution)
-python -m robot.run connect_test <robot_ip> --local_ip <local_ip> --sdk_token <token> --robot_id <robot_id>
+python3 -m robot.run connect_test <robot_ip> --local_ip <local_ip> --sdk_token <token> --robot_id <robot_id>
+
+# docker on the control box
+chmod +x docker_scripts/run_connect_test.sh
+./docker_scripts/run_connect_test.sh <robot_ip> --local_ip <local_ip> --sdk_token <token> --robot_id <robot_id>
 
 # 6) Run calibration
-python -m robot.run calibrate <robot_ip> --robot_id <robot_id> --freq 200
+python3 -m robot.run calibrate <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200
+
+# docker on the control box
+chmod +x docker_scripts/run_calibrate.sh
+./docker_scripts/run_calibrate.sh <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200
 ```
 
 ## Robot Integration Flow
@@ -107,49 +125,74 @@ See `src/robot/README.md` for the detailed contract.
 Use module invocation after editable install:
 
 ```bash
-python -m robot.run --help
+python3 -m robot.run --help
 ```
 
 ### Connection test
 
 ```bash
-python -m robot.run connect_test <robot_ip> --local_ip <local_ip> --sdk_token <token> --robot_id <robot_id>
+python3 -m robot.run connect_test <robot_ip> --local_ip <local_ip> --sdk_token <token> --robot_id <robot_id>
+```
+or 
+```bash
+./docker_scripts/run_connect_test.sh <robot_ip> --local_ip <local_ip> --sdk_token <token> --robot_id <robot_id>
 ```
 
 ### Calibration
 
 ```bash
-python -m robot.run calibrate <robot_ip> --robot_id <robot_id> --freq 200
+python3 -m robot.run calibrate <robot_ip> --robot_id <robot_id> --freq 200
+```
+or 
+```bash
+./docker_scripts/run_calibrate.sh <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200
 ```
 
 Optional cloud actions immediately after calibration:
 
 ```bash
-python -m robot.run calibrate <robot_ip> --robot_id <robot_id> --identify <api_token>
-python -m robot.run calibrate <robot_ip> --robot_id <robot_id> --fine_tune <api_token>
+python3 -m robot.run calibrate <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200 --identify <api_token> --reforge_robot_id <reforge_robot_id>
+python3 -m robot.run calibrate <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200 --fine_tune <api_token> --reforge_robot_id <reforge_robot_id>
+```
+or 
+```bash
+./docker_scripts/run_calibrate.sh <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200 --identify <api_token> --reforge_robot_id <reforge_robot_id>
+./docker_scripts/run_calibrate.sh <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200 --fine_tune <api_token> --reforge_robot_id <reforge_robot_id>
 ```
 
 ### Identification (manual)
 
 ```bash
-python -m robot.run identify <identify_api_token> <robot_id> <data_folder>
+python3 -m robot.run identify <api_token> <reforge_robot_id> <data_folder>
+```
+or 
+```bash
+./docker_scripts/run_identify.sh <api_token> <reforge_robot_id> <data_folder>
 ```
 
 ### Fine-tuning (manual)
 
 ```bash
-python -m robot.run fine_tune <fine_tune_api_token> <robot_id> <data_folder>
+python3 -m robot.run fine_tune <api_token> <reforge_robot_id> <data_folder>
+```
+or 
+```bash
+./docker_scripts/run_fine_tune.sh <api_token> <reforge_robot_id> <data_folder>
 ```
 
 ### Vibration test
 
 ```bash
-python -m robot.run vibration_test <robot_ip> <data_folder> --robot_id <robot_id>
+python3 -m robot.run vibration_test <robot_ip> <data_folder> --robot_id <robot_id>
+```
+or 
+```bash
+./docker_scripts/run_vibration_test.sh <robot_ip> <data_folder> --robot_id <robot_id>
 ```
 
 ## Validation Checklist
 
-- `python -m py_compile src/robot/robot_interface.py` passes.
+- `python3 -m py_compile src/robot/robot_interface.py` passes.
 - `rg "\{~\.~\}" src/robot/robot_interface.py` returns no matches.
 - `URDF_PATH` points to a real file under `src/robot/urdf/`.
 - Joint count returned by SDK is compatible with URDF model count.
