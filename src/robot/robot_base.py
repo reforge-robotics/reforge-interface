@@ -21,6 +21,7 @@ from reforge_core.util.utility import (
 )
 from reforge_core.util.trajectory import Trajectory
 
+
 M_PI = math.pi
 DEFAULT_MAX_DISP = M_PI / 18.0  # [rad]
 DEFAULT_MAX_VEL = 18.0  # [rad/s]
