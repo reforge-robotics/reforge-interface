@@ -58,7 +58,10 @@ cd reforge-interface/
 git checkout standardbots-sdk
 docker build -t reforge-interface:latest .
 ```
-
+or build without cache
+```bash
+docker build --no-cache --pull -t reforge-interface:latest .
+```
 
 ## 5-Minute Happy Path
 
