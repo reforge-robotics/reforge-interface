@@ -24,10 +24,25 @@ if [[ ! -d "$host_data_folder" ]]; then
   exit 1
 fi
 
-IMAGE_NAME="${IMAGE_NAME:-reforge-interface}"
+IMAGE_NAME="${IMAGE_NAME:-reforge-interface:latest}"
 CONTAINER_NAME="${CONTAINER_NAME:-reforge-vibration-test}"
 CONTAINER_DATA_DIR="${CONTAINER_DATA_DIR:-/control-box-bot/reforge-interface/src/robot/data}"
-CYCLONEDDS_URI="${CYCLONEDDS_URI:-/etc/standardbots/configuration/cyclonedds.xml}"
+DEFAULT_CYCLONEDDS_PATH="/etc/standardbots/configuration/cyclonedds.xml"
+CYCLONEDDS_URI="${CYCLONEDDS_URI:-}"
+
+normalize_cyclonedds() {
+  local input="$1"
+  local path=""
+  local uri=""
+  if [[ "$input" == file://* ]]; then
+    path="${input#file://}"
+    uri="$input"
+  else
+    path="$input"
+    uri="file://$input"
+  fi
+  printf '%s\n%s\n' "$path" "$uri"
+}
 
 cmd_args=(python3 -m robot.run vibration_test "$robot_ip" "$CONTAINER_DATA_DIR")
 if [[ $# -gt 0 ]]; then
@@ -41,15 +56,28 @@ docker_args=(
   -v "$host_data_folder:$CONTAINER_DATA_DIR"
 )
 
-if [[ -f "$CYCLONEDDS_URI" ]]; then
-  cyclonedds_dir="$(dirname "$CYCLONEDDS_URI")"
-  docker_args+=(
-    -v "$cyclonedds_dir:$cyclonedds_dir:ro"
-    -e "CYCLONEDDS_URI=$CYCLONEDDS_URI"
-  )
+cyclonedds_input="$CYCLONEDDS_URI"
+if [[ -z "$cyclonedds_input" && -f "$DEFAULT_CYCLONEDDS_PATH" ]]; then
+  cyclonedds_input="$DEFAULT_CYCLONEDDS_PATH"
+fi
+
+if [[ -n "$cyclonedds_input" ]]; then
+  mapfile -t cyclonedds_cfg < <(normalize_cyclonedds "$cyclonedds_input")
+  cyclonedds_path="${cyclonedds_cfg[0]}"
+  cyclonedds_uri="${cyclonedds_cfg[1]}"
+  if [[ -f "$cyclonedds_path" ]]; then
+    cyclonedds_dir="$(dirname "$cyclonedds_path")"
+    docker_args+=(
+      -v "$cyclonedds_dir:$cyclonedds_dir:ro"
+      -e "CYCLONEDDS_URI=$cyclonedds_uri"
+    )
+  else
+    echo "Warning: CYCLONEDDS config not found on host: $cyclonedds_input"
+    echo "Vibration test will run without explicit CYCLONEDDS_URI."
+  fi
 else
-  echo "Warning: CYCLONEDDS_URI file not found on host: $CYCLONEDDS_URI"
-  echo "Vibration test may fail if ROS2 CycloneDDS requires this config."
+  echo "Info: CYCLONEDDS_URI is not set and no default config was found."
+  echo "Vibration test will run with CycloneDDS defaults."
 fi
 
 docker run "${docker_args[@]}" \

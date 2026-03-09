@@ -50,7 +50,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-IMAGE_NAME="${IMAGE_NAME:-reforge-interface}"
+IMAGE_NAME="${IMAGE_NAME:-reforge-interface:latest}"
 CONTAINER_NAME="${CONTAINER_NAME:-reforge-connect-test}"
 DATA_DIR="${DATA_DIR:-$(pwd)/src/robot/data}"
 

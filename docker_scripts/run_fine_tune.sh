@@ -31,7 +31,7 @@ if [[ ! -d "$host_data_folder" ]]; then
   exit 1
 fi
 
-IMAGE_NAME="${IMAGE_NAME:-reforge-interface}"
+IMAGE_NAME="${IMAGE_NAME:-reforge-interface:latest}"
 CONTAINER_NAME="${CONTAINER_NAME:-reforge-fine-tune}"
 CONTAINER_DATA_DIR="${CONTAINER_DATA_DIR:-/control-box-bot/reforge-interface/src/robot/data}"
 
