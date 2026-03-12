@@ -99,6 +99,17 @@ python3 -m robot.run calibrate <robot_ip> --sdk_token <token> --robot_id <robot_
 # docker on the control box
 chmod +x docker_scripts/run_calibrate.sh
 ./docker_scripts/run_calibrate.sh <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200
+
+# 7) Run identification
+python3 -m robot.run identify <api_token> <reforge_robot_id> <data_folder>
+
+# docker on the control box
+./docker_scripts/run_identify.sh <api_token> <reforge_robot_id> <data_folder>
+
+# 8) Run vibration test
+python3 -m robot.run vibration_test <robot_ip> <data_folder> --sdk_token <token> --robot_id <robot_id>
+
+./docker_scripts/run_vibration_test.sh <robot_ip> <data_folder> --sdk_token <token> --robot_id <robot_id>
 ```
 
 ## Robot Integration Flow
