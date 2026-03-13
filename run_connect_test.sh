@@ -6,4 +6,20 @@ if [[ $# -lt 1 ]]; then
   exit 1
 fi
 
-python3 -m robot.run connect_test "$@"
+output="$(python3 -m robot.run connect_test "$@" 2>&1)"
+status=$?
+printf '%s\n' "$output"
+
+if [[ $status -ne 0 ]]; then
+  exit "$status"
+fi
+
+# `robot.run connect_test` currently prints failure text but may still exit 0.
+if grep -q "Failed to connect" <<<"$output"; then
+  exit 1
+fi
+
+if ! grep -q "Successfully connected" <<<"$output"; then
+  echo "Connect test did not report a success marker."
+  exit 1
+fi

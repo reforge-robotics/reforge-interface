@@ -167,6 +167,12 @@
         align-items: center;
       }
 
+      .ipRow {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
       .idInput {
         flex: 1;
         border: 1px solid #b8afa4;
@@ -176,7 +182,21 @@
         font-size: 14px;
       }
 
+      .ipInput {
+        flex: 1;
+        border: 1px solid #b8afa4;
+        background: var(--rw-input-bg);
+        color: var(--rw-input-text);
+        padding: 8px 10px;
+        font-size: 14px;
+      }
+
       .idInput:disabled {
+        cursor: not-allowed;
+        opacity: 0.75;
+      }
+
+      .ipInput:disabled {
         cursor: not-allowed;
         opacity: 0.75;
       }
@@ -220,7 +240,8 @@
         flex-wrap: wrap;
       }
 
-      .fieldMessage {
+      .fieldMessage,
+      .ipMessage {
         margin-top: 8px;
         font-size: 12px;
         color: #f0c997;
@@ -298,6 +319,15 @@
         <div class="fieldMessage hidden"></div>
       </div>
 
+      <div class="section">
+        <span class="label">Robot IP address</span>
+        <div class="ipRow">
+          <input class="ipInput" type="text" placeholder="Enter robot IP address" />
+          <button class="btn btnGhost updateIp" type="button">Edit</button>
+        </div>
+        <div class="ipMessage hidden"></div>
+      </div>
+
       <div class="section registeredOnly">
         <div class="actions">
           <button class="btn btnGhost connectTest" type="button">Connect test</button>
@@ -327,6 +357,7 @@
     static get observedAttributes() {
       return [
         "robot-id",
+        "robot-ip",
         "vibration-enabled",
         "mode",
         "message",
@@ -357,6 +388,9 @@
         idInput: this.shadowRoot.querySelector(".idInput"),
         updateId: this.shadowRoot.querySelector(".updateId"),
         fieldMessage: this.shadowRoot.querySelector(".fieldMessage"),
+        ipInput: this.shadowRoot.querySelector(".ipInput"),
+        updateIp: this.shadowRoot.querySelector(".updateIp"),
+        ipMessage: this.shadowRoot.querySelector(".ipMessage"),
         connectTest: this.shadowRoot.querySelector(".connectTest"),
         calibrateHint: this.shadowRoot.querySelector(".calibrateHint"),
         connectionStatus: this.shadowRoot.querySelector(".connectionStatus"),
@@ -385,6 +419,7 @@
      */
     connectedCallback() {
       this._upgradeProperty("robotId");
+      this._upgradeProperty("robotIp");
       this._upgradeProperty("vibrationEnabled");
       this._upgradeProperty("mode");
       this._upgradeProperty("message");
@@ -482,6 +517,34 @@
         this._elements.idInput.select();
       });
 
+      this._elements.updateIp.addEventListener("click", () => {
+        if (this._isEditingRobotIp) {
+          const nextIp = this._elements.ipInput.value.trim();
+          if (!nextIp) {
+            this._setIpMessage("Robot IP address is required.");
+            return;
+          }
+          this._setIpMessage("");
+          const previousIp = this.robotIp;
+          this.robotIp = nextIp;
+          this._isEditingRobotIp = false;
+          this.dispatchEvent(
+            new CustomEvent("reforge:updateRobotIp", {
+              detail: { ip: nextIp, previousIp },
+              bubbles: true,
+              composed: true
+            })
+          );
+          this._render();
+          return;
+        }
+        this._isEditingRobotIp = true;
+        this._setIpMessage("");
+        this._render();
+        this._elements.ipInput.focus();
+        this._elements.ipInput.select();
+      });
+
       // Emit calibration event and lock the button until host clears state.
       this._elements.connectTest.addEventListener("click", () => {
         if (this.connecting || this.calibrating) return;
@@ -552,6 +615,8 @@
         "For best results, register and calibrate your robot to update the base vibration model.";
       const hasRobotId = !!this.robotId;
       const isEditing = this._isEditing || !hasRobotId;
+      const hasRobotIp = !!this.robotIp;
+      const isEditingRobotIp = this._isEditingRobotIp || !hasRobotIp;
       const placeholder = mode === "unregistered"
         ? "Register this robot to get an ID"
         : "Enter robot ID";
@@ -571,6 +636,12 @@
       this._elements.idInput.placeholder = placeholder;
       this._elements.idInput.disabled = !isEditing;
       this._elements.updateId.textContent = isEditing ? "Save" : "Edit";
+      if (!isEditingRobotIp) {
+        this._elements.ipInput.value = this.robotIp || "";
+      }
+      this._elements.ipInput.placeholder = "Enter robot IP address";
+      this._elements.ipInput.disabled = !isEditingRobotIp;
+      this._elements.updateIp.textContent = isEditingRobotIp ? "Save" : "Edit";
       this._updateConnectButton();
       this._updateCalibrateButton();
       this._elements.toggle.setAttribute("aria-checked", String(!!this.vibrationEnabled));
@@ -649,6 +720,16 @@
     }
 
     /**
+     * Sets or clears the robot IP inline field message.
+     * @param {string} message - message text (empty to clear).
+     */
+    _setIpMessage(message) {
+      if (!this._elements.ipMessage) return;
+      this._elements.ipMessage.textContent = message;
+      this._elements.ipMessage.classList.toggle("hidden", !message);
+    }
+
+    /**
      * Resolves display mode from explicit attribute or robot-id presence.
      * @returns {"registered" | "unregistered"} Current display mode.
      */
@@ -687,6 +768,24 @@
         this.removeAttribute("robot-id");
       } else {
         this.setAttribute("robot-id", value);
+      }
+    }
+
+    /**
+     * @returns {string} Current robot IP value.
+     */
+    get robotIp() {
+      return this.getAttribute("robot-ip") || "";
+    }
+
+    /**
+     * @param {string} value - robot IP to set, empty clears attribute.
+     */
+    set robotIp(value) {
+      if (value === null || value === undefined || value === "") {
+        this.removeAttribute("robot-ip");
+      } else {
+        this.setAttribute("robot-ip", value);
       }
     }
 

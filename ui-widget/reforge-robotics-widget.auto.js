@@ -105,6 +105,10 @@
       widget.setAttribute("manage-url", DEFAULT_MANAGE_URL);
     }
 
+    if (config.robotIp && !widget.hasAttribute("robot-ip")) {
+      widget.setAttribute("robot-ip", config.robotIp);
+    }
+
     return widget;
   }
 
@@ -131,14 +135,16 @@
   }
 
   function buildRunPayload(widget, config) {
+    const robotId = normalizeOptional(widget.getAttribute("robot-id"));
+    const robotIp = normalizeOptional(widget.getAttribute("robot-ip")) || config.robotIp;
     return {
-      robotIp: config.robotIp,
+      robotIp,
       localIp: config.localIp,
       sdkToken: config.sdkToken,
-      reforgeRobotId: config.reforgeRobotId,
+      reforgeRobotId: robotId || config.reforgeRobotId,
       identifyApiToken: config.identifyApiToken,
       freq: config.freq,
-      robotId: normalizeOptional(widget.getAttribute("robot-id"))
+      robotId
     };
   }
 
@@ -246,9 +252,14 @@
     widget.addEventListener("reforge:updateRobotId", async (event) => {
       try {
         widget.busy = true;
+        const robotId = event.detail?.id || "";
+        config.reforgeRobotId = robotId || config.reforgeRobotId;
+        if (currentScript && robotId) {
+          currentScript.dataset.reforgeRobotId = robotId;
+        }
         await fetchJson(endpoints.robotId, {
           method: "POST",
-          body: JSON.stringify({ id: event.detail?.id || "" })
+          body: JSON.stringify({ id: robotId })
         });
         const state = await fetchJson(endpoints.state, { method: "GET" });
         applyState(widget, state);
@@ -256,6 +267,15 @@
         console.error("Reforge auto widget: robot-id update failed", error);
       } finally {
         widget.busy = false;
+      }
+    });
+
+    widget.addEventListener("reforge:updateRobotIp", (event) => {
+      const robotIp = normalizeOptional(event.detail?.ip || "");
+      if (!robotIp) return;
+      config.robotIp = robotIp;
+      if (currentScript) {
+        currentScript.dataset.robotIp = robotIp;
       }
     });
 
