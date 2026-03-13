@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="./demo_pngs/Standard-bots-logo-favicon.png" />
+    <title>Standard Bots</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        background-image: url("./demo_pngs/Screenshot from 2026-03-12 11-58-35_cropped.png");
+        background-size: contain;      /* fill screen */
+        background-position: center; /* keep centered */
+        background-repeat: no-repeat;
+        background-attachment: fixed; /* optional */
+      }
+
+      reforge-robotics-widget {
+        position: fixed;
+        left: 20px;
+        top: 54px;
+        z-index: 1000;
+      }
+    </style>
+  </head>
+  <body>
+    <script
+      src="../ui-widget/reforge-robotics-widget.auto.js"
+      data-base-url="http://10.0.0.105:8080"
+      data-robot-ip="10.0.0.4:3000"
+      data-local-ip=""
+      data-sdk-token="6xthi-hndyc-u9ejy0-okge14tw"
+      data-robot-id=""
+      data-freq="200"
+      data-reforge-identify-api-token="REPLACE_WITH_REFORGE_API_TOKEN"
+      data-reforge-robot-id="REPLACE_WITH_REFORGE_ROBOT_ID"
+    ></script>
+  </body>
+</html>

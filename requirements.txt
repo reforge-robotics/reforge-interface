@@ -3,4 +3,6 @@ pydantic
 scipy
 --index-url https://pypi.org/simple/
 reforge-core
+flask
+flask-cors
 standardbots
