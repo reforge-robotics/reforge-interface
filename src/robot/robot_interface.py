@@ -6,18 +6,17 @@
 import datetime
 import numpy as np
 from collections import deque
-from typing import Any, Deque, List, Dict, Tuple, Sequence
 from importlib.resources import files, as_file
-
+from reforge_core.util.utility import TrajParams, SystemIdParams, polar_to_cartesian
+from reforge_core.util.trajectory import Trajectory
+from typing import Any, Deque, List, Dict, Tuple, Sequence
 from robot.robot_base import Robot, DataRecorder
+
 from robot.robot_base import (
     get_polar_coordinates,
     store_parameters_in_data_folder,
     store_recorder_data_in_data_folder,
 )
-
-from reforge_core.util.utility import TrajParams, SystemIdParams, polar_to_cartesian
-from reforge_core.util.trajectory import Trajectory
 from reforge_core.util.robot_dynamics import Dynamics
 
 from robot.robot_base import (
@@ -28,8 +27,17 @@ from robot.robot_base import (
     DEFAULT_SYSID_RADII,
     DEFAULT_HOME_SIGN,
     DEFAULT_FIRST_POSE,
+    DEFAULT_MIN_CALIBRATION_ANGLE,
+    DEFAULT_MAX_CALIBRATION_ANGLE,
+    DEFAULT_MIN_CALIBRATION_RADIUS_SCALE,
+    DEFAULT_MAX_CALIBRATION_RADIUS_SCALE,
     DEFAULT_TCP_PAYLOAD,
+    DEFAULT_IMU_TO_TCP_X,
+    DEFAULT_IMU_TO_TCP_Y,
+    DEFAULT_IMU_TO_TCP_Z,
 )
+
+
 from reforge_core.util.utility import (
     DEFAULT_CONFIG,
     DEFAULT_BCB_RUNTIME,
@@ -74,11 +82,7 @@ HOME_SHOULDER_ANGLE = np.pi / 2  # {~.~} [rad]
 HOME_XYZ = [1.28989, 0.36866, 0.171]  # {~.~} [m]
 HOME_QUAT = [0.499, 0.499, 0.499, 0.499]  # {~.~} [1]
 HOME_JOINTS = [0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0]  # {~.~} [rad]
-
-# {~.~} List of home pose (xyz) where z-axis value only has the base height.
-# This is used to override additional vertical offsets of robot (e.g., vertical
-# offset between the shoulder and elbow joint positions)
-HOME_POSE_OVERRIDE = None
+HOME_POSE_OVERRIDE = None  # {~.~} list of home pose (xyz and quaternion) to override additional height not in base height
 
 # General constants
 IS_DEGREES = False  # {~.~} [CHANGE TO TRUE IF ROBOT USES DEGREES]
@@ -519,6 +523,10 @@ class RobotInterface(Robot):
         sysid_type: str = DEFAULT_SYSID_TYPE,
         nV: int = DEFAULT_SYSID_ANGLES,
         nR: int = DEFAULT_SYSID_RADII,
+        min_angle: float = DEFAULT_MIN_CALIBRATION_ANGLE,
+        max_angle: float = DEFAULT_MAX_CALIBRATION_ANGLE,
+        min_radius_scale: float = DEFAULT_MIN_CALIBRATION_RADIUS_SCALE,
+        max_radius_scale: float = DEFAULT_MAX_CALIBRATION_RADIUS_SCALE,
         min_sine_freq: float = DEFAULT_SINE_MIN_FREQ,
         max_sine_freq: float = DEFAULT_SINE_MAX_FREQ,
         sine_freq_spacing: float = DEFAULT_FREQ_SPACING,
@@ -526,6 +534,9 @@ class RobotInterface(Robot):
         dwell_btw_sine: float = DEFAULT_DWELL_TIME,
         start_pose: int = DEFAULT_FIRST_POSE,
         home_sign: int = DEFAULT_HOME_SIGN,
+        imu_to_tcp_x: float = DEFAULT_IMU_TO_TCP_X,
+        imu_to_tcp_y: float = DEFAULT_IMU_TO_TCP_Y,
+        imu_to_tcp_z: float = DEFAULT_IMU_TO_TCP_Z,
     ) -> str:
         """Run the system identification trajectory and record calibration data.
 
@@ -540,6 +551,10 @@ class RobotInterface(Robot):
             sysid_type: System identification type (`bcb` or `sine`).
             nV: Number of angle positions.
             nR: Number of radius positions.
+            min_angle: Minimum calibration angle from horizontal [rad].
+            max_angle: Maximum calibration angle from horizontal [rad].
+            min_radius_scale: Minimum calibration radius scale.
+            max_radius_scale: Maximum calibration radius scale.
             min_sine_freq: Minimum sine sweep frequency [Hz].
             max_sine_freq: Maximum sine sweep frequency [Hz].
             sine_freq_spacing: Frequency spacing [Hz].
@@ -547,6 +562,9 @@ class RobotInterface(Robot):
             dwell_btw_sine: Dwell time between sweeps [s].
             start_pose: Starting pose index.
             home_sign: Sign of shoulder joint angle at home position.
+            imu_to_tcp_x: X component of IMU->TCP translation [m].
+            imu_to_tcp_y: Y component of IMU->TCP translation [m].
+            imu_to_tcp_z: Z component of IMU->TCP translation [m].
 
         Returns:
             `str` folder where calibration data is stored.
@@ -562,8 +580,10 @@ class RobotInterface(Robot):
         """
         # Check to make sure the sampling frequency is not larger than the max sampling frequency
         if ROBOT_MAX_FREQ < (1 / Ts):
-            raise RuntimeError(f"The sample time exceeds the maximum robot\
-                                sampling frequency of {ROBOT_MAX_FREQ} Hz.")
+            raise RuntimeError(
+                f"The sample time exceeds the maximum robot\
+                                sampling frequency of {ROBOT_MAX_FREQ} Hz."
+            )
 
         # Initialize parameters for robot trajectory generation
         # ==================================================================
@@ -597,7 +617,15 @@ class RobotInterface(Robot):
 
         # Generate V (angles from horizontal) and R (radius from base) positions
         # in base frame
-        V, R = get_polar_coordinates(s_params.nV, s_params.nR, self.max_reach)
+        V, R = get_polar_coordinates(
+            s_params.nV,
+            s_params.nR,
+            self.max_reach,
+            min_angle=min_angle,
+            max_angle=max_angle,
+            min_radius_scale=min_radius_scale,
+            max_radius_scale=max_radius_scale,
+        )
 
         # Get starting joint positions - need base joint angle
         # for polar to cartesian computation
@@ -642,6 +670,9 @@ class RobotInterface(Robot):
             tcp_payload_com_x=float(tcp_payload_com[0]),
             tcp_payload_com_y=float(tcp_payload_com[1]),
             tcp_payload_com_z=float(tcp_payload_com[2]),
+            imu_to_tcp_x=imu_to_tcp_x,
+            imu_to_tcp_y=imu_to_tcp_y,
+            imu_to_tcp_z=imu_to_tcp_z,
         )
 
         # Loop through angles and radii

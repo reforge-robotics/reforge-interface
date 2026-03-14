@@ -3,6 +3,7 @@
 # Description: Entry point for running various operations on the robot
 # Version: 1.0
 import argparse
+import os
 import traceback
 import warnings
 from robot.robot_base import (
@@ -16,7 +17,14 @@ from robot.robot_base import (
     DEFAULT_FIRST_POSE,
     DEFAULT_ROBOT_FREQ,
     DEFAULT_AXES_COMMANDED,
+    DEFAULT_MIN_CALIBRATION_ANGLE,
+    DEFAULT_MAX_CALIBRATION_ANGLE,
+    DEFAULT_MIN_CALIBRATION_RADIUS_SCALE,
+    DEFAULT_MAX_CALIBRATION_RADIUS_SCALE,
     DEFAULT_TCP_PAYLOAD,
+    DEFAULT_IMU_TO_TCP_X,
+    DEFAULT_IMU_TO_TCP_Y,
+    DEFAULT_IMU_TO_TCP_Z,
 )
 from reforge_core.util.utility import (
     DEFAULT_SINE_MIN_FREQ,
@@ -26,8 +34,11 @@ from reforge_core.util.utility import (
     DEFAULT_DWELL_TIME,
 )
 from robot.robot_interface import RobotInterface, BOT_ID
-from reforge_core.calibration.api import ROBOT_MODELS_PATH, ReforgeAPIManager
+from reforge_core.calibration.api import ReforgeAPIManager
 from reforge_core.util.vibration_test import run_vibration_test
+
+# Local models directory used by identification/fine-tuning flows.
+ROBOT_MODELS_PATH = os.path.join("robot", "models", "current")
 
 
 def _run_model_generation_with_fine_tune_fallback(
@@ -180,6 +191,34 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Number of radii to sweep (default: %(default)s)",
     )
     calibrate.add_argument(
+        "--min_angle",
+        dest="min_angle",
+        type=float,
+        default=DEFAULT_MIN_CALIBRATION_ANGLE,
+        help="Minimum calibration angle from horizontal [rad] (default: %(default)s)",
+    )
+    calibrate.add_argument(
+        "--max_angle",
+        dest="max_angle",
+        type=float,
+        default=DEFAULT_MAX_CALIBRATION_ANGLE,
+        help="Maximum calibration angle from horizontal [rad] (default: %(default)s)",
+    )
+    calibrate.add_argument(
+        "--min_radius_scale",
+        dest="min_radius_scale",
+        type=float,
+        default=DEFAULT_MIN_CALIBRATION_RADIUS_SCALE,
+        help="Minimum calibration radius scale as a fraction of max reach (default: %(default)s)",
+    )
+    calibrate.add_argument(
+        "--max_radius_scale",
+        dest="max_radius_scale",
+        type=float,
+        default=DEFAULT_MAX_CALIBRATION_RADIUS_SCALE,
+        help="Maximum calibration radius scale as a fraction of max reach (default: %(default)s)",
+    )
+    calibrate.add_argument(
         "--minfreq",
         dest="min_freq",
         type=float,
@@ -265,6 +304,27 @@ def _build_parser() -> argparse.ArgumentParser:
         default=0.0,
         help="TCP payload COM z [m] in TCP frame (default: %(default)s)",
     )
+    calibrate.add_argument(
+        "--imu_to_tcp_x",
+        dest="imu_to_tcp_x",
+        type=float,
+        default=DEFAULT_IMU_TO_TCP_X,
+        help="IMU to TCP translation x [m], resolved in IMU frame (default: %(default)s)",
+    )
+    calibrate.add_argument(
+        "--imu_to_tcp_y",
+        dest="imu_to_tcp_y",
+        type=float,
+        default=DEFAULT_IMU_TO_TCP_Y,
+        help="IMU to TCP translation y [m], resolved in IMU frame (default: %(default)s)",
+    )
+    calibrate.add_argument(
+        "--imu_to_tcp_z",
+        dest="imu_to_tcp_z",
+        type=float,
+        default=DEFAULT_IMU_TO_TCP_Z,
+        help="IMU to TCP translation z [m], resolved in IMU frame (default: %(default)s)",
+    )
     # automatic identification/fine-tuning after calibration
     calibrate.add_argument(
         "--identify",
@@ -278,26 +338,22 @@ def _build_parser() -> argparse.ArgumentParser:
         type=str,
         help="API token for HTTP request to Reforge Cloud to run model fine-tuning after calibration",
     )
-    calibrate.add_argument(
-        "--reforge_robot_id",
-        dest="reforge_robot_id",
-        type=str,
-        help="Reforge robot ID for HTTP request to Reforge Cloud",
-    )
 
     # ======================== Route: identify =====================================
     identify = sub.add_parser("identify", help="Run system identification routine.")
     identify.add_argument(
         "identify_api_token", help="API token for HTTP request to Reforge Cloud."
     )
-    identify.add_argument("reforge_robot_id", help="Reforge robot ID for HTTP request to Reforge Cloud")
+    identify.add_argument("robot_id", help="Reforge robot ID.")
     identify.add_argument(
         "data_folder", help="Folder containing calibration data CSVs."
     )
 
     # ======================== Route: vibration_test =====================================
     vibration_test = sub.add_parser(
-        "vibration_test", help="Run vibration test to quantify controller performance."
+        "vibration_test",
+        help="Run vibration test to quantify controller performance in random poses."
+        "Exemple use: PYTHONPATH=src:$PYTHONPATH python3 -m robot.run vibration_test 10.0.0.4:3000 /home/ipereira/Reforge_Robotics/reforge-core/src/robot/data/2026-1-16 --sdk_token 6xthi-hndyc-u9ejy0-okge14tw",
     )
     vibration_test.add_argument("robot_ip", help="Robot IP address")
     vibration_test.add_argument(
@@ -384,6 +440,39 @@ def _build_parser() -> argparse.ArgumentParser:
         default=0.0,
         help="TCP payload COM z [m] in TCP frame (default: %(default)s)",
     )
+    vibration_test.add_argument(
+        "--axis_repetitions",
+        dest="axis_repetitions",
+        type=int,
+        default=None,
+        help=(
+            "Repetitions per axis for vibration test random pose selection "
+            "(default: internal AXIS_REPETITIONS)."
+        ),
+    )
+    vibration_test.add_argument(
+        "--num_shapers",
+        dest="num_shapers",
+        type=int,
+        default=None,
+        # Keep None as default so vibration_test follows identification metadata
+        # (`calibration_params.axes`) unless user explicitly overrides it.
+        help=(
+            "Number of axes/shapers to use when building shaped trajectories "
+            "(default: use calibration_params.axes from identification data)."
+        ),
+    )
+    vibration_test.add_argument(
+        "--num_axes_to_test",
+        dest="num_axes_to_test",
+        type=int,
+        default=2,
+        help=(
+            "Number of leading joints/axes to test in vibration runs "
+            "(e.g., 2 -> base+shoulder, 3 -> base+shoulder+elbow). "
+            "(default: fallback to --num_shapers, then calibration_params.axes)."
+        ),
+    )
 
     # ======================== Route: fine_tune =====================================
     fine_tune = sub.add_parser(
@@ -393,7 +482,7 @@ def _build_parser() -> argparse.ArgumentParser:
     fine_tune.add_argument(
         "fine_tune_api_token", help="API token for HTTP request to Reforge Cloud."
     )
-    fine_tune.add_argument("reforge_robot_id", help="Reforge robot ID for HTTP request to Reforge Cloud.")
+    fine_tune.add_argument("robot_id", help="Reforge robot ID.")
     fine_tune.add_argument(
         "data_folder", help="Folder containing calibration data CSVs."
     )
@@ -464,6 +553,10 @@ def route_user_input(args: argparse.Namespace) -> None:
                 max_acc=args.max_acc,
                 nV=args.num_angles,
                 nR=args.num_radii,
+                min_angle=args.min_angle,
+                max_angle=args.max_angle,
+                min_radius_scale=args.min_radius_scale,
+                max_radius_scale=args.max_radius_scale,
                 min_sine_freq=args.min_freq,
                 max_sine_freq=args.max_freq,
                 sine_freq_spacing=args.freq_space,
@@ -471,21 +564,24 @@ def route_user_input(args: argparse.Namespace) -> None:
                 dwell_btw_sine=args.dwell,
                 start_pose=args.start_pose,
                 home_sign=args.home_sign,
+                imu_to_tcp_x=args.imu_to_tcp_x,
+                imu_to_tcp_y=args.imu_to_tcp_y,
+                imu_to_tcp_z=args.imu_to_tcp_z,
             )
 
             # Optional: Call system identification or fine-tuning after calibration
-            if args.fine_tune_api_token and args.reforge_robot_id:
+            if args.fine_tune_api_token:
                 api_manager = ReforgeAPIManager(
-                    reforge_api_token=args.fine_tune_api_token, robot_id=args.reforge_robot_id
+                    reforge_api_token=args.fine_tune_api_token, robot_id=args.robot_id
                 )
                 return _run_model_generation_with_fine_tune_fallback(
                     api_manager=api_manager,
                     data_folder=data_folder,
                     fine_tune=True,
                 )
-            elif args.identify_api_token and args.reforge_robot_id:
+            elif args.identify_api_token:
                 api_manager = ReforgeAPIManager(
-                    reforge_api_token=args.identify_api_token, robot_id=args.reforge_robot_id
+                    reforge_api_token=args.identify_api_token, robot_id=args.robot_id
                 )
                 return _run_model_generation_with_fine_tune_fallback(
                     api_manager=api_manager,
@@ -497,7 +593,7 @@ def route_user_input(args: argparse.Namespace) -> None:
             traceback.print_exc()
     elif args.route == "identify":
         api_manager = ReforgeAPIManager(
-            reforge_api_token=args.identify_api_token, robot_id=args.reforge_robot_id
+            reforge_api_token=args.identify_api_token, robot_id=args.robot_id
         )
         return _run_model_generation_with_fine_tune_fallback(
             api_manager=api_manager,
@@ -521,13 +617,17 @@ def route_user_input(args: argparse.Namespace) -> None:
                 local_data_location=args.data_folder,
                 Ts=1 / args.samp_freq,
                 max_disp=args.max_disp,
+                axis_repetitions=args.axis_repetitions,
+                num_axes_to_test=args.num_axes_to_test,
+                # Thread CLI override through to shaping logic.
+                num_shapers=args.num_shapers,
             )
 
         except Exception:
             traceback.print_exc()
     elif args.route == "fine_tune":
         api_manager = ReforgeAPIManager(
-            reforge_api_token=args.fine_tune_api_token, robot_id=args.reforge_robot_id
+            reforge_api_token=args.fine_tune_api_token, robot_id=args.robot_id
         )
         return _run_model_generation_with_fine_tune_fallback(
             api_manager=api_manager,
