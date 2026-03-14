@@ -118,7 +118,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=PLACEHOLDER_IP,
     )
     connect_test.add_argument(
-        "--robot_id", help="Reforge robot ID, if necessary", default=""
+        "--robot_id", help="Robot ID, if necessary", default=""
     )
 
     # ======================== Route: calibrate =====================================
@@ -143,7 +143,7 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="robot_id",
         type=str,
         default=BOT_ID,
-        help="Reforge robot ID, if necessary",
+        help="Robot ID, if necessary",
     )
     # timing parameters
     calibrate.add_argument(
@@ -380,7 +380,7 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="robot_id",
         type=str,
         default=BOT_ID,
-        help="Reforge robot ID, if necessary",
+        help="Robot ID, if necessary",
     )
     # timing parameters
     vibration_test.add_argument(
