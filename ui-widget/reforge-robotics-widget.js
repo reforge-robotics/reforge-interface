@@ -311,7 +311,7 @@
       </div>
 
       <div class="section">
-        <span class="label">Robot ID</span>
+        <span class="label">Reforge Robot ID</span>
         <div class="idRow">
           <input class="idInput" type="text" placeholder="Enter robot ID" />
           <button class="btn btnGhost updateId" type="button">Edit</button>
@@ -365,6 +365,7 @@
         "busy",
         "calibrating",
         "connecting",
+        "connect-passed",
         "connection-status",
         "connection-message"
       ];
@@ -427,6 +428,7 @@
       this._upgradeProperty("busy");
       this._upgradeProperty("calibrating");
       this._upgradeProperty("connecting");
+      this._upgradeProperty("connectPassed");
       this._upgradeProperty("connectionStatus");
       this._upgradeProperty("connectionMessage");
       this._bind();
@@ -663,7 +665,7 @@
         }
       }
       if (this._elements.calibrateHint) {
-        const showHint = mode === "registered" && connectionStatus !== "success";
+        const showHint = mode === "registered" && !this.connectPassed;
         this._elements.calibrateHint.classList.toggle("hidden", !showHint);
       }
     }
@@ -688,7 +690,7 @@
       if (!this._elements.calibrate) return;
       const isCalibrating = !!this.calibrating;
       const isConnecting = !!this.connecting;
-      const isConnected = this.connectionStatus === "success";
+      const isConnected = this.connectPassed || this.connectionStatus === "success";
       this._elements.calibrate.disabled = isCalibrating || isConnecting || !isConnected;
       this._elements.calibrate.textContent = isCalibrating
         ? "Calibrating..."
@@ -912,6 +914,24 @@
         this.setAttribute("connecting", "true");
       } else {
         this.removeAttribute("connecting");
+      }
+    }
+
+    /**
+     * @returns {boolean} Whether connect test has succeeded at least once.
+     */
+    get connectPassed() {
+      return this._parseBooleanAttr("connect-passed");
+    }
+
+    /**
+     * @param {boolean} value - persistent connect success flag.
+     */
+    set connectPassed(value) {
+      if (value) {
+        this.setAttribute("connect-passed", "true");
+      } else {
+        this.removeAttribute("connect-passed");
       }
     }
 

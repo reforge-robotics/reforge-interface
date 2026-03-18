@@ -132,19 +132,21 @@
     widget.setAttribute("mode", registered ? "registered" : "unregistered");
     widget.connecting = !!state.connecting;
     widget.calibrating = !!state.calibrating;
+    if (state.connectPassed === true) {
+      widget.connectPassed = true;
+    }
   }
 
   function buildRunPayload(widget, config) {
-    const robotId = normalizeOptional(widget.getAttribute("robot-id"));
+    const reforgeRobotId = normalizeOptional(widget.getAttribute("robot-id")) || config.reforgeRobotId;
     const robotIp = normalizeOptional(widget.getAttribute("robot-ip")) || config.robotIp;
     return {
       robotIp,
       localIp: config.localIp,
       sdkToken: config.sdkToken,
-      reforgeRobotId: robotId || config.reforgeRobotId,
+      reforgeRobotId,
       identifyApiToken: config.identifyApiToken,
-      freq: config.freq,
-      robotId
+      freq: config.freq
     };
   }
 
@@ -157,6 +159,7 @@
       widget.connecting = connecting;
 
       if (status.status === "succeeded") {
+        widget.connectPassed = true;
         return status;
       }
       if (status.status === "failed") {
@@ -175,17 +178,18 @@
     while (Date.now() - start < config.pollTimeoutMs) {
       const status = await fetchJson(endpoints.calibrateStatus, { method: "GET" });
       const calibrating = !!status.calibrating;
-      widget.connecting = !!status.connecting;
       widget.calibrating = calibrating;
+      if (status.phase === "calibrate" && status.status === "running") {
+        widget.connectionStatus = "running";
+        widget.connectionMessage = "Calibration in progress...";
+      }
 
       if (status.status === "succeeded") {
+        widget.connectPassed = true;
         return status;
       }
       if (status.status === "failed") {
         const errorMessage = status.error || status.stderr || "Calibration failed.";
-        if (status.phase === "connect_test") {
-          throw new Error("Robot connection unsuccessful");
-        }
         throw new Error(errorMessage);
       }
       await new Promise((resolve) => setTimeout(resolve, config.pollIntervalMs));
@@ -283,21 +287,17 @@
       try {
         const payload = buildRunPayload(widget, config);
         widget.calibrating = true;
-        widget.connecting = true;
         widget.connectionStatus = "running";
-        widget.connectionMessage = "Running connect test...";
+        widget.connectionMessage = "Calibration in progress...";
         await fetchJson(endpoints.calibrateStart, { method: "POST", body: JSON.stringify(payload) });
         await pollCalibrationUntilComplete(widget, config, endpoints);
         widget.connectionStatus = "success";
-        widget.connectionMessage = "Robot is connected";
+        widget.connectionMessage = "Calibration completed";
       } catch (error) {
         console.error("Reforge auto widget: calibration failed", error);
-        if (String(error?.message || "").toLowerCase().includes("connection")) {
-          widget.connectionStatus = "error";
-          widget.connectionMessage = "Robot connection unsuccessful";
-        }
+        widget.connectionStatus = "error";
+        widget.connectionMessage = "Calibration unsuccessful";
       } finally {
-        widget.connecting = false;
         widget.calibrating = false;
       }
     });
@@ -310,6 +310,7 @@
         widget.connectionMessage = "Running connect test...";
         await fetchJson(endpoints.connectStart, { method: "POST", body: JSON.stringify(payload) });
         await pollConnectUntilComplete(widget, config, endpoints);
+        widget.connectPassed = true;
         widget.connectionStatus = "success";
         widget.connectionMessage = "Robot is connected";
       } catch (error) {

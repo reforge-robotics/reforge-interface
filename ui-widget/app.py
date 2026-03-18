@@ -6,6 +6,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from pathlib import Path
 import logging
+import os
 import shlex
 import subprocess
 import threading
@@ -24,10 +25,21 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUN_CONNECT_SCRIPT = PROJECT_ROOT / "run_connect_test.sh"
 RUN_CALIBRATE_SCRIPT = PROJECT_ROOT / "run_calibrate.sh"
 DEFAULT_FREQ = "200"
+LOG_TAIL_LINES = 40
 
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _truthy_env(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+VERBOSE_LOGS = _truthy_env("REFORGE_WIDGET_VERBOSE", default=False)
 
 
 def _build_connect_command(params: dict) -> list[str]:
@@ -76,7 +88,8 @@ def _build_calibrate_command(params: dict) -> list[str]:
 
 
 def _run_process(cmd: list[str]) -> tuple[int, str, str]:
-    app.logger.info("Running command: %s", shlex.join(cmd))
+    if VERBOSE_LOGS:
+        app.logger.info("Running command: %s", shlex.join(cmd))
     completed = subprocess.run(
         cmd,
         cwd=PROJECT_ROOT,
@@ -85,6 +98,13 @@ def _run_process(cmd: list[str]) -> tuple[int, str, str]:
         check=False,
     )
     return completed.returncode, completed.stdout, completed.stderr
+
+
+def _tail_text(text: str, lines: int = LOG_TAIL_LINES) -> str:
+    if not text:
+        return ""
+    parts = text.rstrip().splitlines()
+    return "\n".join(parts[-lines:])
 
 
 @dataclass
@@ -188,13 +208,12 @@ def _start_connect_job(params: dict) -> Job:
 
 
 def _start_calibrate_job(params: dict) -> Job:
-    connect_cmd = _build_connect_command(params)
     calibrate_cmd = _build_calibrate_command(params)
 
     calibrate_job = Job(
         id=str(uuid.uuid4()),
         kind="calibrate",
-        command=f"{shlex.join(connect_cmd)} && {shlex.join(calibrate_cmd)}",
+        command=shlex.join(calibrate_cmd),
         status="queued",
     )
     jobs[calibrate_job.id] = calibrate_job
@@ -203,47 +222,20 @@ def _start_calibrate_job(params: dict) -> Job:
 
     def worker() -> None:
         with state_lock:
-            state["connecting"] = True
             state["calibrating"] = True
             calibrate_job.status = "running"
-            calibrate_job.phase = "connect_test"
+            calibrate_job.phase = "calibrate"
             app.logger.info(
-                "Calibrate job=%s status=running phase=connect_test",
+                "Calibrate job=%s status=running phase=calibrate",
                 calibrate_job.id,
             )
-
-        connect_code, connect_out, connect_err = _run_process(connect_cmd)
-        if connect_code != 0:
-            with state_lock:
-                state["connecting"] = False
-                state["calibrating"] = False
-                calibrate_job.exit_code = connect_code
-                calibrate_job.stdout = connect_out
-                calibrate_job.stderr = connect_err
-                calibrate_job.ended_at = _utc_now_iso()
-                calibrate_job.phase = "connect_test"
-                calibrate_job.error = "Connect test failed."
-                calibrate_job.status = "failed"
-                app.logger.error(
-                    "Calibrate job=%s failed during connect_test exit_code=%s",
-                    calibrate_job.id,
-                    connect_code,
-                )
-                if connect_err:
-                    app.logger.error("Calibrate job=%s connect stderr:\n%s", calibrate_job.id, connect_err)
-            return
-
-        with state_lock:
-            state["connecting"] = False
-            calibrate_job.phase = "calibrate"
-            app.logger.info("Calibrate job=%s phase=calibrate", calibrate_job.id)
 
         calibrate_code, calibrate_out, calibrate_err = _run_process(calibrate_cmd)
         with state_lock:
             state["calibrating"] = False
             calibrate_job.exit_code = calibrate_code
-            calibrate_job.stdout = f"=== Connect Test ===\n{connect_out}\n=== Calibration ===\n{calibrate_out}"
-            calibrate_job.stderr = f"=== Connect Test ===\n{connect_err}\n=== Calibration ===\n{calibrate_err}"
+            calibrate_job.stdout = calibrate_out
+            calibrate_job.stderr = calibrate_err
             calibrate_job.ended_at = _utc_now_iso()
             calibrate_job.phase = "calibrate"
             calibrate_job.status = "succeeded" if calibrate_code == 0 else "failed"
@@ -255,8 +247,21 @@ def _start_calibrate_job(params: dict) -> Job:
                 calibrate_job.status,
                 calibrate_code,
             )
-            if calibrate_code != 0 and calibrate_err:
-                app.logger.error("Calibrate job=%s calibration stderr:\n%s", calibrate_job.id, calibrate_err)
+            if calibrate_code != 0:
+                stderr_tail = _tail_text(calibrate_err)
+                stdout_tail = _tail_text(calibrate_out)
+                if stderr_tail:
+                    app.logger.error(
+                        "Calibrate job=%s calibration stderr tail:\n%s",
+                        calibrate_job.id,
+                        stderr_tail,
+                    )
+                if stdout_tail:
+                    app.logger.error(
+                        "Calibrate job=%s calibration stdout tail:\n%s",
+                        calibrate_job.id,
+                        stdout_tail,
+                    )
 
     thread = threading.Thread(target=worker, daemon=True)
     thread.start()

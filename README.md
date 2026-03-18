@@ -204,6 +204,261 @@ or
 ./docker_scripts/run_vibration_test.sh <robot_ip> <data_folder> --robot_id <robot_id>
 ```
 
+## Widget Integration and Deployment
+
+This repo includes a web component widget in `ui-widget/` that can run:
+
+- connect test (`connect_test`)
+- calibration (`calibrate`)
+- optional identification right after calibration (`--identify ... --reforge_robot_id ...`)
+
+### Pre-implemented files in this repo
+
+- `ui-widget/reforge-robotics-widget.js`
+  - UI web component (collapsible panel, Robot ID/IP fields, connect and calibrate controls).
+- `ui-widget/reforge-robotics-widget.auto.js`
+  - Auto-mount integration script that reads `<script data-*>` configuration and calls API endpoints.
+- `ui-widget/app.py`
+  - Flask API implementation with background job execution and status polling endpoints.
+- `run_connect_test.sh`
+  - Wrapper for `python3 -m robot.run connect_test ...` (returns non-zero if connect output indicates failure).
+- `run_calibrate.sh`
+  - Wrapper for `python3 -m robot.run calibrate ...`.
+
+### Option A: Embed widget from local JS files (host PC / robot)
+
+Serve `ui-widget/` as static files from your host machine or robot control box, then include:
+
+```html
+<script
+  src="/ui-widget/reforge-robotics-widget.auto.js"
+  data-base-url="http://<api-host>:8080"
+  data-robot-ip="<robot_ip>"
+  data-local-ip="<optional_local_ip>"
+  data-sdk-token="<optional_sdk_token>"
+  data-robot-id="<optional_robot_id>"
+  data-reforge-identify-api-token="<optional_reforge_api_token>"
+  data-reforge-robot-id="<optional_reforge_robot_id>"
+  data-freq="200"
+></script>
+```
+
+Use this option when the widget JS should be bundled and served from your own environment.
+
+### Option B: Embed widget directly from `app.reforgerobotics.com`
+
+```html
+<script
+  src="https://app.reforgerobotics.com/ui-widget/reforge-robotics-widget.auto.js"
+  data-base-url="http://<api-host>:8080"
+  data-robot-ip="<robot_ip>"
+  data-local-ip="<optional_local_ip>"
+  data-sdk-token="<optional_sdk_token>"
+  data-robot-id="<optional_robot_id>"
+  data-reforge-identify-api-token="<optional_reforge_api_token>"
+  data-reforge-robot-id="<optional_reforge_robot_id>"
+  data-freq="200"
+></script>
+```
+
+Use this option when you want to consume the hosted widget script directly.
+
+### Attribute reference (`<script data-...>`)
+
+- `data-base-url` (required): Base URL of your API server that implements `/api/reforge/*`.
+- `data-robot-ip` (required): Robot IP for `connect_test` and `calibrate`.
+- `data-local-ip` (optional): Passed as `--local_ip` when non-empty.
+- `data-sdk-token` (optional): Passed as `--sdk_token` when non-empty.
+- `data-robot-id` (optional): Passed as `--robot_id` when non-empty.
+- `data-freq` (optional): Calibration sampling frequency (`--freq`), default is `200`.
+- `data-reforge-identify-api-token` (optional): If set with `data-reforge-robot-id`, runs identify after calibration.
+- `data-reforge-robot-id` (optional): Target Reforge robot ID for identify call.
+- `data-manage-url` (optional): Override Reforge app manage/register URL.
+- `data-mount` (optional): CSS selector to mount widget into (default `body`).
+- `data-poll-interval-ms` (optional): Poll interval for status endpoints (default `1500`).
+- `data-poll-timeout-ms` (optional): Poll timeout for long-running jobs (default `300000`).
+
+Note: Leaving optional values blank is supported. The backend only forwards non-empty options so `robot.run` defaults are used.
+
+### API endpoints to implement (already pre-implemented in `ui-widget/app.py`)
+
+The auto widget expects these endpoints:
+
+#### 1) `GET /api/reforge/state`
+
+Purpose:
+- Initial widget state.
+
+Response:
+```json
+{
+  "robotId": "",
+  "vibrationEnabled": true,
+  "registered": false,
+  "connecting": false,
+  "calibrating": false
+}
+```
+
+#### 2) `POST /api/reforge/vibration`
+
+Purpose:
+- Persist vibration toggle from the UI.
+
+Request:
+```json
+{ "enabled": true }
+```
+
+Response:
+```json
+{ "ok": true }
+```
+
+#### 3) `POST /api/reforge/robot-id`
+
+Purpose:
+- Persist Robot ID entered in UI.
+
+Request:
+```json
+{ "id": "<uuid>" }
+```
+
+Response:
+```json
+{ "ok": true }
+```
+
+#### 4) `POST /api/reforge/connect/start`
+
+Purpose:
+- Start background connect test job.
+
+Request:
+```json
+{
+  "robotIp": "<robot_ip>",
+  "localIp": "<optional_local_ip>",
+  "sdkToken": "<optional_sdk_token>",
+  "robotId": "<optional_robot_id>"
+}
+```
+
+Response:
+```json
+{ "ok": true, "jobId": "<uuid>" }
+```
+
+#### 5) `GET /api/reforge/connect/status`
+
+Purpose:
+- Poll connect test progress and result.
+
+Response (example):
+```json
+{
+  "connecting": false,
+  "status": "succeeded",
+  "phase": "connect_test",
+  "jobId": "<uuid>",
+  "error": null,
+  "exitCode": 0,
+  "stdout": "...",
+  "stderr": ""
+}
+```
+
+#### 6) `POST /api/reforge/calibrate/start`
+
+Purpose:
+- Start calibration workflow in background.
+- In this repo, implementation runs connect test first, then calibration.
+
+Request:
+```json
+{
+  "robotIp": "<robot_ip>",
+  "localIp": "<optional_local_ip>",
+  "sdkToken": "<optional_sdk_token>",
+  "robotId": "<optional_robot_id>",
+  "freq": "200",
+  "identifyApiToken": "<optional_reforge_api_token>",
+  "reforgeRobotId": "<optional_reforge_robot_id>"
+}
+```
+
+Response:
+```json
+{ "ok": true, "jobId": "<uuid>" }
+```
+
+#### 7) `GET /api/reforge/calibrate/status`
+
+Purpose:
+- Poll calibration workflow status.
+
+Response (example):
+```json
+{
+  "calibrating": true,
+  "connecting": false,
+  "status": "running",
+  "phase": "calibrate",
+  "jobId": "<uuid>",
+  "error": null,
+  "exitCode": null,
+  "stdout": "",
+  "stderr": ""
+}
+```
+
+#### 8) `GET /api/reforge/jobs/<job_id>`
+
+Purpose:
+- Fetch full metadata for any job id.
+
+### Deploying the API server (`ui-widget/app.py`)
+
+1. Install dependencies and editable package:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+```
+
+2. Ensure scripts are executable:
+
+```bash
+chmod +x run_connect_test.sh run_calibrate.sh
+```
+
+3. Start API:
+
+```bash
+python3 -m ui-widget.app
+```
+
+4. Optional: enable verbose server command logging (includes `Running command: ...` lines):
+
+```bash
+REFORGE_WIDGET_VERBOSE=1 python3 -m ui-widget.app
+```
+
+By default (`REFORGE_WIDGET_VERBOSE` unset/false), command-level debug prints are suppressed.
+
+5. Set `data-base-url` in your embed snippet to this API host and port.
+
+6. Production deployment recommendations:
+
+- Run Flask behind a production WSGI server (for example gunicorn) and reverse proxy.
+- Serve over HTTPS.
+- Restrict CORS to your allowed web origins.
+- Inject secrets (`sdk_token`, API tokens) from server-side config when possible.
+- Keep `run_connect_test.sh` and `run_calibrate.sh` co-located with repo so `app.py` can execute them.
+
 ## Validation Checklist
 
 - `python3 -m py_compile src/robot/robot_interface.py` passes.
