@@ -11,7 +11,12 @@ description = "Reforge Interface by Reforge Robotics"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Reforge Robotics", email = "info@reforgerobotics.com" }]
-dependencies = []
+dependencies = [
+    "numpy<2",
+    "scipy",
+    "reforge-core",
+    "pydantic",
+]
 [tool.setuptools]
 package-dir = { "" = "src" }
 

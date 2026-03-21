@@ -21,7 +21,6 @@ from reforge_core.util.utility import (
 )
 from reforge_core.util.trajectory import Trajectory
 
-
 M_PI = math.pi
 DEFAULT_MAX_DISP = M_PI / 18.0  # [rad]
 DEFAULT_MAX_VEL = 18.0  # [rad/s]
@@ -297,6 +296,10 @@ class Robot(ABC):
         sysid_type: str = DEFAULT_SYSID_TYPE,
         nV: int = DEFAULT_SYSID_ANGLES,
         nR: int = DEFAULT_SYSID_RADII,
+        min_angle: float = DEFAULT_MIN_CALIBRATION_ANGLE,
+        max_angle: float = DEFAULT_MAX_CALIBRATION_ANGLE,
+        min_radius_scale: float = DEFAULT_MIN_CALIBRATION_RADIUS_SCALE,
+        max_radius_scale: float = DEFAULT_MAX_CALIBRATION_RADIUS_SCALE,
         min_sine_freq: float = DEFAULT_SINE_MIN_FREQ,
         max_sine_freq: float = DEFAULT_SINE_MAX_FREQ,
         sine_freq_spacing: float = DEFAULT_FREQ_SPACING,
@@ -304,6 +307,9 @@ class Robot(ABC):
         dwell_btw_sine: float = DEFAULT_DWELL_TIME,
         start_pose: int = 0,
         home_sign: int = 1,
+        imu_to_tcp_x: float = DEFAULT_IMU_TO_TCP_X,
+        imu_to_tcp_y: float = DEFAULT_IMU_TO_TCP_Y,
+        imu_to_tcp_z: float = DEFAULT_IMU_TO_TCP_Z,
     ) -> str:
         """Run the system identification trajectory and record calibration data.
 
@@ -318,8 +324,15 @@ class Robot(ABC):
             sysid_type: System identification type (`bcb` or `sine`).
             nV: Number of angle positions.
             nR: Number of radius positions.
+            min_angle: Minimum calibration angle from horizontal [rad].
+            max_angle: Maximum calibration angle from horizontal [rad].
+            min_radius_scale: Minimum calibration radius scale.
+            max_radius_scale: Maximum calibration radius scale.
             start_pose: Starting pose index.
             home_sign: Sign of shoulder joint angle at home position.
+            imu_to_tcp_x: X component of IMU->TCP translation [m].
+            imu_to_tcp_y: Y component of IMU->TCP translation [m].
+            imu_to_tcp_z: Z component of IMU->TCP translation [m].
 
         Returns:
             `str` folder where calibration data is stored.

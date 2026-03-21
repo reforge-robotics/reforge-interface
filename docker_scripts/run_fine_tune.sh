@@ -6,8 +6,8 @@ if [[ "${DEBUG:-0}" == "1" ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 <fine_tune_api_token> <robot_id> <data_folder>"
-  echo "Example: $0 <token> <robot_id> ./src/robot/data/2026-2-25"
+  echo "Usage: $0 <reforge_api_token> <reforge_robot_id> <data_folder>"
+  echo "Example: $0 <token> <reforge_robot_id> ./src/robot/data/2026-2-25"
 }
 
 if [[ $# -lt 3 ]]; then
@@ -15,8 +15,8 @@ if [[ $# -lt 3 ]]; then
   exit 1
 fi
 
-fine_tune_api_token="$1"
-robot_id="$2"
+reforge_api_token="$1"
+reforge_robot_id="$2"
 host_data_folder="$3"
 shift 3
 
@@ -38,4 +38,4 @@ CONTAINER_DATA_DIR="${CONTAINER_DATA_DIR:-/control-box-bot/reforge-interface/src
 docker run --net=host --rm --name "$CONTAINER_NAME" \
   -v "$host_data_folder:$CONTAINER_DATA_DIR" \
   "$IMAGE_NAME" \
-  python3 -m robot.run fine_tune "$fine_tune_api_token" "$robot_id" "$CONTAINER_DATA_DIR"
+  python3 -m robot.run fine_tune "$reforge_api_token" "$reforge_robot_id" "$CONTAINER_DATA_DIR"
