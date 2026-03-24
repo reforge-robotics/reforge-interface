@@ -66,8 +66,9 @@ from reforge_core.util.utility import (
 # {~.~} Import robot's Python SDK with required modules here
 
 from xarm import XArmAPI
-from robot.arm_client import ArmClient
-from robot.arm_imu_manager import ArmImuManager # {~.~} Edit as necessary
+from scipy.spatial.transform import Rotation as R
+from pimu.client import ImuReader
+from robot.old_pimu.arm_imu_manager import ArmImuManager # {~.~} Edit as necessary
 
 
 BOT_ID = "" #{~.~} (not for this robot?) [CHANGE TO ROBOT's ID, IF NECESSARY] - can also enter as CLI argument (see autoCalibration.py --help)
@@ -83,6 +84,8 @@ HOME_POSE_OVERRIDE = [0.814, 0.0007, 0.364]
 # HOME_POSE_OVERRIDE = None
 
 # IMU information
+IMU_IP = "10.0.0.106"
+
 # General constants
 IS_DEGREES = False
 DATA_LOCATION_PREFIX = "src/robot/data"  # {~.~} [CHANGE TO LOCATION DESIRED - will be robot/DATA_LOCATION_PREFIX/*]
@@ -173,10 +176,8 @@ class RobotInterface(Robot):
 
         try:
             if robot_ip != "sim":
-                # Instantiate arm client and keep its underlying wrapper available
-                # for compatibility with any still-unmigrated code paths.
-                self.arm_client = ArmClient(robot_ip=robot_ip)
-                self.robot = self.arm_client.arm
+                # Instantiate robot API and connect to robot
+                self.robot = XArmAPI(robot_ip, is_radian=not IS_DEGREES)
 
                 # Enable robot and set to "motion" state (0)
                 self.robot.motion_enable(enable=True)
@@ -189,11 +190,12 @@ class RobotInterface(Robot):
                 self.num_joints = self.model.num_joints
                 self.pose_length = len(self.__get_tcp_pose())
 
+                # Create IMU reader
+                self.imu = ImuReader(ip=IMU_IP)
             else:
                 self.id = robot_id
                 self.num_joints = self.model.num_joints
                 self.pose_length = 7
-                self.arm_client = None
 
         except Exception as e:
             # Print exception error message
@@ -240,10 +242,10 @@ class RobotInterface(Robot):
         Ensure the controller is in position mode (0) before issuing queued P2P moves.
         Returns the mode/state codes so they can be inspected when debugging.
         """
-        if self.arm_client is None:
-            raise RuntimeError("Arm client is not available in simulation mode.")
-        self.arm_client.set_position_mode()
-        return (0, 0)
+        code_mode = self.robot.set_mode(0)
+        code_state = self.robot.set_state(0)
+        print(f"[ufactory850] set_mode(0)->{code_mode}, set_state(0)->{code_state}")
+        return code_mode, code_state
 
     # {~.~} REQUIRED 
     def __get_joint_positions(self) -> List:
@@ -262,17 +264,21 @@ class RobotInterface(Robot):
         Preconditions:
             The robot connection is active.
         """
-        if self.arm_client is None:
-            raise RuntimeError("Arm client is not available in simulation mode.")
+        code, joint_angles = self.robot.get_servo_angle()
 
-        joint_angles = self.arm_client.get_joint_positions()
+        if code != 0:
+            raise Exception(f"Unreliable joint angles! Return code {code}")  # TODO: improved exception type and message
 
-        if len(joint_angles) < self.num_joints:
+        if not self.robot._is_radian:
+            joint_angles = [np.deg2rad(angle) for angle in joint_angles]
+
+        # Hardware may return more joints than the URDF dynamics model (e.g., gripper).
+        if len(joint_angles) > self.num_joints:
+            joint_angles = joint_angles[: self.num_joints]
+        elif len(joint_angles) < self.num_joints:
             raise ValueError(
                 f"Received {len(joint_angles)} joint angles but expected {self.num_joints} from URDF model"
             )
-        if len(joint_angles) > self.num_joints:
-            joint_angles = joint_angles[: self.num_joints]
 
         # Return joint positions [rad] as a list
         return joint_angles
@@ -292,9 +298,28 @@ class RobotInterface(Robot):
         Preconditions:
             The robot connection is active.
         """
-        if self.arm_client is None:
-            raise RuntimeError("Arm client is not available in simulation mode.")
-        return self.arm_client.get_tcp_pose()
+        # Extract pose = [x, y, z, rx, ry, rz] where the latter three are axis-angle
+        # Position coordinates are in mm and rotation coordinates are in self.robot._is_radian.
+        code, pose = self.robot.get_position_aa()
+
+        if code != 0:
+            raise Exception(f"Unreliable TCP pose! Return code {code}")  # TODO: improved exception type and message
+
+        # Decompose pose
+        position, axang = pose[:3], pose[3:]
+
+        # Convert position coordinates to meters
+        position = [coord / 1000.0 for coord in position]
+
+        # Convert rotation coordinates to radians, if necessary
+        if not self.robot._is_radian:
+            axang = [np.deg2rad(coord) for coord in axang]
+
+        # Convert axis-angle to quaternion 
+        quat = R.from_rotvec(axang).as_quat().tolist()
+        
+        # Return tooltip pose as a list
+        return [*position, *quat]
 
     def move_to_joint(self, target_joint: Tuple[float, ...]) -> None:
         """Move the robot to the specified joint positions.
@@ -314,9 +339,24 @@ class RobotInterface(Robot):
         Preconditions:
             The robot connection is active.
         """
-        if self.arm_client is None:
-            raise RuntimeError("Arm client is not available in simulation mode.")
-        self.arm_client.move_to_joint(target_joint)
+        self._enter_position_mode()
+
+        # Convert to units expected by API
+        if not self.robot._is_radian:
+            target_joint = tuple(np.rad2deg(angle) for angle in target_joint)
+        
+        # Send to robot
+        code = self.robot.set_servo_angle(
+            angle=target_joint,
+            speed=None,
+            mvacc=None,
+            mvtime=None,
+            wait=True
+        )
+        print(f"[ufactory850] set_servo_angle -> {code}")
+
+        if code != 0:
+            raise Exception(f"Unable to send to {target_joint=}! Return code {code}")  # TODO: improved exception type and message
 
     def move_to_pose(self, target_quat: List[float], target_xyz: List[float]) -> None:
         """Move the robot to the specified Cartesian pose.
@@ -337,9 +377,33 @@ class RobotInterface(Robot):
         Preconditions:
             The robot connection is active.
         """
-        if self.arm_client is None:
-            raise RuntimeError("Arm client is not available in simulation mode.")
-        self.arm_client.move_to_pose(target_quat, target_xyz)
+        # Convert quaternion to axis-angle, as expected by API
+        axang = R.from_quat(target_quat).as_rotvec().tolist()
+        
+        # Servo mode from realtime streaming blocks set_position_* APIs; switch back to position mode.
+        self._enter_position_mode()
+
+        # Convert to degrees, if expected by API
+        if not self.robot._is_radian:
+            axang = [np.rad2deg(coord) for coord in axang]
+        
+        # Convert xyz to millimeters, as expected by API
+        position = [coord * 1000.0 for coord in target_xyz]
+
+        # Send command
+        pose = [*position, *axang]
+        code = self.robot.set_position_aa(
+            axis_angle_pose=pose,
+            speed=None,
+            mvacc=None,
+            mvtime=None,
+            motion_type=1,
+            wait=True
+        )
+        print(f"[ufactory850] set_position_aa -> {code}")
+
+        if code != 0:
+            raise RuntimeError(f"Pose command failed with code {code} for target quat={target_quat}, xyz={target_xyz}")
 
     def publish_and_record_joint_positions(
         self,
@@ -373,10 +437,7 @@ class RobotInterface(Robot):
         if Ts is None: Ts = 1/ROBOT_MAX_FREQ
 
         # Initialize arm/IMU manager
-        if self.arm_client is None:
-            raise RuntimeError("Arm client is not available in simulation mode.")
-
-        mgr = ArmImuManager(arm=self.arm_client, Ts=Ts, 
+        mgr = ArmImuManager(arm=self.robot, imu=self.imu, Ts=Ts, 
                             time_data=time_data, 
                             position_data=position_stream)
 
@@ -545,10 +606,10 @@ class RobotInterface(Robot):
             base_height=self.initial_height,
             robot_name=self.name,
             data_folder=data_folder,
-            # tcp_payload=tcp_payload,
-            # tcp_payload_com_x=float(tcp_payload_com[0]),
-            # tcp_payload_com_y=float(tcp_payload_com[1]),
-            # tcp_payload_com_z=float(tcp_payload_com[2]),
+            tcp_payload=tcp_payload,
+            tcp_payload_com_x=float(tcp_payload_com[0]),
+            tcp_payload_com_y=float(tcp_payload_com[1]),
+            tcp_payload_com_z=float(tcp_payload_com[2]),
             imu_to_tcp_x=imu_to_tcp_x,
             imu_to_tcp_y=imu_to_tcp_y,
             imu_to_tcp_z=imu_to_tcp_z,
