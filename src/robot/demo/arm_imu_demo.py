@@ -3,7 +3,7 @@
 This script is intentionally written as a tutorial, not a reusable module.
 It shows:
 1. Programmatic time-offset calibration.
-2. Construction of a fresh runtime IMU client with that fitted offset.
+2. Reuse of that same IMU client after updating its fitted software-side offset.
 3. Homing the robot with the arm client helper.
 4. Building a base-joint sinusoidal trajectory around the current home pose.
 5. Running that trajectory once in streaming mode with manual sampling.
@@ -16,19 +16,21 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 from reforge_core.imu.client import MuseIMUClient
 from reforge_core.imu.data import IMUStateTraj
 
 from robot.arm_client import ArmClient, ArmStateTraj
-from robot.arm_imu_time_calibration import run_arm_imu_time_calibration
+from robot.arm_imu_time_calibration import (
+    run_arm_imu_time_calibration,
+    solve_scale_and_time_offset,
+)
 
 
 ROBOT_IP = "192.168.1.208"
 CONTROL_HZ = 250.0
 IMU_STREAM_HZ = 200.0
 IMU_RECORD_HZ = 200.0
-SINE_AMPLITUDE_DEG = 10.0
+SINE_AMPLITUDE_DEG = 5.0
 SINE_FREQUENCY_HZ = 1.0
 SINE_CYCLES = 3
 IMU_GET_TIMEOUT_S = 1.0
@@ -37,7 +39,14 @@ IMU_GET_TIMEOUT_S = 1.0
 def main() -> None:
     print("=== Arm/IMU demo ===")
     print("Step 1: Calibrate IMU time offset against the arm.")
-    calibration_result = run_arm_imu_time_calibration(plot=True, plot_block=True, bias_calibration_sec=1.0)
+    imu_client = MuseIMUClient(time_offset_sec=0.0)
+    calibration_result, imu_client = run_arm_imu_time_calibration(
+        arm_control_mode="servo", # or "position" if you will be controlling robot in position mode
+        imu_client=imu_client,
+        plot=True,
+        plot_block=True,
+        bias_calibration_sec=1.0,
+    )
     print(f"Fitted time_offset_sec = {calibration_result.time_offset_sec:.9f}")
     print(
         "Use this value directly in MuseIMUClient(time_offset_sec=...). "
@@ -45,13 +54,10 @@ def main() -> None:
     )
 
     arm_client = ArmClient(ROBOT_IP, recording_data_frequency_hz=CONTROL_HZ)
-    imu_client = MuseIMUClient(time_offset_sec=calibration_result.time_offset_sec)
-
     q_home: np.ndarray | None = None
 
     try:
-        print("\nStep 2: Connect the runtime IMU client with the calibrated offset.")
-        imu_client.connect()
+        print("\nStep 2: Reuse the calibrated IMU client with its fitted offset already set.")
 
         print("\nStep 3: Move the robot to wrapper home.")
         arm_client.move_home()
@@ -84,8 +90,7 @@ def main() -> None:
         # control, so use it before sending the fast sinusoidal reference.
         arm_client.set_servo_mode()
 
-        # Initialize holders for each data type (maxlen totally optional)
-        streamed_arm_traj = ArmStateTraj(maxlen=time_data.size + 1) 
+        streamed_arm_traj = ArmStateTraj(maxlen=time_data.size + 1)
         streamed_imu_traj = IMUStateTraj(maxlen=time_data.size + 1)
 
         imu_client.start_streaming()  # only IMU needs start_streaming(), not arm
@@ -123,6 +128,17 @@ def main() -> None:
             )
         finally:
             imu_client.stop_streaming()
+
+        stream_time_offset_sec, stream_scale, stream_rmse = solve_scale_and_time_offset(
+            streamed_arm_traj,
+            streamed_imu_traj,
+            imu_bias=calibration_result.imu_bias,
+        )
+        print(
+            "Streaming capture fit: "
+            f"time_offset_sec={stream_time_offset_sec:.9f}, "
+            f"scale={stream_scale:.6f}, rmse={stream_rmse:.6f}"
+        )
 
         ts_arm_stream, q_arm_stream, qd_arm_stream, _tau_arm_stream = streamed_arm_traj.unpack()
         ts_imu_stream, accel_stream, gyro_stream = streamed_imu_traj.unpack()
@@ -184,6 +200,18 @@ def main() -> None:
             linewidth=1.6,
             label=r"IMU $\|\omega\|$",
         )
+        axes[3].plot(
+            ts_imu_stream + stream_time_offset_sec,
+            np.maximum(np.linalg.norm(gyro_stream, axis=1) - calibration_result.imu_bias, 0.0)
+            * stream_scale,
+            color="tab:green",
+            linestyle=":",
+            linewidth=1.8,
+            label=(
+                rf"IMU aligned $\|\omega\|$ "
+                f"(time_offset_sec={stream_time_offset_sec:.3f} s)"
+            ),
+        )
         axes[3].set_title("Streaming Mode: Arm vs IMU Angular-Speed Magnitude")
         axes[3].set_xlabel("Timestamp [s]")
         axes[3].set_ylabel("Magnitude [rad/s]")
@@ -232,6 +260,16 @@ def main() -> None:
 
         recorded_arm_traj = arm_client.get_recording()
         recorded_imu_traj = imu_client.get_recording()
+        record_time_offset_sec, record_scale, record_rmse = solve_scale_and_time_offset(
+            recorded_arm_traj,
+            recorded_imu_traj,
+            imu_bias=calibration_result.imu_bias,
+        )
+        print(
+            "Recording capture fit: "
+            f"time_offset_sec={record_time_offset_sec:.9f}, "
+            f"scale={record_scale:.6f}, rmse={record_rmse:.6f}"
+        )
 
         ts_arm_record, q_arm_record, qd_arm_record, _tau_arm_record = recorded_arm_traj.unpack()
         ts_imu_record, accel_record, gyro_record = recorded_imu_traj.unpack()
@@ -292,6 +330,18 @@ def main() -> None:
             linestyle="--",
             linewidth=1.6,
             label=r"IMU $\|\omega\|$",
+        )
+        axes[3].plot(
+            ts_imu_record + record_time_offset_sec,
+            np.maximum(np.linalg.norm(gyro_record, axis=1) - calibration_result.imu_bias, 0.0)
+            * record_scale,
+            color="tab:green",
+            linestyle=":",
+            linewidth=1.8,
+            label=(
+                rf"IMU aligned $\|\omega\|$ "
+                f"(time_offset_sec={record_time_offset_sec:.3f} s)"
+            ),
         )
         axes[3].set_title("Recording Mode: Arm vs IMU Angular-Speed Magnitude")
         axes[3].set_xlabel("Timestamp [s]")

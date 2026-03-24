@@ -24,6 +24,7 @@ import datetime
 import sys
 import time
 from dataclasses import dataclass
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -43,12 +44,16 @@ MAX_STEP_DEG = 10.0
 IMU_RECORDING_HZ = 200.0
 ARM_RECORDING_HZ = 250.0
 POSITION_SPEED = 100.0
+SERVO_CONTROL_HZ = ARM_RECORDING_HZ
+SERVO_SINE_FREQUENCY_HZ = 1.0
+SERVO_SINE_CYCLES = 1
 
 
 @dataclass(frozen=True, slots=True)
 class ArmIMUTimeCalibrationResult:
     """Result returned by ``run_arm_imu_time_calibration(...)``."""
 
+    arm_control_mode: str
     positive_step_deg: float
     negative_step_deg: float
     bias_calibration_sec: float
@@ -66,24 +71,29 @@ class ArmIMUTimeCalibrationResult:
     imu_bias_traj: IMUStateTraj
 
 
-def run_motion_primitive(
-    arm: ArmClient,
+def build_motion_targets(
     q0: np.ndarray,
     *,
     positive_step_deg: float,
     negative_step_deg: float,
-    position_speed: float = POSITION_SPEED,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Run the calibration motion primitive.
-
-    The trajectory is intentionally small and simple:
-    ``q0 -> q_plus -> q_minus -> q0``.
-    """
-    # Build one positive and one negative base-joint step around the current pose.
+    """Build one positive and one negative base-joint target around ``q0``."""
     q_plus = q0.copy()
     q_minus = q0.copy()
     q_plus[0] = q0[0] + np.deg2rad(positive_step_deg)
     q_minus[0] = q0[0] - np.deg2rad(negative_step_deg)
+    return q_plus, q_minus
+
+
+def run_position_motion_primitive(
+    arm: ArmClient,
+    q0: np.ndarray,
+    *,
+    q_plus: np.ndarray,
+    q_minus: np.ndarray,
+    position_speed: float = POSITION_SPEED,
+) -> None:
+    """Run the blocking position-mode calibration primitive."""
 
     code_q_plus = arm.command_position(q_plus, speed=position_speed, wait=True)
     if code_q_plus != 0:
@@ -97,7 +107,52 @@ def run_motion_primitive(
     if code_q0 != 0:
         raise RuntimeError(f"command_position(q0) returned code {code_q0}")
 
-    return q_plus, q_minus
+
+def run_servo_motion_primitive(
+    arm: ArmClient,
+    q0: np.ndarray,
+    *,
+    q_plus: np.ndarray,
+    q_minus: np.ndarray,
+    control_hz: float = SERVO_CONTROL_HZ,
+    sine_frequency_hz: float = SERVO_SINE_FREQUENCY_HZ,
+    sine_cycles: int = SERVO_SINE_CYCLES,
+) -> None:
+    """Run a demo-style sinusoidal servo trajectory between ``q_plus`` and ``q_minus``."""
+    duration_s = sine_cycles / sine_frequency_hz
+    sample_count = int(round(duration_s * control_hz)) + 1
+    time_data = np.arange(sample_count, dtype=float) / control_hz
+
+    # Use the same sinusoidal trajectory style as the demo. The sine is built
+    # so its extrema match the previously defined q_plus and q_minus targets.
+    base_joint_center = 0.5 * (q_plus[0] + q_minus[0])
+    base_joint_amplitude = 0.5 * (q_plus[0] - q_minus[0])
+    base_joint_traj = base_joint_center + (
+        base_joint_amplitude
+        * np.sin(2.0 * np.pi * sine_frequency_hz * time_data)
+    )
+
+    position_data = np.tile(q0, (sample_count, 1))
+    position_data[:, 0] = base_joint_traj
+
+    arm.set_servo_mode()
+    start_wall_time = time.time()
+    for tref, q_cmd in zip(time_data, position_data):
+        target_time = start_wall_time + float(tref)
+        while True:
+            now = time.time()
+            remaining = target_time - now
+            if remaining <= 0.0:
+                break
+            time.sleep(min(remaining, (1.0 / control_hz) / 2.0))
+
+        code = arm.arm.set_servo_angle_j(
+            angles=np.asarray(q_cmd, dtype=float).tolist()
+        )
+        if code != 0:
+            raise RuntimeError(f"set_servo_angle_j(...) returned code {code}")
+
+    time.sleep(1.0 / control_hz)
 
 
 def estimate_imu_bias(
@@ -136,9 +191,20 @@ def solve_scale_and_time_offset(
     arm_traj: ArmStateTraj,
     imu_traj: IMUStateTraj,
     *,
-    imu_bias: float,
+    imu_bias: float | None = None,
+    bias_calibration_sec: float | None = DEFAULT_BIAS_CALIBRATION_SEC,
 ) -> tuple[float, float, float]:
-    """Solve scalar magnitude scale and time shift on the arm motion window."""
+    """Solve scalar magnitude scale and time shift on one arm/IMU trajectory pair.
+
+    This is intended to be easy to call on post-hoc data:
+
+    ``time_offset_sec, scale, rmse = solve_scale_and_time_offset(arm_traj, imu_traj)``
+
+    If ``imu_bias`` is not provided, the function estimates it from the first
+    ``bias_calibration_sec`` seconds of the IMU trajectory. Pass an explicit
+    ``imu_bias`` when you already have a separate stationary bias estimate and
+    want to reuse it.
+    """
     # Unpack only the signals we actually use for calibration: arm base-joint
     # speed magnitude and IMU gyro magnitude, both against their own timestamps.
     ts_arm, _, qd_arm, _ = arm_traj.unpack()
@@ -150,6 +216,13 @@ def solve_scale_and_time_offset(
 
     arm_rate_mag = np.abs(qd_arm[:, 0])
     imu_gyro_mag = np.linalg.norm(gyro, axis=1)
+
+    if imu_bias is None:
+        imu_bias = estimate_imu_bias_from_traj(
+            imu_traj,
+            stationary_duration_s=bias_calibration_sec,
+        )
+    imu_bias = float(imu_bias)
 
     # Bias is estimated from the separate stationary IMU capture. After
     # subtracting it, clamp at zero so the magnitude signal stays nonnegative.
@@ -316,6 +389,7 @@ def plot_calibration(
 def format_calibration_summary_lines(result: ArmIMUTimeCalibrationResult) -> list[str]:
     """Format one small, deployment-oriented calibration summary."""
     return [
+        f"Arm control mode: {result.arm_control_mode}",
         f"Estimated time_offset_sec: {result.time_offset_sec:.6f}",
         f"Estimated imu_bias: {result.imu_bias:.6f}",
         f"Estimated scale: {result.scale:.6f}",
@@ -336,19 +410,21 @@ def print_calibration_summary(result: ArmIMUTimeCalibrationResult) -> None:
 
 def run_arm_imu_time_calibration(
     *,
+    arm_control_mode: Literal["position", "servo"] = "position",
     positive_step_deg: float | None = None,
     negative_step_deg: float | None = None,
     bias_calibration_sec: float | None = None,
+    imu_client: MuseIMUClient | None = None,
     arm_client: ArmClient | None = None,
     plot: bool = False,
     plot_block: bool = False,
-) -> ArmIMUTimeCalibrationResult:
+) -> tuple[ArmIMUTimeCalibrationResult, MuseIMUClient]:
     """Run the full arm/IMU time calibration and return the fitted offset.
 
-    This function always constructs a fresh ``MuseIMUClient(time_offset_sec=0.0)``
-    and, at the beginning of the run, calls the IMU client's private
-    ``_set_time_unsafe(...)`` helper so the device clock is aligned to host UTC
-    before collecting calibration data.
+    This function calibrates using an IMU client whose software-side
+    ``time_offset_sec`` is first cleared to zero. It then returns both the
+    fitted result and that same IMU client with the fitted time offset already
+    applied for continued use by the caller.
 
     The returned ``result.time_offset_sec`` is the runtime value to pass directly
     into:
@@ -356,6 +432,11 @@ def run_arm_imu_time_calibration(
     ``MuseIMUClient(time_offset_sec=result.time_offset_sec)``
 
     Args:
+        arm_control_mode: Arm excitation mode used during calibration.
+            ``"position"`` uses blocking position commands through
+            ``q0 -> q_plus -> q_minus -> q0``.
+            ``"servo"`` uses a demo-style sinusoidal joint-servo trajectory
+            whose extrema match ``q_plus`` and ``q_minus``.
         positive_step_deg: Positive base-joint step in degrees. Must be in
             ``(0, MAX_STEP_DEG]``. Defaults to ``DEFAULT_POSITIVE_STEP_DEG``.
         negative_step_deg: Negative base-joint step magnitude in degrees. Must
@@ -364,16 +445,21 @@ def run_arm_imu_time_calibration(
         bias_calibration_sec: Stationary IMU recording duration used to estimate
             gyro-magnitude bias before the motion starts. Must be ``> 0``.
             Defaults to ``DEFAULT_BIAS_CALIBRATION_SEC``.
+        imu_client: Optional existing ``MuseIMUClient`` to reuse. If supplied,
+            its current software-side time offset is cleared to ``0.0`` before
+            calibration begins.
         arm_client: Optional existing ``ArmClient`` to reuse. The IMU client is
-            always constructed internally with zero initial offset.
+            optional and can also be reused.
         plot: When ``True``, also show the calibration plot.
         plot_block: Passed through to ``plot_calibration(...)`` when
             ``plot`` is ``True``.
 
     Returns:
-        Returns ``ArmIMUTimeCalibrationResult`` with the fitted
-        ``time_offset_sec``, scale, RMSE, estimated bias, recorded trajectories,
-        and motion targets.
+        Returns ``(result, imu_client)`` where:
+        - ``result`` contains the fitted ``time_offset_sec``, scale, RMSE,
+          estimated bias, recorded trajectories, and motion targets
+        - ``imu_client`` is the exact connected IMU client used during
+          calibration, with ``time_offset_sec`` already set to the fitted value
 
     Sign convention:
         Use the returned value directly. Do not negate it.
@@ -385,6 +471,7 @@ def run_arm_imu_time_calibration(
     supplied_arg_names = frozenset(
         name
         for name, value in {
+            "arm_control_mode": arm_control_mode,
             "positive_step_deg": positive_step_deg,
             "negative_step_deg": negative_step_deg,
             "bias_calibration_sec": bias_calibration_sec,
@@ -416,16 +503,20 @@ def run_arm_imu_time_calibration(
         raise ValueError(f"negative_step_deg must be <= {MAX_STEP_DEG}.")
     if bias_calibration_sec <= 0.0:
         raise ValueError("bias_calibration_sec must be > 0.")
+    if arm_control_mode not in {"position", "servo"}:
+        raise ValueError("arm_control_mode must be 'position' or 'servo'.")
 
     arm_client_injected = arm_client is not None
-    # Explicitly use zero time offset so we can recompute it from scratch
-    imu_client = MuseIMUClient(time_offset_sec=0.0)
+    imu_client_injected = imu_client is not None
+    if imu_client is None:
+        imu_client = MuseIMUClient(time_offset_sec=0.0)
     if arm_client is None:
         arm_client = ArmClient(
             ROBOT_IP,
             recording_data_frequency_hz=ARM_RECORDING_HZ,
         )
 
+    imu_client.set_time_offset_sec(0.0)
     imu_client.connect()
     imu_client._set_time_unsafe(datetime.datetime.now(datetime.timezone.utc))
 
@@ -446,17 +537,32 @@ def run_arm_imu_time_calibration(
 
         # Establish robot baseline at its current configuration
         q0 = arm_client.get_latest_state().q
-        arm_client.set_position_mode()
-
-        # Record data from IMU and arm while arm is excited with the motion primitive
-        imu_client.start_recording()
-        arm_client.start_recording()
-        q_plus, q_minus = run_motion_primitive(
-            arm_client,
-            q0=q0,
+        q_plus, q_minus = build_motion_targets(
+            q0,
             positive_step_deg=positive_step_deg,
             negative_step_deg=negative_step_deg,
         )
+        if arm_control_mode == "position":
+            arm_client.set_position_mode()
+
+        # Record data from IMU and arm while arm is excited with the selected
+        # calibration primitive.
+        imu_client.start_recording()
+        arm_client.start_recording()
+        if arm_control_mode == "position":
+            run_position_motion_primitive(
+                arm_client,
+                q0=q0,
+                q_plus=q_plus,
+                q_minus=q_minus,
+            )
+        else:
+            run_servo_motion_primitive(
+                arm_client,
+                q0=q0,
+                q_plus=q_plus,
+                q_minus=q_minus,
+            )
         imu_client.stop_recording()
         arm_client.stop_recording()
 
@@ -472,6 +578,7 @@ def run_arm_imu_time_calibration(
         )
 
         result = ArmIMUTimeCalibrationResult(
+            arm_control_mode=arm_control_mode,
             positive_step_deg=positive_step_deg,
             negative_step_deg=negative_step_deg,
             bias_calibration_sec=bias_calibration_sec,
@@ -490,7 +597,8 @@ def run_arm_imu_time_calibration(
         )
         if plot:
             plot_calibration(result, block=plot_block)
-        return result
+        imu_client.set_time_offset_sec(time_offset_sec)
+        return result, imu_client
     finally:
         try:
             arm_client.stop_recording()
@@ -500,10 +608,11 @@ def run_arm_imu_time_calibration(
             imu_client.stop_recording()
         except Exception:
             pass
-        try:
-            imu_client.disconnect()
-        except Exception:
-            pass
+        if "result" not in locals() and not imu_client_injected:
+            try:
+                imu_client.disconnect()
+            except Exception:
+                pass
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -513,6 +622,17 @@ def _build_arg_parser() -> argparse.ArgumentParser:
             "then print the time_offset_sec to use directly in "
             "MuseIMUClient(time_offset_sec=...). Do not negate the printed value."
         )
+    )
+    parser.add_argument(
+        "--arm-control-mode",
+        choices=("position", "servo"),
+        default="position",
+        help=(
+            "Arm excitation mode for calibration. 'position' uses blocking "
+            "step commands. 'servo' uses a demo-style sinusoidal joint-servo "
+            "trajectory between the same q_plus and q_minus targets. "
+            "Default: position."
+        ),
     )
     parser.add_argument(
         "--positive-step-deg",
@@ -548,6 +668,8 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint for one interactive arm/IMU calibration run.
 
     CLI arguments:
+        --arm-control-mode:
+            Use either blocking position steps or demo-style servo sine motion.
         --positive-step-deg:
             Positive base-joint step magnitude in degrees.
         --negative-step-deg:
@@ -566,7 +688,8 @@ def main(argv: list[str] | None = None) -> int:
     """
     args = _build_arg_parser().parse_args(argv)
 
-    result = run_arm_imu_time_calibration(
+    result, _imu_client = run_arm_imu_time_calibration(
+        arm_control_mode=args.arm_control_mode,
         positive_step_deg=args.positive_step_deg,
         negative_step_deg=args.negative_step_deg,
         bias_calibration_sec=args.bias_calibration_sec,
