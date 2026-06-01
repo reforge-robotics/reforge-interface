@@ -7,15 +7,9 @@ import os
 import traceback
 import warnings
 from robot.robot_base import (
-    DEFAULT_MAX_DISP,
-    DEFAULT_MAX_VEL,
-    DEFAULT_MAX_ACC,
     PLACEHOLDER_IP,
-    DEFAULT_SYSID_ANGLES,
-    DEFAULT_SYSID_RADII,
     DEFAULT_HOME_SIGN,
-    DEFAULT_FIRST_POSE,
-    DEFAULT_ROBOT_FREQ,
+    DEFAULT_FIRST_AXIS,
     DEFAULT_AXES_COMMANDED,
     DEFAULT_MIN_CALIBRATION_ANGLE,
     DEFAULT_MAX_CALIBRATION_ANGLE,
@@ -32,13 +26,23 @@ from reforge_core.util.utility import (
     DEFAULT_FREQ_SPACING,
     DEFAULT_SINE_CYCLES,
     DEFAULT_DWELL_TIME,
+    DEFAULT_SYSID_TYPE,
+    DEFAULT_MAX_DISP,
+    DEFAULT_MAX_VEL,
+    DEFAULT_MAX_ACC,
+    DEFAULT_SYSID_ANGLES,
+    DEFAULT_SYSID_RADII,
+    DEFAULT_FIRST_POSE,
+    DEFAULT_ROBOT_FREQ,
+    SysIdType,
 )
 from robot.robot_interface import RobotInterface, BOT_ID
 from reforge_core.calibration.api import ReforgeAPIManager
-from reforge_core.util.vibration_test import run_vibration_test
+from reforge_core.util.vibration_test import run_vibration_test, run_velocity_test
 
 # Local models directory used by identification/fine-tuning flows.
 ROBOT_MODELS_PATH = os.path.join("robot", "models", "current")
+SUPPORTED_SYSID_TYPES = [SysIdType.SHAPER, SysIdType.FEEDFORWARD]
 
 
 def _run_model_generation_with_fine_tune_fallback(
@@ -118,7 +122,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=PLACEHOLDER_IP,
     )
     connect_test.add_argument(
-        "--robot_id", help="Robot ID, if necessary", default=""
+        "--robot_id", help="Reforge robot ID, if necessary", default=""
     )
 
     # ======================== Route: calibrate =====================================
@@ -143,9 +147,16 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="robot_id",
         type=str,
         default=BOT_ID,
-        help="Robot ID, if necessary",
+        help="Reforge robot ID, if necessary",
     )
     # timing parameters
+    calibrate.add_argument(
+        "--type",
+        dest="sysid_type",
+        choices=[sysid_type.value for sysid_type in SUPPORTED_SYSID_TYPES],
+        default=DEFAULT_SYSID_TYPE,
+        help="Calibration workflow type: 'shaper' or 'feedforward' (default: %(default)s)",
+    )
     calibrate.add_argument(
         "--freq",
         dest="samp_freq",
@@ -275,6 +286,16 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_FIRST_POSE,
         help="Index of the first pose (default: %(default)s)",
     )
+    calibrate.add_argument(
+        "--first_axis",
+        dest="start_axis",
+        type=int,
+        default=DEFAULT_FIRST_AXIS,
+        help=(
+            "Index of the first joint axis to command. "
+            "With --axes N, commanded axes are [first_axis, first_axis + N)."
+        ),
+    )
     # payload parameters
     calibrate.add_argument(
         "--tcp_payload",
@@ -380,7 +401,7 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="robot_id",
         type=str,
         default=BOT_ID,
-        help="Robot ID, if necessary",
+        help="Reforge robot ID, if necessary",
     )
     # timing parameters
     vibration_test.add_argument(
@@ -474,6 +495,109 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # ======================== Route: velocity_test =====================================
+    velocity_test = sub.add_parser(
+        "velocity_test",
+        help="Run velocity sweep test to quantify max vibration vs reference velocity, "
+        "comparing shaped and unshaped trajectories.",
+    )
+    velocity_test.add_argument("robot_ip", help="Robot IP address")
+    velocity_test.add_argument(
+        "data_folder",
+        help="Folder containing most recent calibration data CSVs.",
+    )
+    velocity_test.add_argument(
+        "--local_ip",
+        dest="local_ip",
+        type=str,
+        default=PLACEHOLDER_IP,
+        help="Local machine IP address, if necessary",
+    )
+    velocity_test.add_argument(
+        "--sdk_token",
+        dest="sdk_token",
+        type=str,
+        default=PLACEHOLDER_IP,
+        help="API token to use robot's SDK, if necessary",
+    )
+    velocity_test.add_argument(
+        "--robot_id",
+        dest="robot_id",
+        type=str,
+        default=BOT_ID,
+        help="Reforge robot ID, if necessary",
+    )
+    velocity_test.add_argument(
+        "--freq",
+        dest="samp_freq",
+        type=float,
+        default=DEFAULT_ROBOT_FREQ,
+        help="Sampling frequency (>200 Hz, default: %(default)s)",
+    )
+    velocity_test.add_argument(
+        "--mdisp",
+        dest="max_disp",
+        type=float,
+        default=DEFAULT_MAX_DISP,
+        help="Max displacement for trajectory (default: %(default)s rad)",
+    )
+    velocity_test.add_argument(
+        "--mvel",
+        dest="max_vel",
+        type=float,
+        default=DEFAULT_MAX_VEL,
+        help="Max velocity for trajectory (default: %(default)s rad/s)",
+    )
+    velocity_test.add_argument(
+        "--macc",
+        dest="max_acc",
+        type=float,
+        default=DEFAULT_MAX_ACC,
+        help="Max acceleration for trajectory (default: %(default)s rad/s^2) ",
+    )
+    velocity_test.add_argument(
+        "--scale_unshaped_speed",
+        dest="scale_unshaped_speed",
+        type=float,
+        default=1.0,
+        help="Scaling factor applied to unshaped velocity/acceleration sweep (default: %(default)s)",
+    )
+    velocity_test.add_argument(
+        "--scale_shaped_speed",
+        dest="scale_shaped_speed",
+        type=float,
+        default=2,
+        help="Scaling factor applied to shaped velocity/acceleration sweep (default: %(default)s)",
+    )
+    velocity_test.add_argument(
+        "--tcp_payload",
+        dest="tcp_payload",
+        type=float,
+        default=DEFAULT_TCP_PAYLOAD,
+        help="TCP payload in the same units as your URDF inertia (default: %(default)s [urdf units (e.g., kg)])",
+    )
+    velocity_test.add_argument(
+        "--tcp_payload_com_x",
+        dest="tcp_payload_com_x",
+        type=float,
+        default=0.0,
+        help="TCP payload COM x [m] in TCP frame (default: %(default)s)",
+    )
+    velocity_test.add_argument(
+        "--tcp_payload_com_y",
+        dest="tcp_payload_com_y",
+        type=float,
+        default=0.0,
+        help="TCP payload COM y [m] in TCP frame (default: %(default)s)",
+    )
+    velocity_test.add_argument(
+        "--tcp_payload_com_z",
+        dest="tcp_payload_com_z",
+        type=float,
+        default=0.0,
+        help="TCP payload COM z [m] in TCP frame (default: %(default)s)",
+    )
+
     # ======================== Route: fine_tune =====================================
     fine_tune = sub.add_parser(
         "fine_tune",
@@ -514,6 +638,8 @@ def route_user_input(args: argparse.Namespace) -> None:
         args.tcp_payload_com_y if hasattr(args, "tcp_payload_com_y") else 0.0,
         args.tcp_payload_com_z if hasattr(args, "tcp_payload_com_z") else 0.0,
     ]
+    if hasattr(args, "sysid_type"):
+        args.sysid_type = SysIdType(args.sysid_type)
 
     if args.route == "connect_test":
         try:
@@ -534,6 +660,13 @@ def route_user_input(args: argparse.Namespace) -> None:
             )
     elif args.route == "calibrate":
         try:
+            if args.sysid_type == SysIdType.FEEDFORWARD:
+                if args.identify_api_token is None:
+                    raise ValueError(
+                        "--identify_api_token is required when --type feedforward."
+                    )
+                if args.robot_id == "" or args.robot_id is None:
+                    raise ValueError("--robot_id is required when --type feedforward.")
             robot_interface = RobotInterface(
                 robot_ip=args.robot_ip,
                 tcp_payload=args.tcp_payload,
@@ -541,6 +674,7 @@ def route_user_input(args: argparse.Namespace) -> None:
                 local_ip=args.local_ip,
                 sdk_token=args.sdk_token,
                 robot_id=args.robot_id,
+                api_token=args.identify_api_token,
             )
 
             data_folder = robot_interface.calibrate_robot(
@@ -551,6 +685,7 @@ def route_user_input(args: argparse.Namespace) -> None:
                 max_disp=args.max_disp,
                 max_vel=args.max_vel,
                 max_acc=args.max_acc,
+                sysid_type=args.sysid_type,
                 nV=args.num_angles,
                 nR=args.num_radii,
                 min_angle=args.min_angle,
@@ -563,6 +698,7 @@ def route_user_input(args: argparse.Namespace) -> None:
                 num_sine_cycles=args.sine_cycles,
                 dwell_btw_sine=args.dwell,
                 start_pose=args.start_pose,
+                start_axis=args.start_axis,
                 home_sign=args.home_sign,
                 imu_to_tcp_x=args.imu_to_tcp_x,
                 imu_to_tcp_y=args.imu_to_tcp_y,
@@ -621,6 +757,28 @@ def route_user_input(args: argparse.Namespace) -> None:
                 num_axes_to_test=args.num_axes_to_test,
                 # Thread CLI override through to shaping logic.
                 num_shapers=args.num_shapers,
+            )
+
+        except Exception:
+            traceback.print_exc()
+    elif args.route == "velocity_test":
+        try:
+            robot_interface = RobotInterface(
+                robot_ip=args.robot_ip,
+                tcp_payload=args.tcp_payload,
+                tcp_payload_com=tcp_payload_com,
+                local_ip=args.local_ip,
+                sdk_token=args.sdk_token,
+                robot_id=args.robot_id,
+            )
+
+            return run_velocity_test(
+                robot_interface=robot_interface,
+                local_data_location=args.data_folder,
+                sample_time=1 / args.samp_freq,
+                max_disp=args.max_disp,
+                scale_shaped_speed=args.scale_shaped_speed,
+                scale_unshaped_speed=args.scale_unshaped_speed,
             )
 
         except Exception:

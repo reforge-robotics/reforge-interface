@@ -18,24 +18,22 @@ from reforge_core.util.utility import (
     DEFAULT_FREQ_SPACING,
     DEFAULT_DWELL_TIME,
     DEFAULT_SINE_CYCLES,
+    DEFAULT_MAX_DISP,
+    DEFAULT_MAX_VEL,
+    DEFAULT_MAX_ACC,
+    DEFAULT_SYSID_ANGLES,
+    DEFAULT_SYSID_RADII,
+    DEFAULT_FIRST_POSE,
+    DEFAULT_ROBOT_FREQ,
+    SysIdType,
 )
 from reforge_core.util.trajectory import Trajectory
 
 M_PI = math.pi
-DEFAULT_MAX_DISP = M_PI / 18.0  # [rad]
-DEFAULT_MAX_VEL = 18.0  # [rad/s]
-DEFAULT_MAX_ACC = 2.0  # [rad/s^2]
-DEFAULT_SYSID_ANGLES = (
-    8  # number of joint angles (from the stretched horizontal position)
-)
-DEFAULT_SYSID_RADII = (
-    4  # number of radii (from the center of the robot base to the end-effector)
-)
 DEFAULT_HOME_SIGN = 1  # sign of shoulder joint angle at home position
-DEFAULT_FIRST_POSE = 0  # starting pose index for calibration (enables resuming calibration from a specific pose)
+DEFAULT_FIRST_AXIS = 0  # starting joint index for commanded-axis ranges
 DEFAULT_AXES_COMMANDED = 3  # number of axes to command during calibration
 PLACEHOLDER_IP = "sim"  # placeholder IP for systems not requiring IP addresses
-DEFAULT_ROBOT_FREQ = 200  # [Hz] - Default frequency for robot control
 
 # Other constants - edit as necessary
 DEFAULT_MIN_CALIBRATION_ANGLE = 0.0  # [rad] - minimum angle from horizontal for the calibration pose with minimum angle
@@ -70,10 +68,15 @@ class DataRecorder:
 
     Preconditions:
         None.
+    Returns:
+        `None`.
     """
 
     def __init__(self) -> None:
         """Initialize empty data buffers for recording.
+
+        Returns:
+            `None`.
 
         Side Effects:
             Allocates empty lists for all data fields.
@@ -84,20 +87,43 @@ class DataRecorder:
         Preconditions:
             None.
         """
-        self.inputJointPositions: list[list[float]] = []
-        self.outputJointPositions: list[list[float]] = []
-        self.outputCurrents: list[list[float]] = []
-        self.outputTcpAccelerations: list[list[float]] = []
-        self.servoTime: list[float] = []
-        self.imuTime: list[float] = []
-        self.quaternionTime: list[float] = []
-        self.quaternion: list[list[float]] = []
+        self.inputJointPositions: list[list[float]] = (
+            []
+        )  # Commanded joint positions per servo sample [rad].
+        self.outputJointPositions: list[list[float]] = (
+            []
+        )  # Measured joint positions per servo sample [rad].
+        self.outputCurrents: list[list[float]] = (
+            []
+        )  # Joint effort or current measurements per servo sample [SDK units].
+        self.outputTcpAccelerations: list[list[float]] = (
+            []
+        )  # Concatenated TCP linear acceleration and angular velocity samples [m/s^2 and rad/s].
+        self.servoTime: list[float] = (
+            []
+        )  # Servo-loop timestamps aligned with joint command rows [s].
+        self.imuTime: list[float] = (
+            []
+        )  # IMU timestamps aligned with acceleration rows [s].
+        self.quaternionTime: list[float] = (
+            []
+        )  # Orientation timestamps aligned with quaternion rows [s].
+        self.quaternion: list[list[float]] = (
+            []
+        )  # TCP orientation samples as quaternions `[w, x, y, z]` [-].
 
         # Static parameters
-        self.outputMassDiagonals: list[list[float]] = []
-        self.endIndices: list[int] = []
-        self.inputV: list[float] = []
-        self.inputR: list[float] = []
+        self.outputMassDiagonals: list[list[float]] = (
+            []
+        )  # Diagonal mass/inertia terms at the run start [URDF inertia units].
+        self.endIndices: list[int] = (
+            []
+        )  # Segment end indices emitted by the active trajectory generator [samples].
+        self.inputV: list[float] = []  # Calibration pose angle from horizontal [rad].
+        self.inputR: list[float] = []  # Calibration pose radius from base [m].
+        self.compensationEnabled: bool = (
+            False  # Whether the stored command was modified by joint compensation.
+        )
 
     def reset(self) -> None:
         """Clear all recorded data buffers.
@@ -126,6 +152,7 @@ class DataRecorder:
         self.endIndices.clear()
         self.inputV.clear()
         self.inputR.clear()
+        self.compensationEnabled = False
 
 
 class Robot(ABC):
@@ -293,7 +320,7 @@ class Robot(ABC):
         max_acc: float = DEFAULT_MAX_ACC,
         bcb_runtime: float = DEFAULT_BCB_RUNTIME,
         ctrl_config: str = DEFAULT_CONFIG,
-        sysid_type: str = DEFAULT_SYSID_TYPE,
+        sysid_type: SysIdType | str = DEFAULT_SYSID_TYPE,
         nV: int = DEFAULT_SYSID_ANGLES,
         nR: int = DEFAULT_SYSID_RADII,
         min_angle: float = DEFAULT_MIN_CALIBRATION_ANGLE,
@@ -305,8 +332,9 @@ class Robot(ABC):
         sine_freq_spacing: float = DEFAULT_FREQ_SPACING,
         num_sine_cycles: int = DEFAULT_SINE_CYCLES,
         dwell_btw_sine: float = DEFAULT_DWELL_TIME,
-        start_pose: int = 0,
-        home_sign: int = 1,
+        start_pose: int = DEFAULT_FIRST_POSE,
+        start_axis: int = DEFAULT_FIRST_AXIS,
+        home_sign: int = DEFAULT_HOME_SIGN,
         imu_to_tcp_x: float = DEFAULT_IMU_TO_TCP_X,
         imu_to_tcp_y: float = DEFAULT_IMU_TO_TCP_Y,
         imu_to_tcp_z: float = DEFAULT_IMU_TO_TCP_Z,
@@ -321,7 +349,7 @@ class Robot(ABC):
             max_acc: Maximum acceleration [rad/s^2].
             bcb_runtime: Runtime for bang-coast-bang system ID [s].
             ctrl_config: Control configuration (`task` or `joint`).
-            sysid_type: System identification type (`bcb` or `sine`).
+            sysid_type: System identification workflow (`shaper`, `feedforward`, or `bcb`).
             nV: Number of angle positions.
             nR: Number of radius positions.
             min_angle: Minimum calibration angle from horizontal [rad].
@@ -329,6 +357,7 @@ class Robot(ABC):
             min_radius_scale: Minimum calibration radius scale.
             max_radius_scale: Maximum calibration radius scale.
             start_pose: Starting pose index.
+            start_axis: Starting joint index for the commanded-axis block.
             home_sign: Sign of shoulder joint angle at home position.
             imu_to_tcp_x: X component of IMU->TCP translation [m].
             imu_to_tcp_y: Y component of IMU->TCP translation [m].
@@ -543,7 +572,10 @@ def get_polar_coordinates(
 
 
 def store_recorder_data_in_data_folder(
-    recorder: DataRecorder, run_index: int, move_axis: int, data_folder: str
+    recorder: DataRecorder,
+    run_index: int,
+    move_axis: int,
+    data_folder: str,
 ) -> None:
     """Persist recorder data to motion and static CSV files.
 
@@ -603,7 +635,6 @@ def store_recorder_data_in_data_folder(
             recorder.quaternionTime[i],
             *recorder.quaternion[i],
         ]
-
         motion_data_rows.append(row)
 
     # Create filename
@@ -626,6 +657,7 @@ def store_recorder_data_in_data_folder(
         "input_v",
         "input_r",
         *[f"j{i}_inertia" for i in range(len(recorder.outputMassDiagonals))],
+        "compensation_enabled",
         *[
             f"end_index_{i}" for i in range(len(recorder.endIndices))
         ],  # (unknown size) -- must be the last elements
@@ -637,6 +669,7 @@ def store_recorder_data_in_data_folder(
             *recorder.inputV,
             *recorder.inputR,
             *recorder.outputMassDiagonals,
+            int(recorder.compensationEnabled),
             *recorder.endIndices,
         ]
     )
@@ -664,6 +697,7 @@ def store_parameters_in_data_folder(
     num_joints: int,
     sample_time: float,
     start_pose: int,
+    start_axis: int,
     shoulder_len: float,
     base_height: float,
     robot_name: str,
@@ -675,6 +709,7 @@ def store_parameters_in_data_folder(
     imu_to_tcp_x: float = DEFAULT_IMU_TO_TCP_X,
     imu_to_tcp_y: float = DEFAULT_IMU_TO_TCP_Y,
     imu_to_tcp_z: float = DEFAULT_IMU_TO_TCP_Z,
+    joint_controller_id_completed: bool = False,
 ) -> None:
     """Persist identification parameters to a CSV file.
 
@@ -685,6 +720,7 @@ def store_parameters_in_data_folder(
         num_joints: Number of robot joints.
         sample_time: Sampling time [s].
         start_pose: Starting pose index.
+        start_axis: Starting joint index for commanded-axis block.
         shoulder_len: Shoulder link length [m].
         base_height: Base height [m].
         robot_name: Robot name identifier.
@@ -696,6 +732,7 @@ def store_parameters_in_data_folder(
         imu_to_tcp_x: X component of IMU->TCP translation [m].
         imu_to_tcp_y: Y component of IMU->TCP translation [m].
         imu_to_tcp_z: Z component of IMU->TCP translation [m].
+        joint_controller_id_completed: Whether the joint-controller ID phase completed [flag].
 
     Returns:
         `None`.
@@ -729,6 +766,7 @@ def store_parameters_in_data_folder(
         "num_joints",
         "sample_time",
         "start_pose",
+        "start_axis",
         "shoulder_len",
         "base_height",
         "robot_name",
@@ -739,6 +777,7 @@ def store_parameters_in_data_folder(
         "imu_to_tcp_x",
         "imu_to_tcp_y",
         "imu_to_tcp_z",
+        "joint_controller_id_completed",
     ]
 
     parameter_data_rows = []
@@ -762,6 +801,7 @@ def store_parameters_in_data_folder(
             num_joints,
             sample_time,
             start_pose,
+            start_axis,
             shoulder_len,
             base_height,
             robot_name,  # string
@@ -772,6 +812,7 @@ def store_parameters_in_data_folder(
             imu_to_tcp_x,
             imu_to_tcp_y,
             imu_to_tcp_z,
+            int(joint_controller_id_completed),
         ]
     )
 

@@ -1,0 +1,46 @@
+[build-system]
+requires = [
+    "setuptools>=68",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reforge-interface"
+version = "0.1.0"
+description = "Robot adapter layer for Reforge calibration and identification workflows."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "Reforge Robotics", email = "info@reforgerobotics.com" }]
+dependencies = [
+    "numpy<2",
+    "reforge-core",
+]
+
+[project.optional-dependencies]
+ros = [
+    "pydantic",
+]
+dev = [
+    "pytest",
+    "ruff",
+    "black==24.1.1",
+]
+
+[project.scripts]
+reforge-robot = "robot.run:main"
+
+[tool.setuptools]
+packages = ["robot"]
+package-dir = { "robot" = "." }
+include-package-data = false
+
+[tool.setuptools.package-data]
+robot = [
+    "urdf/*.urdf",
+    "urdf/**/*.urdf",
+    "urdf/**/*.xacro",
+    "urdf/**/*.stl",
+    "urdf/**/*.dae",
+]
