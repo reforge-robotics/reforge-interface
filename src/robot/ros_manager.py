@@ -8,6 +8,7 @@ import rclpy  # noqa: F401
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.timer import Timer
 
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from sensor_msgs.msg import JointState, Imu
@@ -196,8 +197,12 @@ class JointTrajectoryController(Node):
 
         # Timer to publish joint trajectory points and immediately sample data at Ts
         self.index = 0
-        self.timer = None  # Active publish timer after sensors are ready.
-        self._start_timer = None  # Startup timer that waits for sensor readiness.
+        self.timer: Optional[Timer] = (
+            None  # Active publish timer after sensors are ready.
+        )
+        self._start_timer: Optional[Timer] = (
+            None  # Startup timer that waits for sensor readiness.
+        )
         self._waiting_logged = False  # Log once while waiting for readiness.
         self._start_timer = self.create_timer(0.05, self._wait_for_ready_start)
         self._publish_period = Ts  # Publish period [s] used once ready.
