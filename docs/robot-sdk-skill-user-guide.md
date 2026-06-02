@@ -8,7 +8,7 @@ This guide explains how to let AI agents automatically integrate a robot SDK int
 - Add your robot URDF to `src/robot/urdf/`.
 
 2. Robot SDK
-- Add your SDK dependency in `requirements.txt`, or
+- Add your SDK dependency in `src/robot/requirements.txt`, or
 - Add a local SDK package in the repo that can be imported by Python.
 
 3. Robot-specific values
@@ -66,7 +66,7 @@ If a telemetry field is unavailable, the field remains present with an empty val
 
 4. Trigger examples:
 - `Use robot-sdk-calibration to integrate my xArm SDK in this repo.`
-- `$robot-sdk-calibration integrate SDK from requirements.txt and urdf/my_robot.urdf`
+- `$robot-sdk-calibration integrate SDK from src/robot/requirements.txt and src/robot/urdf/my_robot.urdf`
 
 ## Claude Code skill setup
 
@@ -90,7 +90,7 @@ Integrate my robot SDK into src/robot/robot_interface.py for calibration.
 Context:
 - URDF path: src/robot/urdf/<my_robot>.urdf
 - SDK import: <sdk import path>
-- SDK install source: <requirements entry or local path>
+- SDK install source: <src/robot/requirements.txt entry or local path>
 - Robot IP mode: <ip or sim>
 - Units: <degrees|radians>
 - Home constants:

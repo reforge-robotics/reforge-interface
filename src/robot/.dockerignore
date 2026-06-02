@@ -1,0 +1,11 @@
+__pycache__/
+*.py[codz]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+data/*
+!data/README.md
+
+models/current/*
+!models/current/README.md

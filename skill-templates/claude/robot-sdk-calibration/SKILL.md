@@ -33,7 +33,7 @@ Use this skill to implement robot SDK support in `src/robot/robot_interface.py`.
 - TCP pose output `[x, y, z, qx, qy, qz, qw]`
 - `data_log` deque rows with required keys:
   - `cmd_time`, `input_positions`, `output_positions`, `velocities`, `efforts`, `imu_time`, `linear_acceleration`, `angular_velocity`, `orientation`
-6. Update dependency source (`requirements.txt` or local path reference).
+6. Update dependency source (`src/robot/requirements.txt` or local path reference).
 7. Validate with:
 - `python -m py_compile src/robot/robot_interface.py`
 - Search for unresolved markers: `rg "\{~\.~\}" src/robot/robot_interface.py`

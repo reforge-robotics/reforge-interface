@@ -1,16 +1,12 @@
-# {~.~} Include for robots that require ROS2 
+# {~.~} Include for robots that require ROS2
 # FROM ros:jazzy
-FROM ubuntu:24.04
+FROM python:3.11-slim-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=UTC
 
 RUN apt-get update && \
     apt-get install -y \
-      python3 \
-      python3-pip \
-      python3-venv \
-      python3-dev \
       build-essential \
       cmake \
       git \
@@ -18,7 +14,9 @@ RUN apt-get update && \
       wget \
       unzip \
       ca-certificates \
-      zlib1g-dev
+      zlib1g-dev \
+      libeigen3-dev \
+      libfftw3-dev
 
 # {~.~} Use ROS2 packages only when needed
 # RUN apt-get install -y \
@@ -28,33 +26,32 @@ RUN apt-get update && \
 #       ros-jazzy-builtin-interfaces \
 #       ros-jazzy-geometry-msgs \
 #       ros-jazzy-sensor-msgs \
-#       ros-jazzy-rclcpp 
+#       ros-jazzy-rclcpp
 
 RUN rm -rf /var/lib/apt/lists/*
 
-# {~.~} Change the name of the directory as needed
-RUN mkdir -p /control-box-bot/reforge-interface
-WORKDIR /control-box-bot/reforge-interface
+RUN mkdir -p /control-box-bot/reforge-interface/src/robot
+WORKDIR /control-box-bot/reforge-interface/src/robot
 
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-RUN python3 -m venv "$VIRTUAL_ENV"
+RUN python -m venv "$VIRTUAL_ENV"
 
-COPY requirements.txt pyproject.toml MANIFEST.in ./
+COPY requirements.txt pyproject.toml README.md ./
 RUN python -m pip install --no-cache-dir -r requirements.txt
 
 # {~.~} source ROS2 packages
 # RUN . /opt/ros/jazzy/setup.sh
 
 COPY . .
-RUN python -m pip install --no-cache-dir .
+RUN python -m pip install --no-cache-dir -e .
 
 # {~.~} Set environment variables for ROS2 and Python
-ENV PYTHONPATH=/control-box-bot/reforge-interface:/control-box-bot/reforge-interface/src
-ENV RMW_IMPLEMENTATION rmw_cyclonedds_cpp
+ENV PYTHONPATH=/control-box-bot/reforge-interface/src/robot
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 ENV CYCLONEDDS_URI=""
 ENV PYTHONUNBUFFERED=1
 
-# Enable core dumps for debugging
+# Enable core dumps for debugging.
 RUN echo 'ulimit -c unlimited' >> /etc/bash.bashrc
 ENV SEGFAULT_SIGNALS="all"

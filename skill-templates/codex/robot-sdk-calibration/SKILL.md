@@ -19,7 +19,7 @@ Implement robot SDK integration in `src/robot/robot_interface.py` for calibratio
 ## Workflow
 
 1. Verify SDK importability.
-- If the SDK is in `requirements.txt`, ensure import path matches package docs.
+- If the SDK is in `src/robot/requirements.txt`, ensure import path matches package docs.
 - If local package, ensure repo-relative install path works.
 
 2. Update robot constants in `src/robot/robot_interface.py`.
@@ -54,5 +54,5 @@ Implement robot SDK integration in `src/robot/robot_interface.py` for calibratio
 ## Output requirements
 
 - Modified `src/robot/robot_interface.py` with all required sections integrated.
-- Updated `requirements.txt` (if needed).
+- Updated `src/robot/requirements.txt` (if needed).
 - Brief summary listing SDK-specific assumptions and any unsupported telemetry fields.

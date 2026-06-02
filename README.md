@@ -11,29 +11,34 @@ Robot interface code for integrating external robot SDKs with Reforge calibratio
 - run identification / fine-tuning against Reforge Cloud,
 - and run vibration tests for controller evaluation.
 
-Core implementation lives in `src/robot/`.
+The robot package is defined and built from `src/robot/`. The repository root contains deployment scripts, skill templates, docs, and UI support files.
 
 ## Repository Layout
 
 ```text
 reforge-interface/
 ├── README.md
-├── requirements.txt
-├── pyproject.toml
+├── docker_scripts/              # wrappers for running the Docker image
+├── docs/                        # supporting docs
+├── skill-templates/             # agent skill templates
+├── ui-widget/                   # web widget support
 └── src/
     └── robot/
-        ├── run.py                 # CLI entrypoint
-        ├── robot_interface.py     # SDK integration target
-        ├── robot_base.py          # abstract base + defaults
-        ├── ros_manager.py         # optional ROS trajectory publisher
-        ├── urdf/                  # place robot URDF files here
-        └── data/                  # calibration outputs
+        ├── Dockerfile
+        ├── pyproject.toml       # robot package metadata
+        ├── requirements.txt     # robot runtime dependencies
+        ├── run.py               # CLI entrypoint
+        ├── robot_interface.py   # SDK integration target
+        ├── robot_base.py        # abstract base + defaults
+        ├── ros_manager.py       # optional ROS trajectory publisher
+        ├── urdf/                # place robot URDF files here
+        └── data/                # calibration outputs
 ```
 
 ## Quick Start
 
 1. Add your robot URDF to `src/robot/urdf/`.
-2. Add your robot SDK dependency to `requirements.txt` (or vendor it into the repo).
+2. Add your robot SDK dependency to `src/robot/requirements.txt` or make it importable in the environment.
 3. Integrate the SDK in `src/robot/robot_interface.py` by replacing all `# {~.~}` markers.
 4. Validate the integration.
 
@@ -41,59 +46,61 @@ reforge-interface/
 python3 -m py_compile src/robot/robot_interface.py
 rg "\{~\.~\}" src/robot/robot_interface.py
 ```
-5. Install dependencies (venv or docker [on the robot control box]).
+
+5. Install the robot package from `src/robot`.
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-source /opt/ros/jazzy/setup.bash # Your ROS installation
-pip install -r requirements.txt
-pip install -e .
-```
-or 
-```bash
-ssh <user>@<control_box_ip>
-git clone https://github.com/reforge-robotics/reforge-interface.git
-cd reforge-interface/
-git checkout standardbots-sdk
-docker build -t reforge-interface:latest .
+source /opt/ros/jazzy/setup.bash # If your robot integration needs ROS.
+pip install -r src/robot/requirements.txt
+pip install -e src/robot
 ```
 
+Or build the Docker image from the robot package directory:
+
+```bash
+docker build -t reforge-interface:latest src/robot
+```
 
 ## 5-Minute Happy Path
 
 Use this when you want a fast first calibration run with minimal options.
 
 ```bash
-# 1) Add your robot URDF (example filename)
+# 1) Add your robot URDF.
 cp /path/to/my_robot.urdf src/robot/urdf/my_robot.urdf
 
-# 2) Integrate SDK in src/robot/robot_interface.py
+# 2) Integrate SDK in src/robot/robot_interface.py.
 #    - set URDF_PATH="urdf/my_robot.urdf"
 #    - replace all # {~.~} markers
 
-# 3) Validate interface wiring
+# 3) Validate interface wiring.
 python3 -m py_compile src/robot/robot_interface.py
 rg "\{~\.~\}" src/robot/robot_interface.py
 
-# 4) Install
+# 4) Install.
 python3 -m venv .venv
 source .venv/bin/activate
-source /opt/ros/jazzy/setup.bash # Your ROS installation
-pip install -r requirements.txt
-pip install -e .
+source /opt/ros/jazzy/setup.bash # If your robot integration needs ROS.
+pip install -r src/robot/requirements.txt
+pip install -e src/robot
 
-# 5) Test connection (no trajectory execution)
+# 5) Test connection without trajectory execution.
 python3 -m robot.run connect_test <robot_ip> --local_ip <local_ip> --sdk_token <token> --robot_id <robot_id>
 
-# docker on the control box
+# 6) Run calibration.
+python3 -m robot.run calibrate <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200
+```
+
+Docker wrappers are available for robot control boxes:
+
+```bash
+docker build -t reforge-interface:latest src/robot
+
 chmod +x docker_scripts/run_connect_test.sh
 ./docker_scripts/run_connect_test.sh <robot_ip> --local_ip <local_ip> --sdk_token <token> --robot_id <robot_id>
 
-# 6) Run calibration
-python3 -m robot.run calibrate <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200
-
-# docker on the control box
 chmod +x docker_scripts/run_calibrate.sh
 ./docker_scripts/run_calibrate.sh <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200
 ```
@@ -128,23 +135,23 @@ Use module invocation after editable install:
 python3 -m robot.run --help
 ```
 
+The package also exposes a console script:
+
+```bash
+reforge-robot --help
+```
+
 ### Connection test
 
 ```bash
 python3 -m robot.run connect_test <robot_ip> --local_ip <local_ip> --sdk_token <token> --robot_id <robot_id>
-```
-or 
-```bash
 ./docker_scripts/run_connect_test.sh <robot_ip> --local_ip <local_ip> --sdk_token <token> --robot_id <robot_id>
 ```
 
 ### Calibration
 
 ```bash
-python3 -m robot.run calibrate <robot_ip> --robot_id <robot_id> --freq 200
-```
-or 
-```bash
+python3 -m robot.run calibrate <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200
 ./docker_scripts/run_calibrate.sh <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200
 ```
 
@@ -154,29 +161,14 @@ Optional cloud actions immediately after calibration:
 python3 -m robot.run calibrate <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200 --identify <api_token> --reforge_robot_id <reforge_robot_id>
 python3 -m robot.run calibrate <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200 --fine_tune <api_token> --reforge_robot_id <reforge_robot_id>
 ```
-or 
-```bash
-./docker_scripts/run_calibrate.sh <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200 --identify <api_token> --reforge_robot_id <reforge_robot_id>
-./docker_scripts/run_calibrate.sh <robot_ip> --sdk_token <token> --robot_id <robot_id> --freq 200 --fine_tune <api_token> --reforge_robot_id <reforge_robot_id>
-```
 
-### Identification (manual)
+### Identification and fine-tuning
 
 ```bash
 python3 -m robot.run identify <api_token> <reforge_robot_id> <data_folder>
-```
-or 
-```bash
 ./docker_scripts/run_identify.sh <api_token> <reforge_robot_id> <data_folder>
-```
 
-### Fine-tuning (manual)
-
-```bash
 python3 -m robot.run fine_tune <api_token> <reforge_robot_id> <data_folder>
-```
-or 
-```bash
 ./docker_scripts/run_fine_tune.sh <api_token> <reforge_robot_id> <data_folder>
 ```
 
@@ -184,9 +176,6 @@ or
 
 ```bash
 python3 -m robot.run vibration_test <robot_ip> <data_folder> --robot_id <robot_id>
-```
-or 
-```bash
 ./docker_scripts/run_vibration_test.sh <robot_ip> <data_folder> --robot_id <robot_id>
 ```
 

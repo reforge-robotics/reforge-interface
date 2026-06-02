@@ -10,12 +10,15 @@ The calibration flow expects strict method signatures, units, and logged data sc
 
 ## Key Files
 
-- `src/robot/robot_interface.py`: SDK-specific implementation target.
-- `src/robot/robot_base.py`: Abstract robot interface, defaults, and shared utilities.
-- `src/robot/run.py`: CLI routes (`connect_test`, `calibrate`, `identify`, `fine_tune`, `vibration_test`).
-- `src/robot/ros_manager.py`: Optional ROS-based trajectory publishing helper.
-- `src/robot/urdf/`: Robot URDF files.
-- `src/robot/data/`: Output data from calibration runs.
+- `pyproject.toml`: Robot package metadata.
+- `requirements.txt`: Robot runtime dependencies and SDK additions.
+- `Dockerfile`: Container build for the robot package.
+- `robot_interface.py`: SDK-specific implementation target.
+- `robot_base.py`: Abstract robot interface, defaults, and shared utilities.
+- `run.py`: CLI routes (`connect_test`, `calibrate`, `identify`, `fine_tune`, `vibration_test`).
+- `ros_manager.py`: Optional ROS-based trajectory publishing helper.
+- `urdf/`: Robot URDF files.
+- `data/`: Output data from calibration runs.
 
 ## Integration Contract
 
@@ -45,9 +48,9 @@ If a field is unavailable, keep the key and set an empty value.
 
 ## How To Integrate a New SDK
 
-1. Add URDF file to `src/robot/urdf/`.
+1. Add URDF file to `urdf/`.
 2. Add SDK dependency in `requirements.txt` (or make local package importable).
-3. Open `src/robot/robot_interface.py` and replace all `# {~.~}` sections.
+3. Open `robot_interface.py` and replace all `# {~.~}` sections.
 4. Set robot constants:
 - `BOT_ID`, `URDF_PATH`, `ROBOT_MAX_FREQ`
 - `HOME_SHOULDER_ANGLE`, `HOME_XYZ`, `HOME_QUAT`, `HOME_JOINTS`, `HOME_POSE_OVERRIDE`
@@ -70,7 +73,11 @@ If a field is unavailable, keep the key and set an empty value.
 ### 5-Minute Adapter Happy Path
 
 ```bash
-# From repository root
+# From repository root.
+pip install -r src/robot/requirements.txt
+pip install -e src/robot
+
+# Or from this folder.
 pip install -r requirements.txt
 pip install -e .
 
@@ -90,6 +97,20 @@ python -m robot.run connect_test <robot_ip> --local_ip <local_ip> --sdk_token <t
 
 # 5) Calibration run
 python -m robot.run calibrate <robot_ip> --robot_id <robot_id> --freq 200
+```
+
+### Build Docker image
+
+From the repository root:
+
+```bash
+docker build -t reforge-interface:latest src/robot
+```
+
+From this folder:
+
+```bash
+docker build -t reforge-interface:latest .
 ```
 
 ### Validate adapter
