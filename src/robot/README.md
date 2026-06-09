@@ -74,6 +74,33 @@ IMU and arm samples in `RobotInterface`.
 Only override `create_robot_imu_recorder()` when explicitly supporting a
 vendor-native IMU with `use_reforge_imu=False`.
 
+## Trossen WidowX AI
+
+The checked-in adapter targets a WidowX AI follower arm using:
+
+- `trossen-arm==1.10.0`
+- `trossen_arm.Model.wxai_v0`
+- `trossen_arm.StandardEndEffector.wxai_v0_follower`
+- the Reforge IMU over USB
+- a maximum command/recording rate of 200 Hz
+
+The bundled `urdf/trossen/wxai_follower.urdf` is derived from Trossen's BSD-3
+licensed follower description. Its gripper joints are fixed so the dynamics
+model has the same six joints as `get_robot_output().joint.arm`. Fixed
+end-effector and camera masses are folded into the terminal arm link.
+
+Before running hardware motion, verify these values in `robot_interface.py`:
+
+- `TROSSEN_END_EFFECTOR` matches the installed base/leader/follower hardware.
+- `FULL_STRETCH_JOINTS` is collision-free in the actual cell.
+- `MAX_ROBOT_JOINTS_BANDWIDTH` matches measured or vendor-provided behavior.
+- `DEFAULT_TCP_PAYLOAD` and the CLI payload arguments describe payloads added
+  beyond the standard follower end effector represented in the URDF.
+
+The Trossen driver and controller firmware should use compatible release
+versions. The pinned Python package is 1.10.0; confirm the controller firmware
+before connection testing.
+
 ## Commands
 
 ### 5-Minute Adapter Happy Path

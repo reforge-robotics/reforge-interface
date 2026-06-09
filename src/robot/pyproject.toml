@@ -16,6 +16,8 @@ authors = [{ name = "Reforge Robotics", email = "info@reforgerobotics.com" }]
 dependencies = [
     "numpy<2",
     "reforge-core",
+    "scipy",
+    "trossen-arm==1.10.0",
 ]
 
 [project.optional-dependencies]
@@ -43,4 +45,6 @@ robot = [
     "urdf/**/*.xacro",
     "urdf/**/*.stl",
     "urdf/**/*.dae",
+    "urdf/**/LICENSE",
+    "urdf/**/*.png",
 ]

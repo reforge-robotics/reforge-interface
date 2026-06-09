@@ -134,6 +134,10 @@ adapter should not implement its own combined logger.
 
 See `src/robot/README.md` for the detailed contract.
 
+The current concrete adapter targets a Trossen WidowX AI follower with the
+Reforge USB IMU. See the Trossen section in `src/robot/README.md` for firmware,
+end-effector, URDF, and hardware validation requirements.
+
 ## CLI Usage
 
 Use module invocation after editable install:

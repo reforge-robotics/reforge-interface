@@ -3,56 +3,38 @@
 # Description: Specific code to create calibration interface for any Python Robot.
 # Version: 2.0
 
-import numpy as np
 from importlib.resources import files, as_file
 from typing import Optional, Sequence
+
+import numpy as np
+import trossen_arm
+from scipy.spatial.transform import Rotation
+
 from reforge_core.hw_interfaces.arm_client import ArmClient
 from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
 
-# ------NOTES-----
-# 1. Where you see the #{~.~} symbol, you need to make a change. Use Ctrl+F to find all instances.
-# The general flow will be the following:
-#   a. Import the robot's Python SDK
-#   b. Change the BOT_ID, URDF_PATH, ROBOT_MAX_FREQ, and
-#      FULL_STRETCH_SHOULDER_ANGLE, FULL_STRETCH_XYZ, FULL_STRETCH_QUAT, and FULL_STRETCH_JOINTS constants
-#   c. Change the IS_DEGREES constant if the robot uses degrees instead of radians
-#   d. Change the code in the REQUIRED METHODS section to use the robot's SDK
-# 2. The REQUIRED METHODS section contains methods that must be implemented for the robot to work with the
-#    system identification and calibration workflow. The rest of the methods are pre-defined and should not
-#    need to be changed.
-# 3. The code contains examples for Standard Bots' robots, which can be used as a reference.
-# 4. If you opt to use ROS for publishing joint positions, you can use the ros_manager.py file
-# in the robots folder. See detailed instructions in that file.
-
-# {~.~} Import robot's Python SDK with required modules here
-
-# ------------------------------- EXAMPLE -------------------------------
-# from standardbots import StandardBotsRobot, models
-# https://docs.standardbots.com/docs/latest/-/rest/intro/configuring-sdk
-# -----------------------------------------------------------------------
-
-
-# User constants - EDITS REQUIRED
-BOT_ID = ""  # {~.~} [CHANGE TO ROBOT's ID, IF NECESSARY] - can also enter as CLI argument (see run.py --help)
-URDF_PATH = "urdf/test_robot.urdf"  # {~.~} [CHANGE TO YOUR ROBOT'S URDF FILE PATH]
-ROBOT_MAX_FREQ = 250  # {~.~} [CHANGE TO ROBOT'S MAX SAMPLING FREQUENCY] in [Hz]
+# Trossen WidowX AI follower configuration.
+BOT_ID = "wxai_v0"
+URDF_PATH = "urdf/trossen/wxai_follower.urdf"
+ROBOT_MAX_FREQ = 200  # Trossen's documented high-rate recording frequency [Hz].
+TROSSEN_MODEL = trossen_arm.Model.wxai_v0
+TROSSEN_END_EFFECTOR = trossen_arm.StandardEndEffector.wxai_v0_follower
+TROSSEN_INTERPOLATION_SPACE = trossen_arm.InterpolationSpace.joint
+TROSSEN_DEFAULT_MOVE_TIME_S = 2.0
 
 # Fully stretched position of the robot for calibration.
-FULL_STRETCH_XYZ = [1.28989, 0.36866, 0.171]  # {~.~} [m]
-FULL_STRETCH_QUAT = [0.499, 0.499, 0.499, 0.499]  # {~.~} [1]
-FULL_STRETCH_JOINTS = [0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0]  # {~.~} [rad]
-FULL_STRETCH_POSE_OVERRIDE = None  # {~.~} list of home pose (xyz and quaternion) to override additional height not in base height
+FULL_STRETCH_XYZ = [0.517762, 0.0, 0.4275]  # Fallback from the bundled URDF [m].
+FULL_STRETCH_QUAT = [0.0, 0.0, 0.0, 1.0]
+FULL_STRETCH_JOINTS = [0.0, np.pi / 2, np.pi / 2, 0.0, 0.0, 0.0]
+FULL_STRETCH_POSE_OVERRIDE = None
 
 # General constants
-IS_DEGREES = False  # {~.~} [CHANGE TO TRUE IF ROBOT USES DEGREES]
-DATA_LOCATION_PREFIX = "src/robot/data"  # {~.~} [CHANGE TO LOCATION DESIRED - will be robot/DATA_LOCATION_PREFIX/*]
-DEFAULT_TCP_PAYLOAD = 0.0  # {~.~} [CHANGE IF THE DEFAULT PAYLOAD IS NON_ZERO]
+IS_DEGREES = False
+DATA_LOCATION_PREFIX = "src/robot/data"
+DEFAULT_TCP_PAYLOAD = 0.0
 
-MAX_ROBOT_JOINTS_BANDWIDTH = (
-    5.0  # {~.~} Servo motor bandwidth. Leave as is if you don't know [Hz]
-)
+MAX_ROBOT_JOINTS_BANDWIDTH = 5.0
 
-# {~.~} IMU information
 USE_REFORGE_IMU = True
 DEFAULT_IMU_COMM_MODE = "usb"
 DEFAULT_IMU_RECORD_FREQUENCY_HZ = ROBOT_MAX_FREQ
@@ -124,8 +106,9 @@ class RobotInterface(ArmClient):
             The URDF file is available and the SDK is installed.
         """
         super().__init__(
-            name="My Robot", recording_data_frequency_hz=ROBOT_MAX_FREQ
-        )  # {~.~} [Edit with your robot's name and sampling frequency]
+            name="Trossen WidowX AI Follower",
+            recording_data_frequency_hz=ROBOT_MAX_FREQ,
+        )
 
         self.max_sampling_frequency_hz = ROBOT_MAX_FREQ
         self.data_folder_prefix = DATA_LOCATION_PREFIX
@@ -163,42 +146,21 @@ class RobotInterface(ArmClient):
         self.reforge_api_token = api_token
         try:
             if robot_ip != "sim":
-                # {~.~} Instantiate live robot mode
-                self.robot = None  # [CHANGE THIS LINE]
-
-                # ------------------- EXAMPLE --------------------
-                # self.robot = StandardBotsRobot(
-                #     url=robot_ip,
-                #     token=sdk_token,
-                #     robot_kind=StandardBotsRobot.RobotKind.Live,
-                # )
-                # ------------------------------------------------
-
-                # {~.~} Enable ROS control, if necessary
-                # [YOUR CODE HERE]
-
-                # ------------------------------ EXAMPLE -------------------------------
-                # with self.robot.connection():
-                #     ## Set teleoperation/ROS control state
-                #     self.robot.ros.control.update_ros_control_state(
-                #         models.ROSControlUpdateRequest(
-                #             action=models.ROSControlStateEnum.Enabled,
-                #             # to disable: action=models.ROSControlStateEnum.Disabled,
-                #         )
-                #     )
-
-                #     # Get teleoperation state
-                #     self.state = self.robot.ros.status.get_ros_control_state().ok()
-                #     # Enable the robot, make sure the E-stop is released before enabling
-                #     print("Enabling live robot...")
-                # -----------------------------------------------------------------------
-
-                # {~.~} Unbrake the robot if not operational
-                # [YOUR CODE HERE]
-
-                # --------------- EXAMPLE -----------------
-                # self.robot.movement.brakes.unbrake().ok()
-                # -----------------------------------------
+                # Trossen's driver does not use the local IP or SDK token.
+                _ = local_ip, sdk_token
+                self.robot = trossen_arm.TrossenArmDriver()
+                self.robot.configure(
+                    TROSSEN_MODEL,
+                    TROSSEN_END_EFFECTOR,
+                    robot_ip,
+                    False,
+                )
+                self.robot.set_arm_modes(trossen_arm.Mode.position)
+                print(
+                    "Connected to Trossen arm "
+                    f"(driver={self.robot.get_driver_version()}, "
+                    f"controller={self.robot.get_controller_version()})."
+                )
 
                 # Set ID for robot
                 self.id = robot_id
@@ -291,7 +253,31 @@ class RobotInterface(ArmClient):
         """
         return self._urdf_path
 
-    # {~.~} REQUIRED METHODS
+    def _validate_joint_target(
+        self, target_joints: np.ndarray | list[float]
+    ) -> list[float]:
+        """Return a finite six-joint target in Trossen's native radian units."""
+        joints = np.asarray(target_joints, dtype=float)
+        if joints.shape != (self.num_joints,):
+            raise ValueError(
+                f"Expected {self.num_joints} joint targets, received {joints.shape}."
+            )
+        if not np.all(np.isfinite(joints)):
+            raise ValueError("Joint targets must contain only finite values.")
+        if IS_DEGREES:
+            joints = np.rad2deg(joints)
+        return joints.tolist()
+
+    @staticmethod
+    def _goal_time_from_speed(speed: float) -> float:
+        """Map the interface speed percentage to Trossen's goal duration."""
+        speed_value = float(speed)
+        if not 0.0 < speed_value <= 100.0:
+            raise ValueError("speed must be in the range (0, 100].")
+        return float(
+            np.clip(TROSSEN_DEFAULT_MOVE_TIME_S * 50.0 / speed_value, 0.2, 10.0)
+        )
+
     def command_move_j(
         self,
         target_joints: np.ndarray | list[float],
@@ -311,22 +297,13 @@ class RobotInterface(ArmClient):
             An integer status code from the robot's command interface, if applicable.
             If the robot does not provide a status code, return 0 for success or raise an exception for failure.
         """
-        if IS_DEGREES:
-            target_joints = list(np.rad2deg(angle) for angle in target_joints)
-
         arm = self._require_connected_arm()
-        # ------------------------------------ EXAMPLE -------------------------------------
-        # update_request = models.ArmPositionUpdateRequest(
-        #     kind=models.ArmPositionUpdateRequestKindEnum.JointRotation,
-        #     joint_rotation=models.ArmJointRotations(
-        #         joints=target_joint)
-        # )
-
-        # response = arm.movement.position.set_arm_position(body=update_request).ok()
-        # ----------------------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        arm.set_arm_positions(
+            self._validate_joint_target(target_joints),
+            self._goal_time_from_speed(speed),
+            wait,
+        )
+        return 0
 
     def command_move_pose(
         self,
@@ -350,37 +327,23 @@ class RobotInterface(ArmClient):
             If the robot does not provide a status code, return 0 for success or raise an exception for failure.
         """
         arm = self._require_connected_arm()
-
-        # ---------------------------------- EXAMPLE ------------------------------------
-        # quatx, quaty, quatz, quatw = target_quat
-        # move_quat = models.Orientation(
-        #                 kind=models.OrientationKindEnum.Quaternion,
-        #                 quaternion=models.Quaternion(x=quatx,
-        #                                              y=quaty,
-        #                                              z=quatz,
-        #                                              w=quatw
-        #                                              ),
-        #             )
-        # x, y, z = target_xyz
-        # move_xyz = models.Position(
-        #                 unit_kind=models.LinearUnitKind.Meters,
-        #                 x=x,
-        #                 y=y,
-        #                 z=z
-        #             )
-
-        # update_request = models.ArmPositionUpdateRequest(
-        #     kind=models.ArmPositionUpdateRequestKindEnum.TooltipPosition,
-        #     tooltip_position=models.PositionAndOrientation(
-        #         position=move_xyz,
-        #         orientation=move_quat)
-        # )
-
-        # response = arm.movement.position.set_arm_position(body=update_request).ok()
-        # ----------------------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        xyz = np.asarray(target_xyz, dtype=float)
+        quat = np.asarray(target_quat, dtype=float)
+        if xyz.shape != (3,) or not np.all(np.isfinite(xyz)):
+            raise ValueError("target_xyz must be a finite three-vector in meters.")
+        if quat.shape != (4,) or not np.all(np.isfinite(quat)):
+            raise ValueError("target_quat must be a finite quaternion [x, y, z, w].")
+        quat_norm = float(np.linalg.norm(quat))
+        if quat_norm <= np.finfo(float).eps:
+            raise ValueError("target_quat must have non-zero magnitude.")
+        rotvec = Rotation.from_quat(quat / quat_norm).as_rotvec()
+        arm.set_cartesian_positions(
+            np.concatenate((xyz, rotvec)).tolist(),
+            TROSSEN_INTERPOLATION_SPACE,
+            self._goal_time_from_speed(speed),
+            wait,
+        )
+        return 0
 
     def command_servo_j(
         self,
@@ -401,23 +364,12 @@ class RobotInterface(ArmClient):
             If the robot does not provide a status code, return 0 for success or raise an exception for failure.
         """
         arm = self._require_connected_arm()
-
-        # {~.~} Publish joint positions to the robot
-        # [YOUR CODE HERE -- see example below]
-
-        # ------------------------------ EXAMPLE ------------------------------
-        # cmd_q = list(q)
-        # if IS_DEGREES:
-        #     cmd_q = [np.rad2deg(value) for value in cmd_q]
-
-        # code = arm.set_servo_angle_j(
-        #     angles=cmd_q,
-        #     wait=wait,
-        # )
-        # ---------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        arm.set_arm_positions(
+            self._validate_joint_target(target_joints),
+            0.0,
+            wait,
+        )
+        return 0
 
     def enter_position_mode(self) -> Optional[int | None]:
         """
@@ -427,16 +379,8 @@ class RobotInterface(ArmClient):
             the mode/state codes so they can be inspected when debugging.
         """
         arm = self._require_connected_arm()
-
-        # ------------------------------ EXAMPLE ------------------------------
-        # arm.clean_error()
-        # arm.clean_warn()
-        # code_mode = arm.set_mode(0) # 0 = position mode
-        # code_state = arm.set_state(0) # start
-        # ----------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        arm.set_arm_modes(trossen_arm.Mode.position)
+        return 0
 
     def enter_servo_mode(self) -> Optional[int | None]:
         """Ensure the controller is set to servo control mode.
@@ -445,15 +389,9 @@ class RobotInterface(ArmClient):
             the mode/state codes so they can be inspected when debugging.
         """
         arm = self._require_connected_arm()
-
-        # ------------------------------ EXAMPLE ------------------------------
-        # code_en = arm.motion_enable(enable=True)
-        # code_mode = arm.set_mode(1)  # 1 = servo mode
-        # code_state = arm.set_state(0)  # start
-        # ----------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        # Immediate set_arm_positions calls are Trossen's streamed position path.
+        arm.set_arm_modes(trossen_arm.Mode.position)
+        return 0
 
     def get_joint_state(self) -> tuple[list[float], list[float], list[float]]:
         """Return one joint state sample as ``(q, qd, tau)``.
@@ -463,24 +401,19 @@ class RobotInterface(ArmClient):
             and efforts/currents `tau` [SDK units].
         """
         arm = self._require_connected_arm()
-        q: list[float] = []
-        qd: list[float] = []
-        tau: list[float] = []
-
-        # ------------------------------ EXAMPLE ------------------------------
-        # code, payload = arm.get_joint_states()
-        # if code != 0:
-        #     raise RuntimeError(f"get_joint_states returned code {code}")
-        # q, qd, tau = payload
-        # q = list(q[: self.num_joints])
-        # qd = list(qd[: self.num_joints])
-        # tau = list(tau[: self.num_joints])
-        # ----------------------------------------------------------------------
-
-        if not IS_DEGREES:
-            q = [np.deg2rad(value) for value in q]
-            qd = [np.deg2rad(value) for value in qd]
-
+        output = arm.get_robot_output()
+        q = list(output.joint.arm.positions)
+        qd = list(output.joint.arm.velocities)
+        tau = list(output.joint.arm.efforts)
+        lengths = (len(q), len(qd), len(tau))
+        if lengths != (self.num_joints, self.num_joints, self.num_joints):
+            raise RuntimeError(
+                "Trossen joint-state dimensions do not match the URDF model: "
+                f"q/qd/tau={lengths}, expected {self.num_joints}."
+            )
+        if IS_DEGREES:
+            q = np.deg2rad(q).tolist()
+            qd = np.deg2rad(qd).tolist()
         return q, qd, tau
 
     def get_tcp_pose(self) -> list[float]:
@@ -490,33 +423,11 @@ class RobotInterface(ArmClient):
             List of 7 floats representing the TCP pose in meters for positions
             and unitless normalized for quaternions.
         """
-        position: list[float] = []
-        quat: list[float] = []
         arm = self._require_connected_arm()
-
-        # ------------------------------ EXAMPLE ------------------------------
-        # code, pose = arm.get_position_aa()
-
-        # if code != 0:
-        #     raise Exception(f"Unreliable TCP pose! Return code {code}")
-
-        # # Additional operations may be needed depending on pose return style
-        # # Decompose pose if necessary
-        # position, axang = pose[:3], pose[3:]
-
-        # # Convert position coordinates to meters
-        # position = [coord / 1000.0 for coord in position]
-
-        # # Convert rotation coordinates to radians, if necessary
-        # if not IS_DEGREES:
-        #     axang = [np.deg2rad(coord) for coord in axang]
-
-        # # Convert axis-angle to quaternion
-        # from scipy.spatial.transform import Rotation as R
-        # quat = R.from_rotvec(axang).as_quat().tolist()
-        # ----------------------------------------------------------------------
-
-        # Return tooltip pose as a list
-        return [*position, *quat]
-
-    # {~.~} END OF REQUIRED METHODS
+        pose = np.asarray(arm.get_cartesian_positions(), dtype=float)
+        if pose.shape != (6,) or not np.all(np.isfinite(pose)):
+            raise RuntimeError(
+                f"Trossen returned an invalid Cartesian pose with shape {pose.shape}."
+            )
+        quat = Rotation.from_rotvec(pose[3:]).as_quat()
+        return [*pose[:3].tolist(), *quat.tolist()]

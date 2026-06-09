@@ -1,3 +1,5 @@
 numpy<2
 pydantic
 reforge-core
+scipy
+trossen-arm==1.10.0
