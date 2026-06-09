@@ -6,11 +6,26 @@ import argparse
 import os
 import traceback
 import warnings
-from robot.robot_base import (
+from reforge_core.hw_interfaces.arm_client import (
     PLACEHOLDER_IP,
-    DEFAULT_HOME_SIGN,
+    DEFAULT_FULL_STRETCH_SIGN as DEFAULT_HOME_SIGN,
     DEFAULT_FIRST_AXIS,
     DEFAULT_AXES_COMMANDED,
+)
+from reforge_core.util.utility import (
+    DEFAULT_FIRST_POSE,
+    DEFAULT_SINE_MIN_FREQ,
+    DEFAULT_SINE_MAX_FREQ,
+    DEFAULT_FREQ_SPACING,
+    DEFAULT_SINE_CYCLES,
+    DEFAULT_DWELL_TIME,
+    DEFAULT_MAX_ACC,
+    DEFAULT_MAX_DISP,
+    DEFAULT_MAX_VEL,
+    DEFAULT_ROBOT_FREQ,
+    DEFAULT_SYSID_ANGLES,
+    DEFAULT_SYSID_RADII,
+    DEFAULT_SYSID_TYPE,
     DEFAULT_MIN_CALIBRATION_ANGLE,
     DEFAULT_MAX_CALIBRATION_ANGLE,
     DEFAULT_MIN_CALIBRATION_RADIUS_SCALE,
@@ -19,21 +34,6 @@ from robot.robot_base import (
     DEFAULT_IMU_TO_TCP_X,
     DEFAULT_IMU_TO_TCP_Y,
     DEFAULT_IMU_TO_TCP_Z,
-)
-from reforge_core.util.utility import (
-    DEFAULT_SINE_MIN_FREQ,
-    DEFAULT_SINE_MAX_FREQ,
-    DEFAULT_FREQ_SPACING,
-    DEFAULT_SINE_CYCLES,
-    DEFAULT_DWELL_TIME,
-    DEFAULT_SYSID_TYPE,
-    DEFAULT_MAX_DISP,
-    DEFAULT_MAX_VEL,
-    DEFAULT_MAX_ACC,
-    DEFAULT_SYSID_ANGLES,
-    DEFAULT_SYSID_RADII,
-    DEFAULT_FIRST_POSE,
-    DEFAULT_ROBOT_FREQ,
     SysIdType,
 )
 from robot.robot_interface import RobotInterface, BOT_ID
@@ -753,6 +753,8 @@ def route_user_input(args: argparse.Namespace) -> None:
                 local_data_location=args.data_folder,
                 Ts=1 / args.samp_freq,
                 max_disp=args.max_disp,
+                max_velocity=args.max_vel,
+                max_acceleration=args.max_acc,
                 axis_repetitions=args.axis_repetitions,
                 num_axes_to_test=args.num_axes_to_test,
                 # Thread CLI override through to shaping logic.
