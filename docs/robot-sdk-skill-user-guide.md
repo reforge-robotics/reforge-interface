@@ -14,7 +14,8 @@ This guide explains how to let AI agents automatically integrate a robot SDK int
 3. Robot-specific values
 - Robot ID (if applicable)
 - Sampling frequency (Hz)
-- Home pose values (`HOME_XYZ`, `HOME_QUAT`, `HOME_JOINTS`)
+- Full-stretch calibration values (`FULL_STRETCH_XYZ`,
+  `FULL_STRETCH_QUAT`, `FULL_STRETCH_JOINTS`)
 - Unit convention (degrees vs radians)
 - Connection details (IP/token/local IP)
 
@@ -23,35 +24,30 @@ This guide explains how to let AI agents automatically integrate a robot SDK int
 The skill updates `src/robot/robot_interface.py` by replacing all `# {~.~}` sections:
 
 - SDK imports
-- Robot constants (`BOT_ID`, `URDF_PATH`, `ROBOT_MAX_FREQ`, home constants)
+- Robot constants (`BOT_ID`, `URDF_PATH`, `ROBOT_MAX_FREQ`, full-stretch constants)
 - SDK client initialization in `__init__`
 - Required robot methods:
-  - `__get_joint_positions`
-  - `__get_tcp_pose`
-  - `move_to_joint`
-  - `move_to_pose`
-  - `publish_and_record_joint_positions`
+  - `command_move_j`
+  - `command_move_pose`
+  - `command_servo_j`
+  - `enter_position_mode`
+  - `enter_servo_mode`
+  - `get_joint_state`
+  - `get_tcp_pose`
 
 It preserves the existing calibration pipeline and only changes SDK-dependent parts.
 
-## Required output contract
+## Required interface contract
 
 The integrated interface must keep these contracts:
 
 - Joint values are handled internally in radians
 - TCP pose is returned as `[x, y, z, qx, qy, qz, qw]`
-- `publish_and_record_joint_positions` returns deque rows with keys:
-  - `cmd_time`
-  - `input_positions`
-  - `output_positions`
-  - `velocities`
-  - `efforts`
-  - `imu_time`
-  - `linear_acceleration`
-  - `angular_velocity`
-  - `orientation`
-
-If a telemetry field is unavailable, the field remains present with an empty value.
+- `get_joint_state` returns `(q, qd, tau)` with one value per actuated URDF joint
+- Command and mode methods return `0` on success unless the SDK exposes a
+  meaningful integer status
+- `reforge-core` owns streaming-loop timing, IMU alignment, and data-log schemas
+- The default sensor path is the Reforge USB IMU (`USE_REFORGE_IMU=True`)
 
 ## Codex Agent skill setup
 
@@ -94,15 +90,16 @@ Context:
 - Robot IP mode: <ip or sim>
 - Units: <degrees|radians>
 - Home constants:
-  - HOME_SHOULDER_ANGLE=...
-  - HOME_XYZ=[...]
-  - HOME_QUAT=[...]
-  - HOME_JOINTS=[...]
+  - FULL_STRETCH_XYZ=[...]
+  - FULL_STRETCH_QUAT=[...]
+  - FULL_STRETCH_JOINTS=[...]
+- IMU: Reforge USB IMU
 
 Requirements:
 - Replace all {~.~} sections only where needed.
 - Keep existing calibration flow intact.
-- Implement required methods and output data_log keys exactly.
+- Implement the current ArmClient methods exactly.
+- Leave arm/IMU recording and alignment to reforge-core.
 - Run py_compile and report assumptions.
 ```
 
@@ -111,7 +108,8 @@ Requirements:
 - `python -m py_compile src/robot/robot_interface.py`
 - `rg "\{~\.~\}" src/robot/robot_interface.py` returns no matches
 - URDF path resolves correctly
-- Joint count from SDK matches URDF model joints (or extra joints are safely truncated)
+- Joint count from SDK matches the actuated URDF model joints
+- Reforge IMU is detected over the configured communication mode
 - Calibration run can start without schema or unit errors
 
 ## Common issues
@@ -122,11 +120,12 @@ Requirements:
 
 2. Extra joints from hardware (gripper/fixed joints)
 - Symptom: length mismatch errors.
-- Fix: truncate to URDF joint count while validating minimum expected count.
+- Fix: use the SDK's arm-only telemetry API or select a matching URDF.
 
-3. Missing IMU or effort data
-- Symptom: recorder fields absent.
-- Fix: keep required keys with empty values instead of removing keys.
+3. Reforge IMU unavailable
+- Symptom: calibration cannot initialize sensor recording.
+- Fix: check USB access, communication mode, physical connection, and supported
+  recording frequency.
 
 4. SDK motion mode not enabled
 - Symptom: commands succeed in code but robot does not move.

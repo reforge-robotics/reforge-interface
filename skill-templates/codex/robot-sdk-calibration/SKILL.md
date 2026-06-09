@@ -1,6 +1,6 @@
 ---
 name: robot-sdk-calibration
-description: Integrate a robot SDK into reforge-interface for calibration and system identification. Use when a user provides a robot SDK package and URDF and needs src/robot/robot_interface.py wired to their hardware API, including required methods, unit handling, and data logging shape compatibility.
+description: Integrate a robot SDK into reforge-interface for calibration and system identification. Use when a user provides a robot SDK package and URDF and needs src/robot/robot_interface.py wired to the ArmClient command and telemetry contract.
 ---
 
 # Robot SDK Calibration Integration (Codex)
@@ -11,10 +11,10 @@ Implement robot SDK integration in `src/robot/robot_interface.py` for calibratio
 
 - Robot SDK location (pip package name, git URL, or local path)
 - URDF file path under `src/robot/urdf/`
-- Home constants and units:
-  - `HOME_SHOULDER_ANGLE`, `HOME_XYZ`, `HOME_QUAT`, `HOME_JOINTS`, `IS_DEGREES`
+- Full-stretch constants and units:
+  - `FULL_STRETCH_XYZ`, `FULL_STRETCH_QUAT`, `FULL_STRETCH_JOINTS`, `IS_DEGREES`
 - Connection requirements (`robot_ip`, token, local IP)
-- Telemetry availability for joint states and optional IMU
+- Telemetry availability for joint positions, velocities, and efforts
 
 ## Workflow
 
@@ -23,7 +23,8 @@ Implement robot SDK integration in `src/robot/robot_interface.py` for calibratio
 - If local package, ensure repo-relative install path works.
 
 2. Update robot constants in `src/robot/robot_interface.py`.
-- Replace all `# {~.~}` placeholders that define robot identity, URDF path, sample frequency, home constants, and units.
+- Replace all `# {~.~}` placeholders that define robot identity, URDF path,
+  sample frequency, full-stretch constants, IMU selection, and units.
 
 3. Implement SDK connection in `RobotInterface.__init__`.
 - Instantiate the SDK client.
@@ -32,19 +33,22 @@ Implement robot SDK integration in `src/robot/robot_interface.py` for calibratio
 - Keep `sim` behavior unchanged.
 
 4. Implement required methods using SDK APIs.
-- `__get_joint_positions`
-- `__get_tcp_pose`
-- `move_to_joint`
-- `move_to_pose`
-- `publish_and_record_joint_positions`
+- `command_move_j`
+- `command_move_pose`
+- `command_servo_j`
+- `enter_position_mode`
+- `enter_servo_mode`
+- `get_joint_state`
+- `get_tcp_pose`
 
 5. Enforce interface contracts.
 - Return radians internally unless converting at boundaries.
-- Ensure joint count equals URDF model joint count (truncate extras, reject fewer).
+- Ensure SDK arm telemetry count equals the actuated URDF model joint count.
 - Return pose as `[x, y, z, qx, qy, qz, qw]`.
-- Build `data_log` deque rows with keys:
-  - `cmd_time`, `input_positions`, `output_positions`, `velocities`, `efforts`, `imu_time`, `linear_acceleration`, `angular_velocity`, `orientation`
-- If a field is unavailable, keep empty value but preserve row.
+- Return joint state as `(q, qd, tau)`.
+- Keep `USE_REFORGE_IMU=True` unless the user explicitly requests a
+  vendor-native `ImuRecorder`.
+- Leave streaming-loop timing, IMU alignment, and data logging to `reforge-core`.
 
 6. Validate.
 - Run static check: `python -m py_compile src/robot/robot_interface.py`
@@ -54,5 +58,5 @@ Implement robot SDK integration in `src/robot/robot_interface.py` for calibratio
 ## Output requirements
 
 - Modified `src/robot/robot_interface.py` with all required sections integrated.
-- Updated `src/robot/requirements.txt` (if needed).
+- Updated `src/robot/requirements.txt` and `src/robot/pyproject.toml` (if needed).
 - Brief summary listing SDK-specific assumptions and any unsupported telemetry fields.

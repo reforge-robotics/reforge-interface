@@ -28,18 +28,18 @@ reforge-interface/
         ├── pyproject.toml       # robot package metadata
         ├── requirements.txt     # robot runtime dependencies
         ├── run.py               # CLI entrypoint
-        ├── robot_interface.py   # SDK integration target
-        ├── robot_base.py        # abstract base + defaults
-        ├── ros_manager.py       # optional ROS trajectory publisher
+        ├── robot_interface.py   # ArmClient SDK integration target
+        ├── robot_base.py        # CLI defaults and legacy local utilities
+        ├── ros_manager.py       # optional ROS 2 adapter; usually not needed
         ├── urdf/                # place robot URDF files here
         └── data/                # calibration outputs
 ```
 
 ## Quick Start
 
-1. Add your robot URDF to `src/robot/urdf/`.
-2. Add your robot SDK dependency to `src/robot/requirements.txt` or make it importable in the environment.
-3. Integrate the SDK in `src/robot/robot_interface.py` by replacing all `# {~.~}` markers.
+1. Add a resolved robot URDF and required meshes to `src/robot/urdf/`.
+2. Add the robot SDK dependency to `src/robot/requirements.txt` and package metadata as appropriate.
+3. Integrate the SDK in `src/robot/robot_interface.py` against the `ArmClient` method contract.
 4. Validate the integration.
 
 ```bash
@@ -109,21 +109,28 @@ chmod +x docker_scripts/run_calibrate.sh
 
 1. Set constants in `src/robot/robot_interface.py`:
 - `BOT_ID`, `URDF_PATH`, `ROBOT_MAX_FREQ`
-- `HOME_SHOULDER_ANGLE`, `HOME_XYZ`, `HOME_QUAT`, `HOME_JOINTS`
-- `IS_DEGREES`, `DATA_LOCATION_PREFIX`
+- `FULL_STRETCH_XYZ`, `FULL_STRETCH_QUAT`, `FULL_STRETCH_JOINTS`
+- `FULL_STRETCH_POSE_OVERRIDE`
+- `IS_DEGREES`, `DATA_LOCATION_PREFIX`, `DEFAULT_TCP_PAYLOAD`
 
 2. Add SDK client setup in `RobotInterface.__init__`.
-3. Implement required SDK-bound methods:
-- `__get_joint_positions`
-- `__get_tcp_pose`
-- `move_to_joint`
-- `move_to_pose`
-- `publish_and_record_joint_positions`
+3. Implement the required SDK-bound methods:
+- `command_move_j`
+- `command_move_pose`
+- `command_servo_j`
+- `enter_position_mode`
+- `enter_servo_mode`
+- `get_joint_state`
+- `get_tcp_pose`
 
-4. Keep units and schemas consistent:
-- internal joint units in radians,
-- pose format `[x, y, z, qx, qy, qz, qw]`,
-- data log keys required by calibration pipeline.
+4. Keep units and dimensions consistent:
+- joints in radians and velocities in radians per second,
+- TCP pose as `[x, y, z, qx, qy, qz, qw]`,
+- telemetry arrays matching the actuated URDF joint count.
+
+5. Use the Reforge IMU by default. `reforge-core` owns IMU acquisition,
+timestamp alignment, trajectory recording, and output data schemas; the robot
+adapter should not implement its own combined logger.
 
 See `src/robot/README.md` for the detailed contract.
 

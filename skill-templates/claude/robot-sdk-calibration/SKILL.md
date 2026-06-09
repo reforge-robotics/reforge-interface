@@ -15,7 +15,7 @@ Use this skill to implement robot SDK support in `src/robot/robot_interface.py`.
   - Reading joint positions
   - Reading TCP pose
   - Commanding joint or Cartesian motion
-  - (Optional) reading effort/current and IMU data
+  - Reading joint velocity and effort/current
 
 ## Execution steps
 
@@ -23,17 +23,21 @@ Use this skill to implement robot SDK support in `src/robot/robot_interface.py`.
 2. Add SDK import and client initialization in `RobotInterface.__init__`.
 3. Keep simulator path (`robot_ip == "sim"`) unchanged.
 4. Implement required methods:
-- `__get_joint_positions`
-- `__get_tcp_pose`
-- `move_to_joint`
-- `move_to_pose`
-- `publish_and_record_joint_positions`
+- `command_move_j`
+- `command_move_pose`
+- `command_servo_j`
+- `enter_position_mode`
+- `enter_servo_mode`
+- `get_joint_state`
+- `get_tcp_pose`
 5. Preserve expected units and data schemas:
 - Internal joint units in radians
 - TCP pose output `[x, y, z, qx, qy, qz, qw]`
-- `data_log` deque rows with required keys:
-  - `cmd_time`, `input_positions`, `output_positions`, `velocities`, `efforts`, `imu_time`, `linear_acceleration`, `angular_velocity`, `orientation`
-6. Update dependency source (`src/robot/requirements.txt` or local path reference).
+- `get_joint_state` returns `(q, qd, tau)` for the actuated URDF joints
+- The default Reforge USB IMU remains enabled
+- `reforge-core` owns trajectory recording, IMU alignment, and output schemas
+6. Update dependency sources (`src/robot/requirements.txt`,
+   `src/robot/pyproject.toml`, or a local path reference).
 7. Validate with:
 - `python -m py_compile src/robot/robot_interface.py`
 - Search for unresolved markers: `rg "\{~\.~\}" src/robot/robot_interface.py`
@@ -41,6 +45,6 @@ Use this skill to implement robot SDK support in `src/robot/robot_interface.py`.
 ## Guardrails
 
 - Do not change pre-defined calibration flow methods unless needed for SDK compatibility.
-- Do not alter expected output keys or their semantics.
-- If telemetry is missing, return empty fields rather than changing schema.
+- Do not reimplement `ArmClient` trajectory or recording orchestration.
+- Do not add vendor IMU handling unless `use_reforge_imu=False` is explicitly required.
 - Document assumptions in final summary.
