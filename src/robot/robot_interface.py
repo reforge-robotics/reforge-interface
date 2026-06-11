@@ -14,18 +14,20 @@ from reforge_core.hw_interfaces.arm_client import ArmClient
 from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
 
 # Trossen WidowX AI follower configuration.
-BOT_ID = "wxai_v0"
+BOT_ID = "dd65af8b-1ea9-47db-83c7-8a75c4d0d817"
 URDF_PATH = "urdf/trossen/wxai_follower.urdf"
 ROBOT_MAX_FREQ = 200  # Trossen's documented high-rate recording frequency [Hz].
 TROSSEN_MODEL = trossen_arm.Model.wxai_v0
 TROSSEN_END_EFFECTOR = trossen_arm.StandardEndEffector.wxai_v0_follower
 TROSSEN_INTERPOLATION_SPACE = trossen_arm.InterpolationSpace.joint
 TROSSEN_DEFAULT_MOVE_TIME_S = 2.0
+TROSSEN_GRIPPER_JOINT_INDEX = 6
+TROSSEN_GRIPPER_HOLD_POSITION_M = 0.018035
 
 # Fully stretched position of the robot for calibration.
 FULL_STRETCH_XYZ = [0.517762, 0.0, 0.4275]  # Fallback from the bundled URDF [m].
 FULL_STRETCH_QUAT = [0.0, 0.0, 0.0, 1.0]
-FULL_STRETCH_JOINTS = [0.0, np.pi / 2, np.pi / 2, 0.0, 0.0, 0.0]
+FULL_STRETCH_JOINTS = [0.0, 5*np.pi / 6, 2*np.pi / 3, np.pi / 6, 0.0, 0.0]
 FULL_STRETCH_POSE_OVERRIDE = None
 
 # General constants
@@ -33,11 +35,14 @@ IS_DEGREES = False
 DATA_LOCATION_PREFIX = "src/robot/data"
 DEFAULT_TCP_PAYLOAD = 0.0
 
-MAX_ROBOT_JOINTS_BANDWIDTH = 5.0
+MAX_ROBOT_JOINTS_BANDWIDTH = 1.3
 
 USE_REFORGE_IMU = True
 DEFAULT_IMU_COMM_MODE = "usb"
 DEFAULT_IMU_RECORD_FREQUENCY_HZ = ROBOT_MAX_FREQ
+DEFAULT_IMU_TO_TCP_X = 0.0
+DEFAULT_IMU_TO_TCP_Y = 0.0
+DEFAULT_IMU_TO_TCP_Z = 0.043
 
 
 class RobotInterface(ArmClient):
@@ -392,6 +397,59 @@ class RobotInterface(ArmClient):
         # Immediate set_arm_positions calls are Trossen's streamed position path.
         arm.set_arm_modes(trossen_arm.Mode.position)
         return 0
+
+    def enter_teach_mode(self) -> int:
+        """Make the arm backdrivable using Trossen gravity compensation."""
+        arm = self._require_connected_arm()
+        arm.set_arm_modes(trossen_arm.Mode.external_effort)
+        arm.set_arm_external_efforts([0.0] * self.num_joints, 0.0, False)
+        return 0
+
+    def exit_teach_mode(self) -> int:
+        """Brake the arm joints after manual positioning."""
+        arm = self._require_connected_arm()
+        arm.set_arm_modes(trossen_arm.Mode.idle)
+        return 0
+
+    def command_gripper_position(
+        self,
+        position_m: float,
+        *,
+        move_time_s: float = TROSSEN_DEFAULT_MOVE_TIME_S,
+        wait: bool = True,
+    ) -> int:
+        """Move the gripper to a fixed opening and hold it in position mode."""
+        arm = self._require_connected_arm()
+        position = float(position_m)
+        move_time = float(move_time_s)
+        if not np.isfinite(position):
+            raise ValueError("Gripper position must be finite.")
+        if not np.isfinite(move_time) or move_time <= 0.0:
+            raise ValueError("Gripper move time must be finite and greater than zero.")
+
+        limits = arm.get_joint_limits()
+        if len(limits) <= TROSSEN_GRIPPER_JOINT_INDEX:
+            raise RuntimeError("Trossen controller did not report a gripper joint limit.")
+        gripper_limit = limits[TROSSEN_GRIPPER_JOINT_INDEX]
+        lower = float(gripper_limit.position_min)
+        upper = float(gripper_limit.position_max)
+        if not lower <= position <= upper:
+            raise ValueError(
+                f"Gripper position must be within [{lower}, {upper}] m; "
+                f"received {position} m."
+            )
+
+        arm.set_gripper_mode(trossen_arm.Mode.position)
+        arm.set_gripper_position(position, move_time, wait)
+        return 0
+
+    def get_gripper_position(self) -> float:
+        """Return the current gripper opening in meters."""
+        return float(self._require_connected_arm().get_gripper_position())
+
+    def hold_gripper(self) -> int:
+        """Hold the installed IMU at the measured fixed gripper position."""
+        return self.command_gripper_position(TROSSEN_GRIPPER_HOLD_POSITION_M)
 
     def get_joint_state(self) -> tuple[list[float], list[float], list[float]]:
         """Return one joint state sample as ``(q, qd, tau)``.

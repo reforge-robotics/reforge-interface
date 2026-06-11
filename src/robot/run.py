@@ -31,12 +31,16 @@ from reforge_core.util.utility import (
     DEFAULT_MIN_CALIBRATION_RADIUS_SCALE,
     DEFAULT_MAX_CALIBRATION_RADIUS_SCALE,
     DEFAULT_TCP_PAYLOAD,
+    SysIdType,
+)
+from robot.robot_interface import (
+    BOT_ID,
     DEFAULT_IMU_TO_TCP_X,
     DEFAULT_IMU_TO_TCP_Y,
     DEFAULT_IMU_TO_TCP_Z,
-    SysIdType,
+    RobotInterface,
+    TROSSEN_GRIPPER_HOLD_POSITION_M,
 )
-from robot.robot_interface import RobotInterface, BOT_ID
 from reforge_core.calibration.api import ReforgeAPIManager
 from reforge_core.util.vibration_test import run_vibration_test, run_velocity_test
 
@@ -102,7 +106,9 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(
         dest="route",
-        help="Available commands: 'connect_test', 'calibrate', 'identify', 'vibration_test', 'fine_tune'",
+        help="Available commands: 'connect_test', 'teach_mode', "
+        "'gripper_position', 'calibrate', 'identify', 'vibration_test', "
+        "'fine_tune'",
         required=True,
     )
 
@@ -122,6 +128,62 @@ def _build_parser() -> argparse.ArgumentParser:
         default=PLACEHOLDER_IP,
     )
     connect_test.add_argument(
+        "--robot_id", help="Reforge robot ID, if necessary", default=""
+    )
+
+    # ======================== Route: teach_mode ====================================
+    teach_mode = sub.add_parser(
+        "teach_mode",
+        help="Enable gravity compensation for supervised manual positioning.",
+    )
+    teach_mode.add_argument("robot_ip", help="Robot IP address")
+    teach_mode.add_argument(
+        "--local_ip",
+        help="Local machine IP address, if necessary",
+        default=PLACEHOLDER_IP,
+    )
+    teach_mode.add_argument(
+        "--sdk_token",
+        help="API token to use robot's SDK, if necessary",
+        default=PLACEHOLDER_IP,
+    )
+    teach_mode.add_argument(
+        "--robot_id", help="Reforge robot ID, if necessary", default=""
+    )
+
+    # ======================== Route: gripper_position ===============================
+    gripper_position = sub.add_parser(
+        "gripper_position",
+        help="Move the gripper to a fixed opening in meters.",
+    )
+    gripper_position.add_argument("robot_ip", help="Robot IP address")
+    gripper_position.add_argument(
+        "position_m",
+        type=float,
+        nargs="?",
+        default=TROSSEN_GRIPPER_HOLD_POSITION_M,
+        help=(
+            "Target gripper opening in meters (default: %(default)s; "
+            "controller range is typically 0.0-0.04)."
+        ),
+    )
+    gripper_position.add_argument(
+        "--move_time",
+        type=float,
+        default=2.0,
+        help="Move duration in seconds (default: %(default)s)",
+    )
+    gripper_position.add_argument(
+        "--local_ip",
+        help="Local machine IP address, if necessary",
+        default=PLACEHOLDER_IP,
+    )
+    gripper_position.add_argument(
+        "--sdk_token",
+        help="API token to use robot's SDK, if necessary",
+        default=PLACEHOLDER_IP,
+    )
+    gripper_position.add_argument(
         "--robot_id", help="Reforge robot ID, if necessary", default=""
     )
 
@@ -658,12 +720,61 @@ def route_user_input(args: argparse.Namespace) -> None:
             print(
                 f"❌ Failed to connect to robot at IP address {args.robot_ip}: {str(e)}"
             )
+    elif args.route == "teach_mode":
+        robot_interface = None
+        try:
+            robot_interface = RobotInterface(
+                robot_ip=args.robot_ip,
+                tcp_payload=DEFAULT_TCP_PAYLOAD,
+                tcp_payload_com=tcp_payload_com,
+                local_ip=args.local_ip,
+                sdk_token=args.sdk_token,
+                robot_id=args.robot_id,
+            )
+            robot_interface.enter_teach_mode()
+            print(
+                "Teach mode enabled. Support the arm while moving it by hand. "
+                "Press Enter to brake the joints."
+            )
+            input()
+        except KeyboardInterrupt:
+            print("\nTeach mode interrupted.")
+        except Exception:
+            traceback.print_exc()
+        finally:
+            if robot_interface is not None:
+                try:
+                    robot_interface.exit_teach_mode()
+                    q, _, _ = robot_interface.get_joint_state()
+                    print(f"Arm braked. Joint positions [rad]: {q}")
+                except Exception:
+                    traceback.print_exc()
+    elif args.route == "gripper_position":
+        try:
+            robot_interface = RobotInterface(
+                robot_ip=args.robot_ip,
+                tcp_payload=DEFAULT_TCP_PAYLOAD,
+                tcp_payload_com=tcp_payload_com,
+                local_ip=args.local_ip,
+                sdk_token=args.sdk_token,
+                robot_id=args.robot_id,
+            )
+            robot_interface.command_gripper_position(
+                args.position_m,
+                move_time_s=args.move_time,
+            )
+            print(
+                "Gripper holding position [m]: "
+                f"{robot_interface.get_gripper_position():.6f}"
+            )
+        except Exception:
+            traceback.print_exc()
     elif args.route == "calibrate":
         try:
             if args.sysid_type == SysIdType.FEEDFORWARD:
                 if args.identify_api_token is None:
                     raise ValueError(
-                        "--identify_api_token is required when --type feedforward."
+                        "--identify is required when --type feedforward."
                     )
                 if args.robot_id == "" or args.robot_id is None:
                     raise ValueError("--robot_id is required when --type feedforward.")

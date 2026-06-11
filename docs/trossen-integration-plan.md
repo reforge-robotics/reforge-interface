@@ -83,6 +83,7 @@ Owner: Robot operator
   or container.
 - Measure IMU origin to TCP translation in meters, resolved in the IMU frame:
   `imu_to_tcp_x`, `imu_to_tcp_y`, and `imu_to_tcp_z`.
+- The measured translation for this installation is `[0.0, 0.0, 0.043]` m.
 - Record the IMU axis orientation relative to the TCP frame.
 
 Owner: Reforge engineering

@@ -2,9 +2,10 @@ from types import SimpleNamespace
 from importlib.resources import as_file, files
 
 import numpy as np
+import trossen_arm
 
 from reforge_core.util.robot_dynamics import Dynamics
-from robot.robot_interface import RobotInterface
+from robot.robot_interface import RobotInterface, TROSSEN_GRIPPER_HOLD_POSITION_M
 
 
 class FakeTrossenArm:
@@ -19,6 +20,28 @@ class FakeTrossenArm:
 
     def set_arm_modes(self, *args) -> None:
         self.calls.append(("mode", args))
+
+    def set_arm_external_efforts(self, *args) -> None:
+        self.calls.append(("external_effort", args))
+
+    def get_joint_limits(self) -> list[SimpleNamespace]:
+        arm_limits = [
+            SimpleNamespace(position_min=-np.pi, position_max=np.pi)
+            for _ in range(6)
+        ]
+        return [
+            *arm_limits,
+            SimpleNamespace(position_min=0.0, position_max=0.04),
+        ]
+
+    def set_gripper_mode(self, *args) -> None:
+        self.calls.append(("gripper_mode", args))
+
+    def set_gripper_position(self, *args) -> None:
+        self.calls.append(("gripper_position", args))
+
+    def get_gripper_position(self) -> float:
+        return 0.025
 
     def get_robot_output(self) -> SimpleNamespace:
         arm = SimpleNamespace(
@@ -55,6 +78,47 @@ def test_joint_commands_use_trossen_position_api() -> None:
     assert interface.robot.calls[0][0] == "arm"
     assert interface.robot.calls[0][1] == ([0.0] * 6, 2.0, True)
     assert interface.robot.calls[1][1] == ([1.0] * 6, 0.0, False)
+
+
+def test_teach_mode_uses_zero_external_effort_then_brakes() -> None:
+    interface = make_interface()
+
+    assert interface.enter_teach_mode() == 0
+    assert interface.exit_teach_mode() == 0
+
+    assert interface.robot.calls[0] == (
+        "mode",
+        (trossen_arm.Mode.external_effort,),
+    )
+    assert interface.robot.calls[1] == (
+        "external_effort",
+        ([0.0] * 6, 0.0, False),
+    )
+    assert interface.robot.calls[2] == ("mode", (trossen_arm.Mode.idle,))
+
+
+def test_gripper_position_is_validated_and_held_in_position_mode() -> None:
+    interface = make_interface()
+
+    assert interface.command_gripper_position(0.025, move_time_s=3.0) == 0
+    assert interface.get_gripper_position() == 0.025
+    assert interface.robot.calls == [
+        ("gripper_mode", (trossen_arm.Mode.position,)),
+        ("gripper_position", (0.025, 3.0, True)),
+    ]
+
+    with np.testing.assert_raises(ValueError):
+        interface.command_gripper_position(0.05)
+
+
+def test_hold_gripper_uses_installed_imu_position() -> None:
+    interface = make_interface()
+
+    assert interface.hold_gripper() == 0
+    assert interface.robot.calls[-1] == (
+        "gripper_position",
+        (TROSSEN_GRIPPER_HOLD_POSITION_M, 2.0, True),
+    )
 
 
 def test_joint_state_uses_one_robot_output_snapshot() -> None:
