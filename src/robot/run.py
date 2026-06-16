@@ -494,6 +494,50 @@ def _build_parser() -> argparse.ArgumentParser:
             "(default: fallback to --num_shapers, then calibration_params.axes)."
         ),
     )
+    # TODO (nosed): Remove hardcoded defaults from here and convert to constants in utility
+    vibration_test.add_argument(
+        "--trajectory_space",
+        choices=("joint", "cartesian"),
+        default="joint",
+        help=(
+            "Trajectory domain for vibration tests: existing joint-axis moves "
+            "or centered Cartesian straight lines (default: %(default)s)."
+        ),
+    )
+    vibration_test.add_argument(
+        "--cart_disp",
+        dest="cart_disp",
+        type=float,
+        default=0.10,
+        help="Total Cartesian straight-line displacement [m] (default: %(default)s).",
+    )
+    vibration_test.add_argument(
+        "--cart_vel",
+        dest="cart_vel",
+        type=float,
+        default=0.20,
+        help="Maximum Cartesian path velocity [m/s] (default: %(default)s).",
+    )
+    vibration_test.add_argument(
+        "--cart_acc",
+        dest="cart_acc",
+        type=float,
+        default=1.0,
+        help="Maximum Cartesian path acceleration [m/s^2] (default: %(default)s).",
+    )
+    vibration_test.add_argument(
+        "--cart_direction",
+        dest="cart_directions",
+        type=float,
+        nargs=3,
+        action="append",
+        metavar=("X", "Y", "Z"),
+        default=None,
+        help=(
+            "Base-frame Cartesian direction vector. Repeat for multiple tests. "
+            "Defaults to separate X, Y, and Z directions."
+        ),
+    )
 
     # ======================== Route: velocity_test =====================================
     velocity_test = sub.add_parser(
@@ -759,6 +803,11 @@ def route_user_input(args: argparse.Namespace) -> None:
                 num_axes_to_test=args.num_axes_to_test,
                 # Thread CLI override through to shaping logic.
                 num_shapers=args.num_shapers,
+                trajectory_space=args.trajectory_space,
+                cartesian_displacement_m=args.cart_disp,
+                cartesian_velocity_m_per_s=args.cart_vel,
+                cartesian_acceleration_m_per_s2=args.cart_acc,
+                cartesian_directions=args.cart_directions,
             )
 
         except Exception:
