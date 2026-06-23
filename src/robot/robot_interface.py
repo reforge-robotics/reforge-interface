@@ -158,7 +158,7 @@ class RobotInterface(ArmClient):
 
         self.use_reforge_imu = use_reforge_imu
 
-        # Reforge API and robot ID token is needed for "feedforward" product
+        # Reforge API and robot ID token is needed for "joint_tracker" product
         # Add it in the CLI with `--identify`
         self.reforge_api_token = api_token
         try:
