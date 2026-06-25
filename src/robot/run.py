@@ -17,6 +17,8 @@ from reforge_core.util.utility import (
     DEFAULT_SINE_MIN_FREQ,
     DEFAULT_SINE_MAX_FREQ,
     DEFAULT_FREQ_SPACING,
+    DEFAULT_JOINT_TRACKER_MIN_SINE_FREQ,
+    DEFAULT_JOINT_TRACKER_MAX_FREQ_SPACING,
     DEFAULT_SINE_CYCLES,
     DEFAULT_DWELL_TIME,
     DEFAULT_MAX_ACC,
@@ -42,7 +44,7 @@ from reforge_core.util.vibration_test import run_vibration_test, run_velocity_te
 
 # Local models directory used by identification/fine-tuning flows.
 ROBOT_MODELS_PATH = os.path.join("robot", "models", "current")
-SUPPORTED_SYSID_TYPES = [SysIdType.SHAPER, SysIdType.FEEDFORWARD]
+SUPPORTED_SYSID_TYPES = [SysIdType.SHAPER, SysIdType.JOINT_TRACKER]
 
 
 def _run_model_generation_with_fine_tune_fallback(
@@ -155,7 +157,7 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="sysid_type",
         choices=[sysid_type.value for sysid_type in SUPPORTED_SYSID_TYPES],
         default=DEFAULT_SYSID_TYPE,
-        help="Calibration workflow type: 'shaper' or 'feedforward' (default: %(default)s)",
+        help="Calibration workflow type: 'shaper' or 'joint_tracker' (default: %(default)s)",
     )
     calibrate.add_argument(
         "--freq",
@@ -234,7 +236,10 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="min_freq",
         type=float,
         default=DEFAULT_SINE_MIN_FREQ,
-        help=f"Min frequency [Hz] (default: {DEFAULT_SINE_MIN_FREQ})",
+        help=(
+            f"Min frequency [Hz] (default: {DEFAULT_SINE_MIN_FREQ}; "
+            f"feedforward uses min(value, {DEFAULT_JOINT_TRACKER_MIN_SINE_FREQ}))"
+        ),
     )
     calibrate.add_argument(
         "--maxfreq",
@@ -248,7 +253,10 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="freq_space",
         type=float,
         default=DEFAULT_FREQ_SPACING,
-        help=f"Frequency spacing [Hz] (default: {DEFAULT_FREQ_SPACING})",
+        help=(
+            f"Frequency spacing [Hz] (default: {DEFAULT_FREQ_SPACING}; "
+            f"feedforward uses min(value, {DEFAULT_JOINT_TRACKER_MAX_FREQ_SPACING}))"
+        ),
     )
     calibrate.add_argument(
         "--sine_cycles",
@@ -704,13 +712,15 @@ def route_user_input(args: argparse.Namespace) -> None:
             )
     elif args.route == "calibrate":
         try:
-            if args.sysid_type == SysIdType.FEEDFORWARD:
+            if args.sysid_type == SysIdType.JOINT_TRACKER:
                 if args.identify_api_token is None:
                     raise ValueError(
-                        "--identify_api_token is required when --type feedforward."
+                        "--identify_api_token is required when --type joint_tracker."
                     )
                 if args.robot_id == "" or args.robot_id is None:
-                    raise ValueError("--robot_id is required when --type feedforward.")
+                    raise ValueError(
+                        "--robot_id is required when --type joint_tracker."
+                    )
             robot_interface = RobotInterface(
                 robot_ip=args.robot_ip,
                 tcp_payload=args.tcp_payload,
