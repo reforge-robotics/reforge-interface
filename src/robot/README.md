@@ -15,9 +15,10 @@ The calibration flow expects strict method signatures, units, and logged data sc
 - `Dockerfile`: Container build for the robot package.
 - `robot_interface.py`: SDK-specific implementation target.
 - `robot_base.py`: Abstract robot interface, defaults, and shared utilities.
-- `run.py`: CLI routes (`connect_test`, `calibrate`, `identify`, `fine_tune`, `vibration_test`).
+- `run.py`: CLI routes (`connect_test`, `kinecal`, `calibrate`, `identify`, `fine_tune`, `vibration_test`).
 - `ros_manager.py`: Optional ROS-based trajectory publishing helper.
 - `urdf/`: Robot URDF files.
+- `config/`: Robot configuration files, including the editable kinecal config and default restore template.
 - `data/`: Output data from calibration runs.
 
 ## Integration Contract
@@ -131,6 +132,14 @@ python -m robot.run connect_test <robot_ip> --local_ip <local_ip> --sdk_token <t
 ```bash
 python -m robot.run calibrate <robot_ip> --robot_id <robot_id> --freq 200
 ```
+
+### Run kinecal data collection
+
+```bash
+python -m robot.run kinecal <robot_ip>
+```
+
+By default, this uses `src/robot/config/kinecal_config.toml`. To restore defaults, copy `src/robot/config/kinecal_config_default.toml` over that file.
 
 ### Run identification / fine-tune manually
 

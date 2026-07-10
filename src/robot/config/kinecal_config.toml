@@ -1,0 +1,20 @@
+eef_link = "link_eef"
+# probe_link = "smr_ball_link"
+probe_link = "prod_ball_link"
+
+recording_method = "keyboard"
+#recording_method = "flange_button"
+
+[tcp_config]
+policy = "cones"
+cones = [
+  { angle_deg = 5.0, count = 4 },
+  { angle_deg = 20.0, count = 8 },
+  { angle_deg = 25.0, count = 8 },
+  { angle_deg = 35.0, count = 8 },
+  { angle_deg = 45.0, count = 8 },
+]
+
+[outlier_detection]
+enabled = true
+metric = "mahalanobis"
