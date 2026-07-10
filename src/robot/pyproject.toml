@@ -26,7 +26,6 @@ dev = [
     "pytest",
     "ruff",
     "black==24.1.1",
-    "sounddevice",
 ]
 
 [project.scripts]
@@ -39,6 +38,7 @@ include-package-data = false
 
 [tool.setuptools.package-data]
 robot = [
+    "config/*.toml",
     "urdf/*.urdf",
     "urdf/**/*.urdf",
     "urdf/**/*.xacro",

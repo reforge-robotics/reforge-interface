@@ -4,8 +4,10 @@
 # Version: 1.0
 import argparse
 import os
+from pathlib import Path
 import traceback
 import warnings
+
 from reforge_core.hw_interfaces.arm_client import (
     PLACEHOLDER_IP,
     DEFAULT_FULL_STRETCH_SIGN as DEFAULT_HOME_SIGN,
@@ -39,8 +41,17 @@ from reforge_core.util.utility import (
     SysIdType,
 )
 from robot.robot_interface import RobotInterface, BOT_ID
-from reforge_core.calibration.api import ReforgeAPIManager
+from reforge_core.calibration.api import ReforgeAPIManager, has_local_models
 from reforge_core.util.vibration_test import run_vibration_test, run_velocity_test
+
+from reforge_core.kinecal.cli import (
+    DEFAULT_KINECAL_CONFIG_PATH,
+    KinecalCliOptions,
+)
+from reforge_core.kinecal.options import RenderOptions
+from reforge_core.kinecal.result_cli import present_kinecal_result
+from reforge_core.kinecal.runner import run_entrypoint as run_kinecal_entrypoint
+
 
 # Local models directory used by identification/fine-tuning flows.
 ROBOT_MODELS_PATH = os.path.join("robot", "models", "current")
@@ -69,7 +80,7 @@ def _run_model_generation_with_fine_tune_fallback(
     Preconditions:
         `data_folder` exists and is readable.
     """
-    if fine_tune and not api_manager.has_local_models():
+    if fine_tune and not has_local_models():
         warnings.warn(
             f"No existing models found in {ROBOT_MODELS_PATH} for fine-tuning. Running identification first...",
             UserWarning,
@@ -104,7 +115,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(
         dest="route",
-        help="Available commands: 'connect_test', 'calibrate', 'identify', 'vibration_test', 'fine_tune'",
+        help=(
+            "Available commands: 'connect_test', 'kinecal', "
+            "'calibrate', 'identify', 'vibration_test', 'fine_tune'"
+        ),
         required=True,
     )
 
@@ -125,6 +139,34 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     connect_test.add_argument(
         "--robot_id", help="Reforge robot ID, if necessary", default=""
+    )
+
+    # ======================== Route: kinecal ======================================
+    kinecal = sub.add_parser(
+        "kinecal",
+        help="Run interactive kinematic-calibration data collection.",
+    )
+    kinecal.add_argument("robot_ip", help="Robot IP address")
+    kinecal.add_argument(
+        "--config",
+        type=Path,
+        default=DEFAULT_KINECAL_CONFIG_PATH,
+        help=(
+            "Kinecal TOML configuration path. "
+            f"Default: {DEFAULT_KINECAL_CONFIG_PATH}."
+        ),
+    )
+    kinecal.add_argument(
+        "--skip-render",
+        action="store_true",
+        help="Disable Viser rendering.",
+    )
+    kinecal.add_argument(
+        "--no-preview-failed-transfers",
+        action="store_true",
+        help=(
+            "Do not preview rejected transfer plans in Viser before manual " "fallback."
+        ),
     )
 
     # ======================== Route: calibrate =====================================
@@ -376,6 +418,34 @@ def _build_parser() -> argparse.ArgumentParser:
     identify.add_argument("robot_id", help="Reforge robot ID.")
     identify.add_argument(
         "data_folder", help="Folder containing calibration data CSVs."
+    )
+
+    # ======================== Route: kinecal-identify =============================
+    kinecal_identify = sub.add_parser(
+        "kinecal-identify",
+        help="Run cloud kinematic calibration identification.",
+    )
+    kinecal_identify.add_argument(
+        "kinecal_api_token", help="API token for HTTP request to Reforge Cloud."
+    )
+    kinecal_identify.add_argument("robot_id", help="Reforge robot ID.")
+    kinecal_identify.add_argument(
+        "--data-folder",
+        dest="data_folders",
+        required=True,
+        action="append",
+        type=Path,
+        help=(
+            "Kinecal dataset folder containing hole_0.csv and hole_1.csv. "
+            "Repeat this argument to upload multiple datasets."
+        ),
+    )
+    kinecal_identify.add_argument(
+        "--socket-offset-mm",
+        dest="socket_offset_mm",
+        required=True,
+        type=float,
+        help="Distance between calibration plate socket centers [mm].",
     )
 
     # ======================== Route: vibration_test =====================================
@@ -710,6 +780,35 @@ def route_user_input(args: argparse.Namespace) -> None:
             print(
                 f"❌ Failed to connect to robot at IP address {args.robot_ip}: {str(e)}"
             )
+    elif args.route == "kinecal":
+        render_enabled = not args.skip_render
+        cli_options = KinecalCliOptions(
+            config_path=args.config,
+            robot_ip=args.robot_ip,
+            demo_enabled=False,
+            render_options=RenderOptions(
+                enabled=render_enabled,
+                preview_failed_transfers=(
+                    render_enabled and not args.no_preview_failed_transfers
+                ),
+            ),
+        )
+        run_kinecal_entrypoint(
+            cli_options=cli_options,
+            robot_factory=lambda robot_ip: RobotInterface(robot_ip=robot_ip),
+            script_path=Path(__file__).resolve(),
+        )
+
+    elif args.route == "kinecal-identify":
+        api_manager = ReforgeAPIManager(
+            reforge_api_token=args.kinecal_api_token, robot_id=args.robot_id
+        )
+        kinecal_result = api_manager.run_cloud_kinecal(
+            data_folders=args.data_folders,
+            socket_offset_mm=args.socket_offset_mm,
+        )
+        present_kinecal_result(kinecal_result)
+
     elif args.route == "calibrate":
         try:
             if args.sysid_type == SysIdType.JOINT_TRACKER:

@@ -314,7 +314,7 @@ class RobotInterface(ArmClient):
         if IS_DEGREES:
             target_joints = list(np.rad2deg(angle) for angle in target_joints)
 
-        arm = self._require_connected_arm()
+        arm = self._require_connected_arm()  # noqa: F841
         # ------------------------------------ EXAMPLE -------------------------------------
         # update_request = models.ArmPositionUpdateRequest(
         #     kind=models.ArmPositionUpdateRequestKindEnum.JointRotation,
@@ -349,7 +349,7 @@ class RobotInterface(ArmClient):
             An integer status code from the robot's command interface, if applicable.
             If the robot does not provide a status code, return 0 for success or raise an exception for failure.
         """
-        arm = self._require_connected_arm()
+        arm = self._require_connected_arm()  # noqa: F841
 
         # ---------------------------------- EXAMPLE ------------------------------------
         # quatx, quaty, quatz, quatw = target_quat
@@ -400,7 +400,7 @@ class RobotInterface(ArmClient):
             An integer status code from the robot's command interface, if applicable.
             If the robot does not provide a status code, return 0 for success or raise an exception for failure.
         """
-        arm = self._require_connected_arm()
+        arm = self._require_connected_arm()  # noqa: F841
 
         # {~.~} Publish joint positions to the robot
         # [YOUR CODE HERE -- see example below]
@@ -426,7 +426,7 @@ class RobotInterface(ArmClient):
         Returns:
             the mode/state codes so they can be inspected when debugging.
         """
-        arm = self._require_connected_arm()
+        arm = self._require_connected_arm()  # noqa: F841
 
         # ------------------------------ EXAMPLE ------------------------------
         # arm.clean_error()
@@ -444,7 +444,7 @@ class RobotInterface(ArmClient):
         Returns:
             the mode/state codes so they can be inspected when debugging.
         """
-        arm = self._require_connected_arm()
+        arm = self._require_connected_arm()  # noqa: F841
 
         # ------------------------------ EXAMPLE ------------------------------
         # code_en = arm.motion_enable(enable=True)
@@ -462,7 +462,7 @@ class RobotInterface(ArmClient):
             Tuple of three lists: joint positions `q` [rad], velocities `qd` [rad/s],
             and efforts/currents `tau` [SDK units].
         """
-        arm = self._require_connected_arm()
+        arm = self._require_connected_arm()  # noqa: F841
         q: list[float] = []
         qd: list[float] = []
         tau: list[float] = []
@@ -492,7 +492,7 @@ class RobotInterface(ArmClient):
         """
         position: list[float] = []
         quat: list[float] = []
-        arm = self._require_connected_arm()
+        arm = self._require_connected_arm()  # noqa: F841
 
         # ------------------------------ EXAMPLE ------------------------------
         # code, pose = arm.get_position_aa()
