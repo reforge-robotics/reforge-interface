@@ -7,13 +7,13 @@ import os
 from pathlib import Path
 import traceback
 import warnings
-
-from reforge_core.hw_interfaces.arm_client import (
-    PLACEHOLDER_IP,
-    DEFAULT_FULL_STRETCH_SIGN as DEFAULT_HOME_SIGN,
-    DEFAULT_FIRST_AXIS,
+from reforge_core.calibration.data_acquisition import (
     DEFAULT_AXES_COMMANDED,
+    DEFAULT_FIRST_AXIS,
+    DEFAULT_FULL_STRETCH_SIGN as DEFAULT_HOME_SIGN,
+    FreqRespAcquisition,
 )
+from reforge_core.hw_interfaces.arm_client import PLACEHOLDER_IP
 from reforge_core.util.utility import (
     DEFAULT_FIRST_POSE,
     DEFAULT_SINE_MIN_FREQ,
@@ -41,8 +41,8 @@ from reforge_core.util.utility import (
     SysIdType,
 )
 from robot.robot_interface import RobotInterface, BOT_ID
-from reforge_core.calibration.api import ReforgeAPIManager, has_local_models
-from reforge_core.util.vibration_test import run_vibration_test, run_velocity_test
+from reforge_core.calibration.api import ReforgeAPIManager
+from reforge_core.util.validate_shaper import run_vibration_test, run_velocity_test
 
 from reforge_core.kinecal.cli import (
     DEFAULT_KINECAL_CONFIG_PATH,
@@ -59,7 +59,10 @@ SUPPORTED_SYSID_TYPES = [SysIdType.SHAPER, SysIdType.JOINT_TRACKER]
 
 
 def _run_model_generation_with_fine_tune_fallback(
-    api_manager: ReforgeAPIManager, data_folder: str, fine_tune: bool
+    api_manager: ReforgeAPIManager,
+    data_folder: str,
+    fine_tune: bool,
+    model_variant: str | None = None,
 ) -> None:
     """Run cloud model generation with optional fine-tune fallback to identification.
 
@@ -67,28 +70,21 @@ def _run_model_generation_with_fine_tune_fallback(
         api_manager: Cloud API manager with credentials.
         data_folder: Folder containing calibration data.
         fine_tune: If `True`, attempt fine-tuning first.
-
-    Returns:
-        `None`.
-
-    Side Effects:
-        May upload data, run remote jobs, and write local model files.
-
-    Raises:
-        Exception: Propagates API and filesystem errors from cloud model generation.
-
-    Preconditions:
-        `data_folder` exists and is readable.
+        model_variant: Optional calibration/model family name used to resolve
+            current model storage.
     """
-    if fine_tune and not has_local_models():
+    if fine_tune and not api_manager.has_local_models():
         warnings.warn(
-            f"No existing models found in {ROBOT_MODELS_PATH} for fine-tuning. Running identification first...",
+            f"No existing models found in {api_manager.resolve_current_models_path(model_variant)} "
+            "for fine-tuning. Running identification first...",
             UserWarning,
         )
         fine_tune = False
 
     return api_manager.run_cloud_model_generation(
-        data_folder=data_folder, fine_tune=fine_tune
+        data_folder=data_folder,
+        fine_tune=fine_tune,
+        model_variant=model_variant,
     )
 
 
@@ -115,10 +111,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(
         dest="route",
-        help=(
-            "Available commands: 'connect_test', 'kinecal', "
-            "'calibrate', 'identify', 'vibration_test', 'fine_tune'"
-        ),
+        help="Available commands: 'connect_test', 'calibrate', 'identify', 'vibration_test', 'fine_tune'",
         required=True,
     )
 
@@ -138,7 +131,9 @@ def _build_parser() -> argparse.ArgumentParser:
         default=PLACEHOLDER_IP,
     )
     connect_test.add_argument(
-        "--robot_id", help="Reforge robot ID, if necessary", default=""
+        "--robot_id",
+        help="Reforge robot ID, if necessary",
+        default=BOT_ID,
     )
 
     # ======================== Route: kinecal ======================================
@@ -408,6 +403,24 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="fine_tune_api_token",
         type=str,
         help="API token for HTTP request to Reforge Cloud to run model fine-tuning after calibration",
+    )
+    calibrate.add_argument(
+        "--joint_tracker_api_token",
+        dest="joint_tracker_api_token",
+        type=str,
+        help=(
+            "API token for joint-tracker model generation when using "
+            "--with_joint_tracker_mpc."
+        ),
+    )
+    calibrate.add_argument(
+        "--with_joint_tracker_mpc",
+        dest="should_use_joint_tracker_mpc",
+        action="store_true",
+        help=(
+            "With --type shaper, first calibrate joint-tracker models and use "
+            "MPC-compensated joint signals for the shaper calibration."
+        ),
     )
 
     # ======================== Route: identify =====================================
@@ -736,6 +749,75 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _validate_calibration_args(args: argparse.Namespace) -> None:
+    """Validate calibration CLI combinations before connecting to hardware.
+
+    Args:
+        args: Parsed calibration arguments.
+
+    Returns:
+        `None`.
+
+    Side Effects:
+        None.
+
+    Raises:
+        ValueError: If a calibration mode is missing required cloud credentials
+            or requests an unsupported flag combination.
+
+    Preconditions:
+        `args.route == "calibrate"` and `args.sysid_type` is a `SysIdType`.
+    """
+    if args.sysid_type == SysIdType.JOINT_TRACKER:
+        if args.should_use_joint_tracker_mpc:
+            raise ValueError(
+                "--with_joint_tracker_mpc is only supported when --type shaper."
+            )
+        if args.identify_api_token is None:
+            raise ValueError("--identify is required when --type joint_tracker.")
+        if args.robot_id == "" or args.robot_id is None:
+            raise ValueError("--robot_id is required when --type joint_tracker.")
+
+    if not args.should_use_joint_tracker_mpc:
+        return
+
+    if args.sysid_type != SysIdType.SHAPER:
+        raise ValueError(
+            "--with_joint_tracker_mpc is only supported when --type shaper."
+        )
+    if args.joint_tracker_api_token is None and args.identify_api_token is None:
+        raise ValueError(
+            "--joint_tracker_api_token or --identify is required when using "
+            "--with_joint_tracker_mpc."
+        )
+    if args.robot_id == "" or args.robot_id is None:
+        raise ValueError("--robot_id is required when using --with_joint_tracker_mpc.")
+
+
+def _resolve_joint_tracker_api_token(args: argparse.Namespace) -> str:
+    """Return the cloud token used for joint-tracker model generation.
+
+    Args:
+        args: Parsed calibration arguments.
+
+    Returns:
+        `str` token for joint-tracker model generation, or an empty string when
+        no token-backed joint-tracker model generation is requested.
+
+    Side Effects:
+        None.
+
+    Raises:
+        None.
+
+    Preconditions:
+        `args` contains calibration token attributes.
+    """
+    if not args.should_use_joint_tracker_mpc:
+        return args.identify_api_token or ""
+    return args.joint_tracker_api_token or args.identify_api_token or ""
+
+
 def route_user_input(args: argparse.Namespace) -> None:
     """Route command-line arguments to the appropriate operation.
 
@@ -811,15 +893,7 @@ def route_user_input(args: argparse.Namespace) -> None:
 
     elif args.route == "calibrate":
         try:
-            if args.sysid_type == SysIdType.JOINT_TRACKER:
-                if args.identify_api_token is None:
-                    raise ValueError(
-                        "--identify_api_token is required when --type joint_tracker."
-                    )
-                if args.robot_id == "" or args.robot_id is None:
-                    raise ValueError(
-                        "--robot_id is required when --type joint_tracker."
-                    )
+            _validate_calibration_args(args=args)
             robot_interface = RobotInterface(
                 robot_ip=args.robot_ip,
                 tcp_payload=args.tcp_payload,
@@ -827,10 +901,10 @@ def route_user_input(args: argparse.Namespace) -> None:
                 local_ip=args.local_ip,
                 sdk_token=args.sdk_token,
                 robot_id=args.robot_id,
-                api_token=args.identify_api_token,
+                api_token=_resolve_joint_tracker_api_token(args=args),
             )
-
-            data_folder = robot_interface.calibrate_robot(
+            cal_runner = FreqRespAcquisition(robot_interface)
+            data_folder = cal_runner.calibrate_robot(
                 Ts=1 / args.samp_freq,
                 axes_to_command=(
                     args.num_axes if args.num_axes else robot_interface.num_joints
@@ -856,9 +930,12 @@ def route_user_input(args: argparse.Namespace) -> None:
                 imu_to_tcp_x=args.imu_to_tcp_x,
                 imu_to_tcp_y=args.imu_to_tcp_y,
                 imu_to_tcp_z=args.imu_to_tcp_z,
+                should_use_joint_tracker_mpc=args.should_use_joint_tracker_mpc,
             )
 
             # Optional: Call system identification or fine-tuning after calibration
+            if args.sysid_type == SysIdType.JOINT_TRACKER:
+                return
             if args.fine_tune_api_token:
                 api_manager = ReforgeAPIManager(
                     reforge_api_token=args.fine_tune_api_token, robot_id=args.robot_id
@@ -867,6 +944,7 @@ def route_user_input(args: argparse.Namespace) -> None:
                     api_manager=api_manager,
                     data_folder=data_folder,
                     fine_tune=True,
+                    model_variant=args.sysid_type.value,
                 )
             elif args.identify_api_token:
                 api_manager = ReforgeAPIManager(
@@ -876,6 +954,7 @@ def route_user_input(args: argparse.Namespace) -> None:
                     api_manager=api_manager,
                     data_folder=data_folder,
                     fine_tune=False,
+                    model_variant=args.sysid_type.value,
                 )
             return
         except Exception:
@@ -884,6 +963,9 @@ def route_user_input(args: argparse.Namespace) -> None:
         api_manager = ReforgeAPIManager(
             reforge_api_token=args.identify_api_token, robot_id=args.robot_id
         )
+        # TODO (nosed): Add model variant argument from the name of the sysid_type in
+        # the identification parameters folder. For now, we just save in the `current`
+        # model folder.
         return _run_model_generation_with_fine_tune_fallback(
             api_manager=api_manager,
             data_folder=args.data_folder,
@@ -947,6 +1029,9 @@ def route_user_input(args: argparse.Namespace) -> None:
         api_manager = ReforgeAPIManager(
             reforge_api_token=args.fine_tune_api_token, robot_id=args.robot_id
         )
+        # TODO (nosed): Add model variant argument from the name of the sysid_type in
+        # the identification parameters folder. For now, we just save in the `current`
+        # model folder.
         return _run_model_generation_with_fine_tune_fallback(
             api_manager=api_manager,
             data_folder=args.data_folder,
