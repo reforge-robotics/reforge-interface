@@ -10,10 +10,14 @@ import warnings
 
 from reforge_core.hw_interfaces.arm_client import (
     PLACEHOLDER_IP,
+)
+
+from reforge_core.calibration.data_acquisition import (
     DEFAULT_FULL_STRETCH_SIGN as DEFAULT_HOME_SIGN,
     DEFAULT_FIRST_AXIS,
-    DEFAULT_AXES_COMMANDED,
+    DEFAULT_AXES_COMMANDED
 )
+
 from reforge_core.util.utility import (
     DEFAULT_FIRST_POSE,
     DEFAULT_SINE_MIN_FREQ,
@@ -37,6 +41,7 @@ from reforge_core.util.utility import (
     DEFAULT_TCP_PAYLOAD,
     SysIdType,
 )
+
 from robot.robot_interface import (
     BOT_ID,
     DEFAULT_IMU_TO_TCP_X,
@@ -46,7 +51,7 @@ from robot.robot_interface import (
     TROSSEN_GRIPPER_HOLD_POSITION_M,
 )
 from robot.robot_interface import RobotInterface, BOT_ID
-from reforge_core.calibration.api import ReforgeAPIManager, has_local_models
+from reforge_core.calibration.api import ReforgeAPIManager
 from reforge_core.util.vibration_test import run_vibration_test, run_velocity_test
 
 from reforge_core.kinecal.cli import (
@@ -64,38 +69,33 @@ SUPPORTED_SYSID_TYPES = [SysIdType.SHAPER, SysIdType.JOINT_TRACKER]
 
 
 def _run_model_generation_with_fine_tune_fallback(
-    api_manager: ReforgeAPIManager, data_folder: str, fine_tune: bool
+    api_manager: ReforgeAPIManager,
+    data_folder: str,
+    fine_tune: bool,
+    model_variant: str | None = None,
 ) -> None:
     """Run cloud model generation with optional fine-tune fallback to identification.
 
     Args:
         api_manager: Cloud API manager with credentials.
         data_folder: Folder containing calibration data.
-        fine_tune: If `True`, attempt fine-tuning first.
-
-    Returns:
-        `None`.
-
-    Side Effects:
-        May upload data, run remote jobs, and write local model files.
-
-    Raises:
-        Exception: Propagates API and filesystem errors from cloud model generation.
-
-    Preconditions:
-        `data_folder` exists and is readable.
+        fine_tune: If True, attempt fine-tuning first.
+        model_variant: Optional calibration/model family name used to resolve
+            current model storage.
     """
-    if fine_tune and not has_local_models():
+    if fine_tune and not api_manager.has_local_models():
         warnings.warn(
-            f"No existing models found in {ROBOT_MODELS_PATH} for fine-tuning. Running identification first...",
+            f"No existing models found in {api_manager.resolve_current_models_path(model_variant)} "
+            "for fine-tuning. Running identification first...",
             UserWarning,
         )
         fine_tune = False
 
     return api_manager.run_cloud_model_generation(
-        data_folder=data_folder, fine_tune=fine_tune
+        data_folder=data_folder,
+        fine_tune=fine_tune,
+        model_variant=model_variant,
     )
-
 
 def _build_parser() -> argparse.ArgumentParser:
     """Create the command-line argument parser for robot operations.

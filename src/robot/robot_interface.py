@@ -14,7 +14,8 @@ from reforge_core.hw_interfaces.arm_client import ArmClient
 from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
 
 # Trossen WidowX AI follower configuration.
-BOT_ID = "dd65af8b-1ea9-47db-83c7-8a75c4d0d817"
+#BOT_ID = "dd65af8b-1ea9-47db-83c7-8a75c4d0d817"
+BOT_ID = "78554eb2-209e-4075-af33-d1d5ede177a5"
 URDF_PATH = "urdf/trossen/wxai_follower.urdf"
 ROBOT_MAX_FREQ = 200  # Trossen's documented high-rate recording frequency [Hz].
 TROSSEN_MODEL = trossen_arm.Model.wxai_v0
