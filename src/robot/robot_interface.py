@@ -202,7 +202,7 @@ class RobotInterface(ArmClient):
             )
 
     def create_robot_imu_recorder(self) -> ImuRecorder:
-        """Create the robot SDK adapter used when the Reforge IMU is disabled.
+        """Create the robot-native IMU adapter used when Reforge IMU is disabled.
 
         Robot integrations should override this method and return an
         `ImuRecorder` that converts SDK samples into `IMUState` values in SI
@@ -490,3 +490,50 @@ class RobotInterface(ArmClient):
             )
         quat = Rotation.from_rotvec(pose[3:]).as_quat()
         return [*pose[:3].tolist(), *quat.tolist()]
+
+
+    # {~.~} END OF REQUIRED METHODS
+
+    # {~.~} OPTIONAL OVERRIDES
+    def command_joint_trajectory(
+        self,
+        time_data: Sequence[float],
+        position_stream: Sequence[Sequence[float]],
+        velocity_stream: Sequence[Sequence[float]] | None = None,
+        acceleration_stream: Sequence[Sequence[float]] | None = None,
+        Ts: float = 1.0 / ROBOT_MAX_FREQ,
+    ) -> list[tuple[float, list[float]]]:
+        """Send one complete joint trajectory and return command timestamps.
+
+        *OVERRIDE* this method when the robot SDK supports a native trajectory
+        upload/stream API, requires velocity or acceleration feedforward, or
+        needs controller-specific readiness checks before publishing a full
+        trajectory. The default implementation delegates to `ArmClient`, which
+        streams each sample through `command_servo_j()` at the requested timing.
+
+        Args:
+            time_data: Command timestamps [s].
+            position_stream: Joint position commands [rad].
+            velocity_stream: Optional joint velocity commands [rad/s].
+            acceleration_stream: Optional joint acceleration commands [rad/s^2].
+            Ts: Sampling time [s].
+
+        Returns:
+            `list[tuple[float, list[float]]]` host publish timestamps [s] and
+            joint position commands [rad].
+        """
+        # {~.~} OPTIONAL: Only override this method if the robot SDK has a
+        # native trajectory upload/stream API or requires special handling for
+        # velocity/acceleration feedforward. Otherwise, the default
+        # implementation in `ArmClient` will stream each sample using
+        # `command_servo_j()` at the specified timing.
+
+        return super().command_joint_trajectory(
+            time_data=time_data,
+            position_stream=position_stream,
+            velocity_stream=velocity_stream,
+            acceleration_stream=acceleration_stream,
+            Ts=Ts,
+        )
+
+    # {~.~} END OF OPTIONAL OVERRIDES

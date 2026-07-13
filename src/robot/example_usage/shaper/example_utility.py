@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, Sequence
+from typing import Any, Protocol, Sequence, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,7 +28,8 @@ class ModalPlant:
     Args:
         natural_frequency_rad_s: Natural frequency of the flexible mode [rad/s].
         damping_ratio: Modal damping ratio [unitless].
-
+    Returns:
+        `None`.
     Raises:
         None.
     """
@@ -45,7 +46,8 @@ class SimulatedResponse:
         time_s: Sample times [s].
         command_rad: Input joint-position command [rad].
         response_rad: Simulated joint-position response [rad].
-
+    Returns:
+        `None`.
     Raises:
         None.
     """
@@ -55,17 +57,30 @@ class SimulatedResponse:
     response_rad: np.ndarray
 
 
+class WindowedTrajectorySample(Protocol):
+    """Describe the shaped window interface returned by the example buffer.
+
+    Args:
+        None.
+    Returns:
+        `None`.
+    Raises:
+        None.
+    """
+
+    time: np.ndarray
+    positions: np.ndarray
+
+
 def concatenate_windowed_outputs(
-    windows: Sequence[Any],
+    windows: list[WindowedTrajectorySample],
 ) -> tuple[np.ndarray, np.ndarray]:
     """Concatenate shaped windows into trajectory arrays.
 
     Args:
         windows: Shaped windows returned from `WindowedTrajectoryBuffer.pop_window()`.
-
     Returns:
         `tuple[np.ndarray, np.ndarray]`: Time [s] and positions [rad].
-
     Raises:
         ValueError: If no windows were emitted.
     """
@@ -93,11 +108,9 @@ def generate_point_to_point_trajectory(
         sample_time_s: Controller sample period [s].
         move_duration_s: Duration of the point-to-point move [s].
         dwell_duration_s: Final-target dwell duration [s].
-
     Returns:
         `tuple[np.ndarray, np.ndarray]`: Time vector `[N]` [s] and joint
         trajectory `[N, num_joints]` [rad].
-
     Raises:
         ValueError: If the vectors have different shapes or durations are invalid.
     """
@@ -149,12 +162,9 @@ def generate_point_to_point_sample(
         goal_position_rad: Final joint positions [rad], shape `[num_joints]`.
         current_time_s: Current control-loop time from the move start [s].
         move_duration_s: Duration of the point-to-point move [s].
-
     Returns:
         `tuple[np.ndarray, np.ndarray, np.ndarray]`: Position [rad], velocity
-        [rad/s], and acceleration [rad/s^2] command vectors for the current
-        sample.
-
+        [rad/s], and acceleration [rad/s^2] command vectors for the current sample.
     Raises:
         ValueError: If the vectors have different shapes or `move_duration_s`
             is not positive.
@@ -321,11 +331,9 @@ def estimate_derivatives(
     Args:
         trajectory_rad: Joint-position trajectory `[N, num_joints]` [rad].
         sample_time_s: Controller sample period [s].
-
     Returns:
         `tuple[np.ndarray, np.ndarray]`: Joint velocities `[N, num_joints]`
         [rad/s] and accelerations `[N, num_joints]` [rad/s^2].
-
     Raises:
         ValueError: If `trajectory_rad` is not a two-dimensional array or if
             `sample_time_s` is not positive.
@@ -337,24 +345,26 @@ def estimate_derivatives(
     if sample_time_s <= 0.0:
         raise ValueError("sample_time_s must be positive")
 
-    edge_order: Literal[1, 2] = 2 if trajectory_rad.shape[0] > 2 else 1
-    velocity_rad_s: np.ndarray = np.asarray(
-        np.gradient(
+    edge_order = 2 if trajectory_rad.shape[0] > 2 else 1
+    # Nosa: NumPy's current gradient stubs do not fully model this validated
+    # 2D `ndarray` usage, so keep the runtime call and narrow the static type.
+    velocity_rad_s = cast(
+        np.ndarray,
+        np.gradient(  # type: ignore[call-overload]
             trajectory_rad,
             sample_time_s,
             axis=0,
             edge_order=edge_order,
         ),
-        dtype=float,
     )
-    acceleration_rad_s2: np.ndarray = np.asarray(
-        np.gradient(
+    acceleration_rad_s2 = cast(
+        np.ndarray,
+        np.gradient(  # type: ignore[call-overload]
             velocity_rad_s,
             sample_time_s,
             axis=0,
             edge_order=edge_order,
         ),
-        dtype=float,
     )
     return velocity_rad_s, acceleration_rad_s2
 
@@ -371,10 +381,8 @@ def infer_dominant_modal_plant(
         representative_command_rad: Joint command used to evaluate the map model
             [rad], shape `[num_joints]`.
         axis_index: Shaped axis index used for the simulated plant.
-
     Returns:
         `ModalPlant`: Least-damped mode used by the example plant.
-
     Raises:
         ValueError: If `axis_index` is outside the configured shaped axes.
     """
@@ -421,10 +429,8 @@ def simulate_modal_position_response(
         time_s: Sample times [s].
         command_rad: Input joint-position command [rad].
         plant: Modal plant parameters used by the simulation.
-
     Returns:
         `SimulatedResponse`: Time, command, and simulated response arrays.
-
     Raises:
         ValueError: If input arrays have different lengths or invalid dimensions.
     """
@@ -461,10 +467,8 @@ def residual_vibration_rad(
         response: Simulated response.
         final_value_rad: Expected final joint position [rad].
         start_time_s: Time after which residual vibration is measured [s].
-
     Returns:
         `float`: Maximum absolute response error after `start_time_s` [rad].
-
     Raises:
         None.
     """
@@ -481,10 +485,8 @@ def _sample_time_from_time_vector(time_s: np.ndarray) -> float:
 
     Args:
         time_s: Sample times `[N]` [s].
-
     Returns:
         `float`: Median sample period [s].
-
     Raises:
         ValueError: If `time_s` is not one-dimensional, has fewer than two
             samples, or is not strictly increasing.
@@ -513,11 +515,9 @@ def _axis_position_velocity_acceleration(
         time_s: Sample times `[N]` [s].
         positions_rad: Joint-position samples `[N, num_joints]` [rad].
         axis_index: Joint axis used for the returned profiles.
-
     Returns:
         `tuple[np.ndarray, np.ndarray, np.ndarray]`: Position [rad], velocity
         [rad/s], and acceleration [rad/s^2] for `axis_index`.
-
     Raises:
         ValueError: If the position array shape is invalid or `axis_index` is
             outside the available joint axes.
@@ -549,11 +549,9 @@ def _streamed_samples_to_arrays(
     Args:
         time_s: Streamed sample times [s].
         positions_rad: Streamed joint-position samples [rad].
-
     Returns:
         `tuple[np.ndarray, np.ndarray]`: Time vector `[N]` [s] and joint
         positions `[N, num_joints]` [rad].
-
     Raises:
         ValueError: If no samples were provided or time and position sample
             counts differ.
@@ -580,11 +578,8 @@ def _final_deceleration_start_time(
         time_s: Command sample times `[N]` [s].
         positions_rad: Joint-position samples `[N, num_joints]` [rad].
         shaped_axis: Joint axis used to find the peak command velocity.
-
     Returns:
-        `float`: Time when velocity reaches its maximum before final
-        deceleration [s].
-
+        `float`: Time when velocity reaches its maximum before final deceleration [s].
     Raises:
         ValueError: If the trajectory has invalid dimensions.
     """
@@ -609,17 +604,14 @@ def _residual_shaping_start_time(
     Args:
         desired_time_s: Desired command sample times `[N]` [s].
         desired_positions_rad: Desired joint positions `[N, num_joints]` [rad].
-        residual_offline_time_s: Residual-tail offline Shaper sample times `[K]`
-            [s].
+        residual_offline_time_s: Residual-tail offline Shaper sample times `[K]` [s].
         residual_offline_positions_rad: Residual-tail offline-shaped positions
             `[K, num_joints]` [rad].
         shaped_axis: Joint axis used for comparing raw and shaped positions.
         fallback_time_s: Returned time [s] if no residual-tail change is found.
-
     Returns:
-        `float`: First sample time where residual shaping changes the command
-        [s], or `fallback_time_s`.
-
+        `float`: First sample time where residual shaping changes the command [s],
+        or `fallback_time_s`.
     Raises:
         ValueError: If array dimensions are invalid.
     """
@@ -663,28 +655,21 @@ def plot_command_profiles(
         desired_time_s: Desired command sample times `[N]` [s].
         desired_positions_rad: Desired joint positions `[N, num_joints]` [rad].
         always_on_time_s: Always-on Shaper sample times `[M]` [s].
-        always_on_positions_rad: Always-on shaped positions `[M, num_joints]`
-            [rad].
-        residual_offline_time_s: Residual-tail offline Shaper sample times `[K]`
-            [s].
+        always_on_positions_rad: Always-on shaped positions `[M, num_joints]` [rad].
+        residual_offline_time_s: Residual-tail offline Shaper sample times `[K]` [s].
         residual_offline_positions_rad: Residual-tail offline-shaped positions
             `[K, num_joints]` [rad].
         streamed_time_s: Sample-by-sample Shaper stream times `[L]` [s].
-        streamed_positions_rad: Sample-by-sample shaped positions
-            `[L, num_joints]` [rad].
+        streamed_positions_rad: Sample-by-sample shaped positions `[L, num_joints]` [rad].
         windowed_time_s: Fixed-window Shaper sample times `[W]` [s].
-        windowed_positions_rad: Fixed-window shaped positions `[W, num_joints]`
-            [rad].
+        windowed_positions_rad: Fixed-window shaped positions `[W, num_joints]` [rad].
         shaped_axis: Joint axis used for the single-axis profile plot.
-        deceleration_start_time_s: Time when the desired command starts final
-            deceleration [s].
-        residual_shaping_start_time_s: Time when residual-tail shaping first
-            changes the command [s].
+        deceleration_start_time_s: Time when the desired command starts final deceleration [s].
+        residual_shaping_start_time_s: Time when residual-tail shaping first changes
+            the command [s].
         output_path: Optional file path for saving the plot.
-
     Returns:
         `None`.
-
     Raises:
         ValueError: If profile arrays have invalid shapes.
         OSError: If `output_path` cannot be written.
@@ -842,27 +827,22 @@ def plot_shaper_example_results(
         desired_time_s: Desired command sample times `[N]` [s].
         desired_trajectory_rad: Desired joint positions `[N, num_joints]` [rad].
         always_on_time_s: Always-on Shaper sample times `[M]` [s].
-        always_on_positions_rad: Always-on shaped positions `[M, num_joints]`
-            [rad].
-        residual_offline_time_s: Residual-tail offline Shaper sample times `[K]`
-            [s].
+        always_on_positions_rad: Always-on shaped positions `[M, num_joints]` [rad].
+        residual_offline_time_s: Residual-tail offline Shaper sample times `[K]` [s].
         residual_offline_positions_rad: Residual-tail offline-shaped positions
             `[K, num_joints]` [rad].
         streamed_times_s: Sample-by-sample Shaper stream times [s].
         streamed_positions_rad: Sample-by-sample shaped positions [rad].
         windowed_time_s: Fixed-window Shaper sample times `[W]` [s].
-        windowed_positions_rad: Fixed-window shaped positions `[W, num_joints]`
-            [rad].
+        windowed_positions_rad: Fixed-window shaped positions `[W, num_joints]` [rad].
         goal_position_rad: Final target joint position `[num_joints]` [rad].
         shaped_axis: Joint axis used for single-axis plots.
         move_duration_s: Point-to-point move duration [s].
         dwell_duration_s: Time spent holding the final target after the move [s].
         residual_window_duration_s: Duration subtracted from final dwell to choose
             the residual-vibration measurement start [s].
-
     Returns:
         `None`.
-
     Raises:
         ValueError: If plotted arrays have invalid shapes.
         OSError: If plot output cannot be written.
@@ -950,32 +930,26 @@ def simulate_and_plot_shaper_example(
         desired_time_s: Desired command sample times `[N]` [s].
         desired_trajectory_rad: Unshaped joint positions `[N, num_joints]` [rad].
         always_on_time_s: Always-on Shaper sample times `[M]` [s].
-        always_on_positions_rad: Always-on shaped positions `[M, num_joints]`
-            [rad].
-        residual_offline_time_s: Residual-tail offline Shaper sample times `[K]`
-            [s].
+        always_on_positions_rad: Always-on shaped positions `[M, num_joints]` [rad].
+        residual_offline_time_s: Residual-tail offline Shaper sample times `[K]` [s].
         residual_offline_positions_rad: Residual-tail offline-shaped positions
             `[K, num_joints]` [rad].
         streamed_time_s: Sample-by-sample Shaper stream times `[L]` [s].
-        streamed_positions_rad: Sample-by-sample shaped positions
-            `[L, num_joints]` [rad].
+        streamed_positions_rad: Sample-by-sample shaped positions `[L, num_joints]` [rad].
         windowed_time_s: Fixed-window Shaper sample times `[W]` [s].
-        windowed_positions_rad: Fixed-window shaped positions `[W, num_joints]`
-            [rad].
+        windowed_positions_rad: Fixed-window shaped positions `[W, num_joints]` [rad].
         goal_position_rad: Final target joint position `[num_joints]` [rad].
         shaped_axis: Joint axis used for the single-axis plot.
         move_duration_s: Point-to-point move duration [s].
-        deceleration_start_time_s: Time when the unshaped command starts
-            decelerating from peak velocity [s].
+        deceleration_start_time_s: Time when the unshaped command starts decelerating
+            from peak velocity [s].
         residual_shaping_start_time_s: Time when the residual-tail Shaper first
             deviates from the raw command [s].
         dwell_duration_s: Time spent holding the final target after the move [s].
-        residual_window_duration_s: Duration subtracted from the final dwell to
-            choose the residual-vibration measurement start [s].
-
+        residual_window_duration_s: Duration subtracted from the final dwell to choose
+            the residual-vibration measurement start [s].
     Returns:
         `None`.
-
     Raises:
         ValueError: If arrays passed to simulation have inconsistent shapes.
         OSError: If plot output cannot be written.
@@ -1127,21 +1101,18 @@ def plot_responses(
         desired_response: Plant response to the unshaped desired command.
         slower_response: Plant response to a slower unshaped desired command.
         always_on_response: Plant response when Shaper is enabled from the start.
-        residual_offline_response: Plant response to the offline residual-tail
-            Shaper command.
+        residual_offline_response: Plant response to the offline residual-tail Shaper command.
         streamed_response: Plant response to the sample-by-sample Shaper stream.
         windowed_response: Plant response to the fixed-window Shaper buffer.
         move_duration_s: End time of the point-to-point move [s].
-        deceleration_start_time_s: Time when the unshaped command starts
-            decelerating from peak velocity [s].
+        deceleration_start_time_s: Time when the unshaped command starts decelerating
+            from peak velocity [s].
         residual_shaping_start_time_s: Time when the residual-tail Shaper first
             deviates from the raw command [s].
         slower_move_duration_s: End time of the slower point-to-point move [s].
         output_path: Optional file path for saving the plot.
-
     Returns:
         `None`.
-
     Raises:
         OSError: If `output_path` cannot be written.
     """

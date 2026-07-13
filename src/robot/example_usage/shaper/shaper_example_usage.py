@@ -7,13 +7,17 @@ from pathlib import Path
 import numpy as np
 
 from robot.example_usage.shaper.example_utility import (
+    concatenate_windowed_outputs,
     estimate_derivatives,
     generate_point_to_point_sample,
     generate_point_to_point_trajectory,
-    concatenate_windowed_outputs,
     plot_shaper_example_results,
 )
-from reforge_core.control.shaper import ResidualShapingStrategy, ShaperInterface
+from reforge_core.control.shaper import (
+    ResidualShapingStrategy,
+    ResidualSwitchLimits,
+    ShaperInterface,
+)
 
 
 THIS_DIR = Path(__file__).resolve().parent
@@ -32,7 +36,10 @@ SHAPER_ENABLED_WEIGHT = 1.0
 MODEL_DIRECTORY = THIS_DIR
 URDF_FILEPATH = REPO_ROOT / "src/robot/urdf/test_robot.urdf"
 
-RESIDUAL_TRANSITION_MARGIN_S = 0.0
+SWITCH_MAX_VELOCITY_RAD_S = 3.0
+SWITCH_MAX_ACCELERATION_RAD_S2 = 45.0
+SWITCH_MAX_SEARCH_S = 0.75
+SWITCH_WINDOW_TARGET_MARGIN_S = 0.0
 
 
 def main() -> None:
@@ -40,10 +47,8 @@ def main() -> None:
 
     Args:
         None.
-
     Returns:
         `None`.
-
     Raises:
         RuntimeError: If Shaper initialization or simulation fails.
     """
@@ -91,6 +96,12 @@ def main() -> None:
     # =========================================================================
     # Start Example 2: Shape only the residual tail of a planned trajectory.
     # =========================================================================
+    residual_switch_limits = ResidualSwitchLimits(
+        max_velocity=SWITCH_MAX_VELOCITY_RAD_S,
+        max_acceleration=SWITCH_MAX_ACCELERATION_RAD_S2,
+        max_search_s=SWITCH_MAX_SEARCH_S,
+        window_target_margin_s=SWITCH_WINDOW_TARGET_MARGIN_S,
+    )
     residual_offline_shaper = ShaperInterface(
         sample_time=SAMPLE_TIME_S,
         model_directory=str(MODEL_DIRECTORY),
@@ -105,7 +116,7 @@ def main() -> None:
         time_vector=list(time_s),
         vibration_shaping_weight=SHAPER_ENABLED_WEIGHT,
         residual_shaping_strategy=ResidualShapingStrategy.ALIGNED_TAIL,
-        residual_transition_margin_s=RESIDUAL_TRANSITION_MARGIN_S,
+        residual_switch_limits=residual_switch_limits,
         finalize_tail=False,
     )
     # =========================================================================
@@ -200,7 +211,7 @@ def main() -> None:
         time_vector=list(time_s),
         vibration_shaping_weight=SHAPER_ENABLED_WEIGHT,
         residual_shaping_strategy=ResidualShapingStrategy.ALIGNED_TAIL,
-        residual_transition_margin_s=RESIDUAL_TRANSITION_MARGIN_S,
+        residual_switch_limits=residual_switch_limits,
         window_s=WINDOW_DURATION_S,
         auto_qualify_window=False,
         finalize_tail=False,
@@ -221,12 +232,9 @@ def main() -> None:
             continue
         windowed_buffer.fill_available(max_windows=1)
 
-    (windowed_time_s, windowed_positions_rad) = concatenate_windowed_outputs(
+    windowed_time_s, windowed_positions_rad = concatenate_windowed_outputs(
         shaped_windows
     )
-    # =========================================================================
-    # End Example 4.
-    # =========================================================================
 
     plot_shaper_example_results(
         shaper=always_on_shaper,
