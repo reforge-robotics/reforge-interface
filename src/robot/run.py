@@ -4,8 +4,10 @@
 # Version: 1.0
 import argparse
 import os
+from pathlib import Path
 import traceback
 import warnings
+
 from reforge_core.hw_interfaces.arm_client import (
     PLACEHOLDER_IP,
     DEFAULT_FULL_STRETCH_SIGN as DEFAULT_HOME_SIGN,
@@ -17,6 +19,8 @@ from reforge_core.util.utility import (
     DEFAULT_SINE_MIN_FREQ,
     DEFAULT_SINE_MAX_FREQ,
     DEFAULT_FREQ_SPACING,
+    DEFAULT_JOINT_TRACKER_MIN_SINE_FREQ,
+    DEFAULT_JOINT_TRACKER_MAX_FREQ_SPACING,
     DEFAULT_SINE_CYCLES,
     DEFAULT_DWELL_TIME,
     DEFAULT_MAX_ACC,
@@ -41,12 +45,22 @@ from robot.robot_interface import (
     RobotInterface,
     TROSSEN_GRIPPER_HOLD_POSITION_M,
 )
-from reforge_core.calibration.api import ReforgeAPIManager
+from robot.robot_interface import RobotInterface, BOT_ID
+from reforge_core.calibration.api import ReforgeAPIManager, has_local_models
 from reforge_core.util.vibration_test import run_vibration_test, run_velocity_test
+
+from reforge_core.kinecal.cli import (
+    DEFAULT_KINECAL_CONFIG_PATH,
+    KinecalCliOptions,
+)
+from reforge_core.kinecal.options import RenderOptions
+from reforge_core.kinecal.result_cli import present_kinecal_result
+from reforge_core.kinecal.runner import run_entrypoint as run_kinecal_entrypoint
+
 
 # Local models directory used by identification/fine-tuning flows.
 ROBOT_MODELS_PATH = os.path.join("robot", "models", "current")
-SUPPORTED_SYSID_TYPES = [SysIdType.SHAPER, SysIdType.FEEDFORWARD]
+SUPPORTED_SYSID_TYPES = [SysIdType.SHAPER, SysIdType.JOINT_TRACKER]
 
 
 def _run_model_generation_with_fine_tune_fallback(
@@ -71,7 +85,7 @@ def _run_model_generation_with_fine_tune_fallback(
     Preconditions:
         `data_folder` exists and is readable.
     """
-    if fine_tune and not api_manager.has_local_models():
+    if fine_tune and not has_local_models():
         warnings.warn(
             f"No existing models found in {ROBOT_MODELS_PATH} for fine-tuning. Running identification first...",
             UserWarning,
@@ -106,9 +120,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(
         dest="route",
-        help="Available commands: 'connect_test', 'teach_mode', "
-        "'gripper_position', 'calibrate', 'identify', 'vibration_test', "
-        "'fine_tune'",
+        help=(
+            "Available commands: 'connect_test', 'kinecal', "
+            "'calibrate', 'identify', 'vibration_test', 'fine_tune'"
+        ),
         required=True,
     )
 
@@ -131,60 +146,32 @@ def _build_parser() -> argparse.ArgumentParser:
         "--robot_id", help="Reforge robot ID, if necessary", default=""
     )
 
-    # ======================== Route: teach_mode ====================================
-    teach_mode = sub.add_parser(
-        "teach_mode",
-        help="Enable gravity compensation for supervised manual positioning.",
+    # ======================== Route: kinecal ======================================
+    kinecal = sub.add_parser(
+        "kinecal",
+        help="Run interactive kinematic-calibration data collection.",
     )
-    teach_mode.add_argument("robot_ip", help="Robot IP address")
-    teach_mode.add_argument(
-        "--local_ip",
-        help="Local machine IP address, if necessary",
-        default=PLACEHOLDER_IP,
-    )
-    teach_mode.add_argument(
-        "--sdk_token",
-        help="API token to use robot's SDK, if necessary",
-        default=PLACEHOLDER_IP,
-    )
-    teach_mode.add_argument(
-        "--robot_id", help="Reforge robot ID, if necessary", default=""
-    )
-
-    # ======================== Route: gripper_position ===============================
-    gripper_position = sub.add_parser(
-        "gripper_position",
-        help="Move the gripper to a fixed opening in meters.",
-    )
-    gripper_position.add_argument("robot_ip", help="Robot IP address")
-    gripper_position.add_argument(
-        "position_m",
-        type=float,
-        nargs="?",
-        default=TROSSEN_GRIPPER_HOLD_POSITION_M,
+    kinecal.add_argument("robot_ip", help="Robot IP address")
+    kinecal.add_argument(
+        "--config",
+        type=Path,
+        default=DEFAULT_KINECAL_CONFIG_PATH,
         help=(
-            "Target gripper opening in meters (default: %(default)s; "
-            "controller range is typically 0.0-0.04)."
+            "Kinecal TOML configuration path. "
+            f"Default: {DEFAULT_KINECAL_CONFIG_PATH}."
         ),
     )
-    gripper_position.add_argument(
-        "--move_time",
-        type=float,
-        default=2.0,
-        help="Move duration in seconds (default: %(default)s)",
+    kinecal.add_argument(
+        "--skip-render",
+        action="store_true",
+        help="Disable Viser rendering.",
     )
-    gripper_position.add_argument(
-        "--local_ip",
-        help="Local machine IP address, if necessary",
-        default=PLACEHOLDER_IP,
-    )
-    gripper_position.add_argument(
-        "--sdk_token",
-        help="API token to use robot's SDK, if necessary",
-        default=PLACEHOLDER_IP,
-    )
-    gripper_position.add_argument(
-        "--robot_id", help="Reforge robot ID, if necessary", default=""
+    kinecal.add_argument(
+        "--no-preview-failed-transfers",
+        action="store_true",
+        help=(
+            "Do not preview rejected transfer plans in Viser before manual " "fallback."
+        ),
     )
 
     # ======================== Route: calibrate =====================================
@@ -217,7 +204,7 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="sysid_type",
         choices=[sysid_type.value for sysid_type in SUPPORTED_SYSID_TYPES],
         default=DEFAULT_SYSID_TYPE,
-        help="Calibration workflow type: 'shaper' or 'feedforward' (default: %(default)s)",
+        help="Calibration workflow type: 'shaper' or 'joint_tracker' (default: %(default)s)",
     )
     calibrate.add_argument(
         "--freq",
@@ -296,7 +283,10 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="min_freq",
         type=float,
         default=DEFAULT_SINE_MIN_FREQ,
-        help=f"Min frequency [Hz] (default: {DEFAULT_SINE_MIN_FREQ})",
+        help=(
+            f"Min frequency [Hz] (default: {DEFAULT_SINE_MIN_FREQ}; "
+            f"feedforward uses min(value, {DEFAULT_JOINT_TRACKER_MIN_SINE_FREQ}))"
+        ),
     )
     calibrate.add_argument(
         "--maxfreq",
@@ -310,7 +300,10 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="freq_space",
         type=float,
         default=DEFAULT_FREQ_SPACING,
-        help=f"Frequency spacing [Hz] (default: {DEFAULT_FREQ_SPACING})",
+        help=(
+            f"Frequency spacing [Hz] (default: {DEFAULT_FREQ_SPACING}; "
+            f"feedforward uses min(value, {DEFAULT_JOINT_TRACKER_MAX_FREQ_SPACING}))"
+        ),
     )
     calibrate.add_argument(
         "--sine_cycles",
@@ -430,6 +423,34 @@ def _build_parser() -> argparse.ArgumentParser:
     identify.add_argument("robot_id", help="Reforge robot ID.")
     identify.add_argument(
         "data_folder", help="Folder containing calibration data CSVs."
+    )
+
+    # ======================== Route: kinecal-identify =============================
+    kinecal_identify = sub.add_parser(
+        "kinecal-identify",
+        help="Run cloud kinematic calibration identification.",
+    )
+    kinecal_identify.add_argument(
+        "kinecal_api_token", help="API token for HTTP request to Reforge Cloud."
+    )
+    kinecal_identify.add_argument("robot_id", help="Reforge robot ID.")
+    kinecal_identify.add_argument(
+        "--data-folder",
+        dest="data_folders",
+        required=True,
+        action="append",
+        type=Path,
+        help=(
+            "Kinecal dataset folder containing hole_0.csv and hole_1.csv. "
+            "Repeat this argument to upload multiple datasets."
+        ),
+    )
+    kinecal_identify.add_argument(
+        "--socket-offset-mm",
+        dest="socket_offset_mm",
+        required=True,
+        type=float,
+        help="Distance between calibration plate socket centers [mm].",
     )
 
     # ======================== Route: vibration_test =====================================
@@ -554,6 +575,50 @@ def _build_parser() -> argparse.ArgumentParser:
             "Number of leading joints/axes to test in vibration runs "
             "(e.g., 2 -> base+shoulder, 3 -> base+shoulder+elbow). "
             "(default: fallback to --num_shapers, then calibration_params.axes)."
+        ),
+    )
+    # TODO (nosed): Remove hardcoded defaults from here and convert to constants in utility
+    vibration_test.add_argument(
+        "--trajectory_space",
+        choices=("joint", "cartesian"),
+        default="joint",
+        help=(
+            "Trajectory domain for vibration tests: existing joint-axis moves "
+            "or centered Cartesian straight lines (default: %(default)s)."
+        ),
+    )
+    vibration_test.add_argument(
+        "--cart_disp",
+        dest="cart_disp",
+        type=float,
+        default=0.10,
+        help="Total Cartesian straight-line displacement [m] (default: %(default)s).",
+    )
+    vibration_test.add_argument(
+        "--cart_vel",
+        dest="cart_vel",
+        type=float,
+        default=0.20,
+        help="Maximum Cartesian path velocity [m/s] (default: %(default)s).",
+    )
+    vibration_test.add_argument(
+        "--cart_acc",
+        dest="cart_acc",
+        type=float,
+        default=1.0,
+        help="Maximum Cartesian path acceleration [m/s^2] (default: %(default)s).",
+    )
+    vibration_test.add_argument(
+        "--cart_direction",
+        dest="cart_directions",
+        type=float,
+        nargs=3,
+        action="append",
+        metavar=("X", "Y", "Z"),
+        default=None,
+        help=(
+            "Base-frame Cartesian direction vector. Repeat for multiple tests. "
+            "Defaults to separate X, Y, and Z directions."
         ),
     )
 
@@ -720,64 +785,46 @@ def route_user_input(args: argparse.Namespace) -> None:
             print(
                 f"❌ Failed to connect to robot at IP address {args.robot_ip}: {str(e)}"
             )
-    elif args.route == "teach_mode":
-        robot_interface = None
-        try:
-            robot_interface = RobotInterface(
-                robot_ip=args.robot_ip,
-                tcp_payload=DEFAULT_TCP_PAYLOAD,
-                tcp_payload_com=tcp_payload_com,
-                local_ip=args.local_ip,
-                sdk_token=args.sdk_token,
-                robot_id=args.robot_id,
-            )
-            robot_interface.enter_teach_mode()
-            print(
-                "Teach mode enabled. Support the arm while moving it by hand. "
-                "Press Enter to brake the joints."
-            )
-            input()
-        except KeyboardInterrupt:
-            print("\nTeach mode interrupted.")
-        except Exception:
-            traceback.print_exc()
-        finally:
-            if robot_interface is not None:
-                try:
-                    robot_interface.exit_teach_mode()
-                    q, _, _ = robot_interface.get_joint_state()
-                    print(f"Arm braked. Joint positions [rad]: {q}")
-                except Exception:
-                    traceback.print_exc()
-    elif args.route == "gripper_position":
-        try:
-            robot_interface = RobotInterface(
-                robot_ip=args.robot_ip,
-                tcp_payload=DEFAULT_TCP_PAYLOAD,
-                tcp_payload_com=tcp_payload_com,
-                local_ip=args.local_ip,
-                sdk_token=args.sdk_token,
-                robot_id=args.robot_id,
-            )
-            robot_interface.command_gripper_position(
-                args.position_m,
-                move_time_s=args.move_time,
-            )
-            print(
-                "Gripper holding position [m]: "
-                f"{robot_interface.get_gripper_position():.6f}"
-            )
-        except Exception:
-            traceback.print_exc()
+    elif args.route == "kinecal":
+        render_enabled = not args.skip_render
+        cli_options = KinecalCliOptions(
+            config_path=args.config,
+            robot_ip=args.robot_ip,
+            demo_enabled=False,
+            render_options=RenderOptions(
+                enabled=render_enabled,
+                preview_failed_transfers=(
+                    render_enabled and not args.no_preview_failed_transfers
+                ),
+            ),
+        )
+        run_kinecal_entrypoint(
+            cli_options=cli_options,
+            robot_factory=lambda robot_ip: RobotInterface(robot_ip=robot_ip),
+            script_path=Path(__file__).resolve(),
+        )
+
+    elif args.route == "kinecal-identify":
+        api_manager = ReforgeAPIManager(
+            reforge_api_token=args.kinecal_api_token, robot_id=args.robot_id
+        )
+        kinecal_result = api_manager.run_cloud_kinecal(
+            data_folders=args.data_folders,
+            socket_offset_mm=args.socket_offset_mm,
+        )
+        present_kinecal_result(kinecal_result)
+
     elif args.route == "calibrate":
         try:
-            if args.sysid_type == SysIdType.FEEDFORWARD:
+            if args.sysid_type == SysIdType.JOINT_TRACKER:
                 if args.identify_api_token is None:
                     raise ValueError(
-                        "--identify is required when --type feedforward."
+                        "--identify_api_token is required when --type joint_tracker."
                     )
                 if args.robot_id == "" or args.robot_id is None:
-                    raise ValueError("--robot_id is required when --type feedforward.")
+                    raise ValueError(
+                        "--robot_id is required when --type joint_tracker."
+                    )
             robot_interface = RobotInterface(
                 robot_ip=args.robot_ip,
                 tcp_payload=args.tcp_payload,
@@ -870,6 +917,11 @@ def route_user_input(args: argparse.Namespace) -> None:
                 num_axes_to_test=args.num_axes_to_test,
                 # Thread CLI override through to shaping logic.
                 num_shapers=args.num_shapers,
+                trajectory_space=args.trajectory_space,
+                cartesian_displacement_m=args.cart_disp,
+                cartesian_velocity_m_per_s=args.cart_vel,
+                cartesian_acceleration_m_per_s2=args.cart_acc,
+                cartesian_directions=args.cart_directions,
             )
 
         except Exception:

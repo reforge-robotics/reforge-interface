@@ -1,0 +1,5 @@
+# Ignore future generated kinecal result bundles by default.
+*
+
+# Keep the ignore file itself tracked.
+!.gitignore
