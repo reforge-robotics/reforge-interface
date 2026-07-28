@@ -1,0 +1,40 @@
+{
+  "calibrated_urdf_path": "uf850_calibrated.urdf",
+  "eef_link_name": "link_eef",
+  "probe_link_name": "prod_ball_link",
+  "report_paths": [
+    "report_dataset1.html",
+    "report_dataset2.html"
+  ],
+  "report_type": "success",
+  "results_id": "ad0a8765-3a8c-4751-b235-e84a06244715",
+  "socket_positions_m": [
+    {
+      "hole0_m": [
+        0.13084215937917676,
+        -0.39246808937027183,
+        0.15971558851480927
+      ],
+      "hole1_m": [
+        0.13427499123816125,
+        -0.3412520687954871,
+        0.16286556073374686
+      ],
+      "name": "input"
+    },
+    {
+      "hole0_m": [
+        0.13084215937917676,
+        -0.39246808937027183,
+        0.15971558851480927
+      ],
+      "hole1_m": [
+        0.13427499123816125,
+        -0.3412520687954871,
+        0.16286556073374686
+      ],
+      "name": "input_2"
+    }
+  ],
+  "source_sku_urdf_path": "uf850.urdf"
+}

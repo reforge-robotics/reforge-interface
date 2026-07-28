@@ -1,5 +1,6 @@
 numpy>=2,<3
 pydantic
-reforge-core
+reforge-core[all]
 scipy
 trossen-arm==1.10.0
+
