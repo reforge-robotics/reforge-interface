@@ -15,7 +15,7 @@ license = { text = "Proprietary" }
 authors = [{ name = "Reforge Robotics", email = "info@reforgerobotics.com" }]
 dependencies = [
     "numpy>=2,<3",
-    "reforge-core",
+    "reforge-core[all]",
 ]
 
 [project.optional-dependencies]

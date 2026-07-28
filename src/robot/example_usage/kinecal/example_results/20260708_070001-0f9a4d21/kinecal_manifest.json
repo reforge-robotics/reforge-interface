@@ -1,0 +1,39 @@
+{
+  "eef_link_name": "link_eef",
+  "probe_link_name": "prod_ball_link",
+  "report_paths": [
+    "report_dataset1.html",
+    "report_dataset2.html"
+  ],
+  "report_type": "optimizer_failed",
+  "results_id": "0f9a4d21-3f1d-494d-88ea-c8514183858d",
+  "socket_positions_m": [
+    {
+      "hole0_m": [
+        1.0414668761413048,
+        -2.169555460620084,
+        -0.5553251248715746
+      ],
+      "hole1_m": [
+        1.179692957176806,
+        -1.7117359947222317,
+        -0.7092977257966042
+      ],
+      "name": "input"
+    },
+    {
+      "hole0_m": [
+        1.0414668761413048,
+        -2.169555460620084,
+        -0.5553251248715746
+      ],
+      "hole1_m": [
+        1.179692957176806,
+        -1.7117359947222317,
+        -0.7092977257966042
+      ],
+      "name": "input_2"
+    }
+  ],
+  "source_sku_urdf_path": "uf850.urdf"
+}
