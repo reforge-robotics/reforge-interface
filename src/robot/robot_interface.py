@@ -455,6 +455,58 @@ class RobotInterface(ArmClient):
         # {~.~} Return 0 for success - edit after implementation and testing
         return 1
 
+    def supports_teaching_mode(self) -> bool:
+        """Return whether the robot supports manual teaching mode.
+
+        Override this method when the robot SDK supports hand-guided teaching.
+
+        Returns:
+            `bool` indicating whether manual teaching mode is implemented.
+        """
+        return False
+
+    def enter_teaching_mode(self) -> Optional[int | None]:
+        """Ensure the controller is set to manual teaching mode.
+
+        Override this method with the robot SDK's teaching-mode command.
+
+        Returns:
+            Vendor-specific mode/state code when available.
+        """
+        arm = self._require_connected_arm()  # noqa: F841
+
+        # {~.~} Enable manual teaching mode using the robot SDK.
+        # [YOUR CODE HERE]
+
+        # {~.~} Return 0 for success - edit after implementation and testing
+        return 1
+
+    def supports_flange_button(self) -> bool:
+        """Return whether the robot exposes a readable flange button.
+
+        Override this method when the robot SDK exposes a button or equivalent
+        operator input near the tool flange.
+
+        Returns:
+            `bool` indicating whether flange-button reads are implemented.
+        """
+        return False
+
+    def read_flange_button_pressed(self) -> bool:
+        """Return whether the flange button is currently pressed.
+
+        Override this method with the robot SDK's flange-button read.
+
+        Returns:
+            `bool` indicating the current flange-button state.
+        """
+        arm = self._require_connected_arm()  # noqa: F841
+
+        # {~.~} Read the flange-button state using the robot SDK.
+        # [YOUR CODE HERE]
+
+        return False
+
     def get_joint_state(self) -> tuple[list[float], list[float], list[float]]:
         """Return one joint state sample as ``(q, qd, tau)``.
 
