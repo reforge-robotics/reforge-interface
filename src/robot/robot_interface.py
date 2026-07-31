@@ -6,6 +6,7 @@
 import numpy as np
 from importlib.resources import files, as_file
 from typing import Optional, Sequence
+from robot.cobotta_bcap import BcapTransportFactory, CobottaBcapRobot
 from reforge_core.hw_interfaces.arm_client import ArmClient
 from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
 
@@ -33,9 +34,9 @@ from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
 
 
 # User constants - EDITS REQUIRED
-BOT_ID = ""  # {~.~} [CHANGE TO ROBOT's ID, IF NECESSARY] - can also enter as CLI argument (see run.py --help)
-URDF_PATH = "urdf/test_robot.urdf"  # {~.~} [CHANGE TO YOUR ROBOT'S URDF FILE PATH]
-ROBOT_MAX_FREQ = 250  # {~.~} [CHANGE TO ROBOT'S MAX SAMPLING FREQUENCY] in [Hz]
+BOT_ID = "denso-cobotta-pro-900"
+URDF_PATH = "urdf/cobotta_pro_900.urdf"
+ROBOT_MAX_FREQ = 125  # CurJntEx is refreshed every 8 ms [Hz]
 
 # Fully stretched position of the robot for calibration.
 FULL_STRETCH_XYZ = [1.28989, 0.36866, 0.171]  # {~.~} [m]
@@ -44,7 +45,7 @@ FULL_STRETCH_JOINTS = [0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0]  # {~.~} [rad]
 FULL_STRETCH_POSE_OVERRIDE = None  # {~.~} list of home pose (xyz and quaternion) to override additional height not in base height
 
 # General constants
-IS_DEGREES = False  # {~.~} [CHANGE TO TRUE IF ROBOT USES DEGREES]
+IS_DEGREES = False
 DATA_LOCATION_PREFIX = "src/robot/data"  # {~.~} [CHANGE TO LOCATION DESIRED - will be robot/DATA_LOCATION_PREFIX/*]
 DEFAULT_TCP_PAYLOAD = 0.0  # {~.~} [CHANGE IF THE DEFAULT PAYLOAD IS NON_ZERO]
 
@@ -95,6 +96,7 @@ class RobotInterface(ArmClient):
         imu_recorder: ImuRecorder | None = None,
         tcp_payload: float = DEFAULT_TCP_PAYLOAD,
         tcp_payload_com: Sequence[float] | None = None,
+        cobotta_transport_factory: BcapTransportFactory | None = None,
     ) -> None:
         """Initialize the robot interface and load the URDF model.
 
@@ -105,13 +107,15 @@ class RobotInterface(ArmClient):
             local_ip: Local machine IP address if required by the SDK.
             sdk_token: SDK authentication token.
             api_token: Reforge API token.
-            robot_id: Reforge robot ID (most cases) or SDK identifier used by the control stack.
+            robot_id: Reforge robot ID (most cases) or SDK identifier _reforge_d by the control stack.
             use_reforge_imu: Whether to use the built-in Reforge IMU backend
                 when `imu_recorder` is not supplied.
             imu_recorder: Optional vendor-specific recorder supplied directly
                 by an application or integration test.
             tcp_payload: payload of end-effector [kg].
             tcp_payload_com: (N x 3) center of mass of end-effector payload [m].
+            cobotta_transport_factory: Optional b-CAP transport factory for
+                integration tests. Production uses the pinned TCP client.
 
         Side Effects:
             Loads the URDF model and may connect to robot hardware.
@@ -124,8 +128,9 @@ class RobotInterface(ArmClient):
             The URDF file is available and the SDK is installed.
         """
         super().__init__(
-            name="My Robot", recording_data_frequency_hz=ROBOT_MAX_FREQ
-        )  # {~.~} [Edit with your robot's name and sampling frequency]
+            name="DENSO COBOTTA PRO 900",
+            recording_data_frequency_hz=ROBOT_MAX_FREQ,
+        )
 
         self.max_sampling_frequency_hz = ROBOT_MAX_FREQ
         self.data_folder_prefix = DATA_LOCATION_PREFIX
@@ -163,42 +168,18 @@ class RobotInterface(ArmClient):
         self.reforge_api_token = api_token
         try:
             if robot_ip != "sim":
-                # {~.~} Instantiate live robot mode
-                self.robot = None  # [CHANGE THIS LINE]
-
-                # ------------------- EXAMPLE --------------------
-                # self.robot = StandardBotsRobot(
-                #     url=robot_ip,
-                #     token=sdk_token,
-                #     robot_kind=StandardBotsRobot.RobotKind.Live,
-                # )
-                # ------------------------------------------------
-
-                # {~.~} Enable ROS control, if necessary
-                # [YOUR CODE HERE]
-
-                # ------------------------------ EXAMPLE -------------------------------
-                # with self.robot.connection():
-                #     ## Set teleoperation/ROS control state
-                #     self.robot.ros.control.update_ros_control_state(
-                #         models.ROSControlUpdateRequest(
-                #             action=models.ROSControlStateEnum.Enabled,
-                #             # to disable: action=models.ROSControlStateEnum.Disabled,
-                #         )
-                #     )
-
-                #     # Get teleoperation state
-                #     self.state = self.robot.ros.status.get_ros_control_state().ok()
-                #     # Enable the robot, make sure the E-stop is released before enabling
-                #     print("Enabling live robot...")
-                # -----------------------------------------------------------------------
-
-                # {~.~} Unbrake the robot if not operational
-                # [YOUR CODE HERE]
-
-                # --------------- EXAMPLE -----------------
-                # self.robot.movement.brakes.unbrake().ok()
-                # -----------------------------------------
+                if cobotta_transport_factory is None:
+                    self.robot = CobottaBcapRobot(
+                        robot_ip,
+                        joint_count=self.num_joints,
+                    )
+                else:
+                    self.robot = CobottaBcapRobot(
+                        robot_ip,
+                        joint_count=self.num_joints,
+                        transport_factory=cobotta_transport_factory,
+                    )
+                self.robot.connect()
 
                 # Set ID for robot
                 self.id = robot_id
@@ -217,9 +198,13 @@ class RobotInterface(ArmClient):
                 self.num_joints = 6
                 self.pose_length = 7
 
-        except Exception as e:
-            # Print exception error message
-            raise RuntimeError(f"Error getting {robot_ip} operational: {str(e)}")
+        except Exception as exc:
+            if isinstance(self.robot, CobottaBcapRobot):
+                try:
+                    self.robot.disconnect()
+                except BaseException:
+                    pass
+            raise RuntimeError(f"Error getting {robot_ip} operational: {exc}") from exc
 
         if not self.imu_manager_is_loaded:
             selected_imu_recorder = imu_recorder
@@ -311,22 +296,19 @@ class RobotInterface(ArmClient):
             An integer status code from the robot's command interface, if applicable.
             If the robot does not provide a status code, return 0 for success or raise an exception for failure.
         """
-        if IS_DEGREES:
-            target_joints = list(np.rad2deg(angle) for angle in target_joints)
-
-        arm = self._require_connected_arm()  # noqa: F841
-        # ------------------------------------ EXAMPLE -------------------------------------
-        # update_request = models.ArmPositionUpdateRequest(
-        #     kind=models.ArmPositionUpdateRequestKindEnum.JointRotation,
-        #     joint_rotation=models.ArmJointRotations(
-        #         joints=target_joint)
-        # )
-
-        # response = arm.movement.position.set_arm_position(body=update_request).ok()
-        # ----------------------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        self._cobotta_robot().move_j(
+            self._joint_command(
+                (
+                    target_joints.tolist()
+                    if isinstance(target_joints, np.ndarray)
+                    else target_joints
+                ),
+                "target_joints",
+            ),
+            speed_percent=self._speed_percent(speed),
+            wait=self._wait_flag(wait),
+        )
+        return 0
 
     def command_move_pose(
         self,
@@ -349,38 +331,29 @@ class RobotInterface(ArmClient):
             An integer status code from the robot's command interface, if applicable.
             If the robot does not provide a status code, return 0 for success or raise an exception for failure.
         """
-        arm = self._require_connected_arm()  # noqa: F841
-
-        # ---------------------------------- EXAMPLE ------------------------------------
-        # quatx, quaty, quatz, quatw = target_quat
-        # move_quat = models.Orientation(
-        #                 kind=models.OrientationKindEnum.Quaternion,
-        #                 quaternion=models.Quaternion(x=quatx,
-        #                                              y=quaty,
-        #                                              z=quatz,
-        #                                              w=quatw
-        #                                              ),
-        #             )
-        # x, y, z = target_xyz
-        # move_xyz = models.Position(
-        #                 unit_kind=models.LinearUnitKind.Meters,
-        #                 x=x,
-        #                 y=y,
-        #                 z=z
-        #             )
-
-        # update_request = models.ArmPositionUpdateRequest(
-        #     kind=models.ArmPositionUpdateRequestKindEnum.TooltipPosition,
-        #     tooltip_position=models.PositionAndOrientation(
-        #         position=move_xyz,
-        #         orientation=move_quat)
-        # )
-
-        # response = arm.movement.position.set_arm_position(body=update_request).ok()
-        # ----------------------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        self._cobotta_robot().move_pose(
+            self._fixed_length_values(
+                (
+                    target_quat.tolist()
+                    if isinstance(target_quat, np.ndarray)
+                    else target_quat
+                ),
+                4,
+                "target_quat",
+            ),
+            self._fixed_length_values(
+                (
+                    target_xyz.tolist()
+                    if isinstance(target_xyz, np.ndarray)
+                    else target_xyz
+                ),
+                3,
+                "target_xyz",
+            ),
+            speed_percent=self._speed_percent(speed),
+            wait=self._wait_flag(wait),
+        )
+        return 0
 
     def command_servo_j(
         self,
@@ -400,24 +373,19 @@ class RobotInterface(ArmClient):
             An integer status code from the robot's command interface, if applicable.
             If the robot does not provide a status code, return 0 for success or raise an exception for failure.
         """
-        arm = self._require_connected_arm()  # noqa: F841
-
-        # {~.~} Publish joint positions to the robot
-        # [YOUR CODE HERE -- see example below]
-
-        # ------------------------------ EXAMPLE ------------------------------
-        # cmd_q = list(q)
-        # if IS_DEGREES:
-        #     cmd_q = [np.rad2deg(value) for value in cmd_q]
-
-        # code = arm.set_servo_angle_j(
-        #     angles=cmd_q,
-        #     wait=wait,
-        # )
-        # ---------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        if wait:
+            raise ValueError("COBOTTA Slave Mode does not support a wait flag")
+        self._cobotta_robot().command_servo_j(
+            self._joint_command(
+                (
+                    target_joints.tolist()
+                    if isinstance(target_joints, np.ndarray)
+                    else target_joints
+                ),
+                "target_joints",
+            )
+        )
+        return 0
 
     def enter_position_mode(self) -> Optional[int | None]:
         """
@@ -426,17 +394,8 @@ class RobotInterface(ArmClient):
         Returns:
             the mode/state codes so they can be inspected when debugging.
         """
-        arm = self._require_connected_arm()  # noqa: F841
-
-        # ------------------------------ EXAMPLE ------------------------------
-        # arm.clean_error()
-        # arm.clean_warn()
-        # code_mode = arm.set_mode(0) # 0 = position mode
-        # code_state = arm.set_state(0) # start
-        # ----------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        self._cobotta_robot().enter_position_mode()
+        return 0
 
     def enter_servo_mode(self) -> Optional[int | None]:
         """Ensure the controller is set to servo control mode.
@@ -444,21 +403,11 @@ class RobotInterface(ArmClient):
         Returns:
             the mode/state codes so they can be inspected when debugging.
         """
-        arm = self._require_connected_arm()  # noqa: F841
-
-        # ------------------------------ EXAMPLE ------------------------------
-        # code_en = arm.motion_enable(enable=True)
-        # code_mode = arm.set_mode(1)  # 1 = servo mode
-        # code_state = arm.set_state(0)  # start
-        # ----------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        self._cobotta_robot().enter_servo_mode()
+        return 0
 
     def supports_teaching_mode(self) -> bool:
-        """Return whether the robot supports manual teaching mode.
-
-        Override this method when the robot SDK supports hand-guided teaching.
+        """Return whether b-CAP exposes CRC9 Direct Teaching control.
 
         Returns:
             `bool` indicating whether manual teaching mode is implemented.
@@ -466,22 +415,17 @@ class RobotInterface(ArmClient):
         return False
 
     def enter_teaching_mode(self) -> Optional[int | None]:
-        """Ensure the controller is set to manual teaching mode.
+        """Leave Direct Teaching unchanged becaforge b-CAP does not control it.
 
-        Override this method with the robot SDK's teaching-mode command.
+        CRC9 Direct Teaching is an operator-facing feature. The RC9 b-CAP and
+        Provider guides do not document a command to enter it remotely.
 
         Returns:
-            Vendor-specific mode/state code when available.
+            `None`, because teaching mode is unsupported.
         """
-        arm = self._require_connected_arm()  # noqa: F841
+        return None
 
-        # {~.~} Enable manual teaching mode using the robot SDK.
-        # [YOUR CODE HERE]
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
-
-    def supports_flange_button(self) -> bool:
+    def supports_flange_nn(self) -> bool:
         """Return whether the robot exposes a readable flange button.
 
         Override this method when the robot SDK exposes a button or equivalent
@@ -514,26 +458,8 @@ class RobotInterface(ArmClient):
             Tuple of three lists: joint positions `q` [rad], velocities `qd` [rad/s],
             and efforts/currents `tau` [SDK units].
         """
-        arm = self._require_connected_arm()  # noqa: F841
-        q: list[float] = []
-        qd: list[float] = []
-        tau: list[float] = []
-
-        # ------------------------------ EXAMPLE ------------------------------
-        # code, payload = arm.get_joint_states()
-        # if code != 0:
-        #     raise RuntimeError(f"get_joint_states returned code {code}")
-        # q, qd, tau = payload
-        # q = list(q[: self.num_joints])
-        # qd = list(qd[: self.num_joints])
-        # tau = list(tau[: self.num_joints])
-        # ----------------------------------------------------------------------
-
-        if not IS_DEGREES:
-            q = [np.deg2rad(value) for value in q]
-            qd = [np.deg2rad(value) for value in qd]
-
-        return q, qd, tau
+        sample = self._cobotta_robot().get_joint_sample()
+        return sample.positions_rad, sample.velocities_rad_s, sample.efforts
 
     def get_tcp_pose(self) -> list[float]:
         """Return TCP pose as ``[x, y, z, qx, qy, qz, qw]``.
@@ -542,34 +468,98 @@ class RobotInterface(ArmClient):
             List of 7 floats representing the TCP pose in meters for positions
             and unitless normalized for quaternions.
         """
-        position: list[float] = []
-        quat: list[float] = []
-        arm = self._require_connected_arm()  # noqa: F841
+        return self._cobotta_robot().get_current_pose()
 
-        # ------------------------------ EXAMPLE ------------------------------
-        # code, pose = arm.get_position_aa()
+    def disconnect(self) -> None:
+        """Disconnect the live COBOTTA b-CAP session when one is active.
 
-        # if code != 0:
-        #     raise Exception(f"Unreliable TCP pose! Return code {code}")
+        This does not stop an IMU recorder; callers remain responsible for
+        ending any active recording before releasing robot control.
+        """
+        if isinstance(self.robot, CobottaBcapRobot):
+            self.robot.disconnect()
 
-        # # Additional operations may be needed depending on pose return style
-        # # Decompose pose if necessary
-        # position, axang = pose[:3], pose[3:]
+    def _cobotta_robot(self) -> CobottaBcapRobot:
+        """Return the connected COBOTTA wrapper.
 
-        # # Convert position coordinates to meters
-        # position = [coord / 1000.0 for coord in position]
+        Returns:
+            Active COBOTTA b-CAP wrapper.
 
-        # # Convert rotation coordinates to radians, if necessary
-        # if not IS_DEGREES:
-        #     axang = [np.deg2rad(coord) for coord in axang]
+        Raises:
+            RuntimeError: If the interface is simulated or misconfigured.
+        """
+        robot = self._require_connected_arm()
+        if not isinstance(robot, CobottaBcapRobot):
+            raise RuntimeError("Connected arm is not a COBOTTA b-CAP robot")
+        return robot
 
-        # # Convert axis-angle to quaternion
-        # from scipy.spatial.transform import Rotation as R
-        # quat = R.from_rotvec(axang).as_quat().tolist()
-        # ----------------------------------------------------------------------
+    def _joint_command(self, values: Sequence[float], name: str) -> list[float]:
+        """Validate one complete arm joint command in radians.
 
-        # Return tooltip pose as a list
-        return [*position, *quat]
+        Args:
+            values: Joint positions [rad].
+            name: Input name for error messages.
+
+        Returns:
+            Validated joint positions [rad].
+        """
+        return self._fixed_length_values(values, self.num_joints, name)
+
+    @staticmethod
+    def _fixed_length_values(
+        values: Sequence[float], expected_length: int, name: str
+    ) -> list[float]:
+        """Validate a fixed-length sequence of finite numeric values.
+
+        Args:
+            values: Values to validate.
+            expected_length: Required number of values.
+            name: Input name for error messages.
+
+        Returns:
+            Validated float values.
+
+        Raises:
+            ValueError: If the values are malformed or non-finite.
+        """
+        if isinstance(values, (str, bytes)) or len(values) != expected_length:
+            raise ValueError(f"{name} must contain exactly {expected_length} values")
+        try:
+            result = [float(value) for value in values]
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{name} must contain finite numeric values") from exc
+        if not all(np.isfinite(result)):
+            raise ValueError(f"{name} must contain finite numeric values")
+        return result
+
+    @staticmethod
+    def _speed_percent(speed: float) -> float:
+        """Validate the controller external speed percentage.
+
+        Args:
+            speed: Controller speed [%].
+
+        Returns:
+            Validated speed percentage.
+        """
+        return RobotInterface._fixed_length_values([speed], 1, "speed")[0]
+
+    @staticmethod
+    def _wait_flag(wait: bool) -> bool:
+        """Validate a point-motion wait flag.
+
+        Args:
+            wait: Candidate motion wait flag.
+
+        Returns:
+            Validated wait flag.
+
+        Raises:
+            ValueError: If the value is not a boolean.
+        """
+        if not isinstance(wait, bool):
+            raise ValueError("wait must be a boolean")
+        return wait
 
     # {~.~} END OF REQUIRED METHODS
 
@@ -606,6 +596,36 @@ class RobotInterface(ArmClient):
         # velocity/acceleration feedforward. Otherwise, the default
         # implementation in `ArmClient` will stream each sample using
         # `command_servo_j()` at the specified timing.
+
+        min_command_period_s = 1.0 / ROBOT_MAX_FREQ
+        if not np.isfinite(Ts) or Ts < min_command_period_s:
+            raise ValueError(
+                f"Ts must be finite and at least {min_command_period_s:.3f} seconds"
+            )
+        if len(time_data) != len(position_stream) or not time_data:
+            raise ValueError(
+                "time_data and position_stream must be non-empty and equal"
+            )
+        previous_time_s: float | None = None
+        for time_s, positions_rad in zip(time_data, position_stream, strict=True):
+            validated_time_s = self._fixed_length_values([time_s], 1, "time_data")[0]
+            if (
+                previous_time_s is not None
+                and validated_time_s - previous_time_s < min_command_period_s
+            ):
+                raise ValueError("time_data samples must be at least 8 ms apart")
+            previous_time_s = validated_time_s
+            self._joint_command(positions_rad, "position_stream sample")
+
+        for stream, name in (
+            (velocity_stream, "velocity_stream"),
+            (acceleration_stream, "acceleration_stream"),
+        ):
+            if stream is not None:
+                if len(stream) != len(position_stream):
+                    raise ValueError(f"{name} must match position_stream length")
+                for sample in stream:
+                    self._joint_command(sample, f"{name} sample")
 
         return super().command_joint_trajectory(
             time_data=time_data,

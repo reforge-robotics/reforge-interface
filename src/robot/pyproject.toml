@@ -32,7 +32,7 @@ dev = [
 reforge-robot = "robot.run:main"
 
 [tool.setuptools]
-packages = ["robot"]
+packages = ["robot", "robot.vendor", "robot.vendor.orin_bcap"]
 package-dir = { "robot" = "." }
 include-package-data = false
 
@@ -44,4 +44,8 @@ robot = [
     "urdf/**/*.xacro",
     "urdf/**/*.stl",
     "urdf/**/*.dae",
+    "meshes/**/*.stl",
+    "meshes/**/*.dae",
+    "vendor/orin_bcap/LICENSE",
+    "vendor/orin_bcap/PROVENANCE.md",
 ]
