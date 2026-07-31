@@ -1,5 +1,8 @@
 # reforge-interface
 
+> [!WARNING]
+> The DENSO COBOTTA PRO integration has not yet been validated on physical hardware.
+
 Robot interface code for integrating external robot SDKs with Reforge calibration and identification workflows.
 
 ## Overview
