@@ -6,12 +6,32 @@ requires = [
 
 [project]
 name = "reforge-interface"
-version = "0.0.5"
-description = "Reforge Interface by Reforge Robotics"
+version = "0.1.0"
+description = "Robot adapter layer for Reforge calibration and identification workflows."
 readme = "README.md"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Reforge Robotics", email = "info@reforgerobotics.com" }]
-dependencies = []
+dependencies = [
+    "numpy>=2,<3",
+    "reforge-core[kinecal]>=2.0.14,<3",
+    "standardbots",
+]
+
+[project.optional-dependencies]
+ros = [
+    "pydantic",
+]
+dev = [
+    "pytest",
+    "ruff",
+    "black==24.1.1",
+    "sounddevice",
+]
+
+[project.scripts]
+reforge-robot = "robot.run:main"
+
 [tool.setuptools]
 package-dir = { "" = "src" }
 
@@ -21,10 +41,10 @@ include = ["*"]
 
 [tool.setuptools.package-data]
 robot = [
-  "models/current/*.pt",
-  "urdf/*.urdf",
-  "urdf/**/*.urdf",
-  "urdf/**/*.xacro",
-  "urdf/**/*.stl",
-  "urdf/**/*.dae"
+    "models/current/*.pt",
+    "urdf/*.urdf",
+    "urdf/**/*.urdf",
+    "urdf/**/*.xacro",
+    "urdf/**/*.stl",
+    "urdf/**/*.dae",
 ]

@@ -24,7 +24,7 @@ reforge-interface/
     └── robot/
         ├── run.py                 # CLI entrypoint
         ├── robot_interface.py     # SDK integration target
-        ├── robot_base.py          # abstract base + defaults
+        ├── ros_imu_recorder.py    # ROS IMU capture adapter
         ├── ros_manager.py         # optional ROS trajectory publisher
         ├── urdf/                  # place robot URDF files here
         └── data/                  # calibration outputs
@@ -116,16 +116,16 @@ python3 -m robot.run vibration_test <robot_ip> <data_folder> --sdk_token <token>
 
 1. Set constants in `src/robot/robot_interface.py`:
 - `BOT_ID`, `URDF_PATH`, `ROBOT_MAX_FREQ`
-- `HOME_SHOULDER_ANGLE`, `HOME_XYZ`, `HOME_QUAT`, `HOME_JOINTS`
+- `FULL_STRETCH_XYZ`, `FULL_STRETCH_QUAT`, `FULL_STRETCH_JOINTS`
 - `IS_DEGREES`, `DATA_LOCATION_PREFIX`
 
 2. Add SDK client setup in `RobotInterface.__init__`.
 3. Implement required SDK-bound methods:
-- `__get_joint_positions`
-- `__get_tcp_pose`
-- `move_to_joint`
-- `move_to_pose`
-- `publish_and_record_joint_positions`
+- `in_sim_mode` and `urdf_path`
+- `command_move_j` and `command_move_pose`
+- `command_servo_j` and `command_joint_trajectory`
+- `enter_position_mode` and `enter_servo_mode`
+- `get_joint_state` and `get_tcp_pose`
 
 4. Keep units and schemas consistent:
 - internal joint units in radians,

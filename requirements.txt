@@ -1,8 +1,7 @@
-numpy<2
+numpy>=2,<3
 pydantic
-scipy
 --index-url https://pypi.org/simple/
-reforge-core
+reforge-core[kinecal]>=2.0.14,<3
 flask
 flask-cors
 standardbots

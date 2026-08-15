@@ -8,10 +8,16 @@ import rclpy  # noqa: F401
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.timer import Timer
 
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from sensor_msgs.msg import JointState, Imu
 from builtin_interfaces.msg import Duration as DurationMsg
+from robot.ros_topics import (
+    IMU_TOPIC_TEMPLATE,
+    JOINT_COMMAND_TOPIC_TEMPLATE,
+    JOINT_STATE_TOPIC_TEMPLATE,
+)
 
 # ---- NOTES ----
 # This node publishes JointTrajectory messages to command robot joints
@@ -26,9 +32,9 @@ from builtin_interfaces.msg import Duration as DurationMsg
 # 4. Access recorded and aligned data in your_instance.state_data, imu_data, and aligned_log.
 # ----------------
 
-JOINT_PUBLISHER = "/<BOT_ID>/joint_trajectory"
-JOINT_SUBSCRIBER = "/<BOT_ID>/joint_state"
-IMU_SUBSCRIBER = "/<BOT_ID>/end_effector_imu"
+JOINT_PUBLISHER = JOINT_COMMAND_TOPIC_TEMPLATE
+JOINT_SUBSCRIBER = JOINT_STATE_TOPIC_TEMPLATE
+IMU_SUBSCRIBER = IMU_TOPIC_TEMPLATE
 
 
 class JointStateSample(BaseModel):
@@ -196,11 +202,15 @@ class JointTrajectoryController(Node):
 
         # Timer to publish joint trajectory points and immediately sample data at Ts
         self.index = 0
-        self.timer = None  # Active publish timer after sensors are ready.
-        self._start_timer = None  # Startup timer that waits for sensor readiness.
+        self.timer: Optional[Timer] = (
+            None  # Active publish timer after sensors are ready.
+        )
+        self._start_timer: Optional[Timer] = (
+            None  # Startup timer that waits for sensor readiness.
+        )
         self._waiting_logged = False  # Log once while waiting for readiness.
-        self._start_timer = self.create_timer(0.05, self._wait_for_ready_start)
         self._publish_period = Ts  # Publish period [s] used once ready.
+        self._start_timer = self.create_timer(0.05, self._wait_for_ready_start)
 
     def _now_ros(self) -> float:
         """Return the current ROS time.
