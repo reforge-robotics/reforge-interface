@@ -1,4 +1,6 @@
 mcap-protobuf-support>=0.5,<0.6
 numpy>=2,<3
 pydantic
-reforge-core[all]
+#reforge-core[all]
+# above commented out as I used the APT repository: https://github.com/reforge-robotics/reforge-core-cpp/tree/main
+# due to repeated build failures with requirements.txt
