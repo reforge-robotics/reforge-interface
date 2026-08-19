@@ -1,0 +1,162 @@
+{
+  "schema": "reforge_shaper_qualification",
+  "version": 1,
+  "status": "passed",
+  "artifact": {
+    "filename": "shaper_models.native.json",
+    "schema": "reforge_shaper_weights",
+    "version": 1,
+    "sha256": "903daffc5d72d6b43a461c4691ee50f2d84768d687148ab6eb9cf6118704259e"
+  },
+  "sources": [
+    {
+      "axis": 0,
+      "filename": "axis0_model.pt",
+      "sha256": "1cb1e61700c6528138eae4f8b69b328f75d16a8ed4f37dd1c6cd2a384c4970a4",
+      "checkpoint_family": "torchscript_shapernet",
+      "graph_signature": "linear_relu:72,72;heads:1,4;input:3"
+    },
+    {
+      "axis": 1,
+      "filename": "axis1_model.pt",
+      "sha256": "0629e35130c8b56a356754252ae7d12b5fb4691bf2ad6a9f5383de1f1efb9677",
+      "checkpoint_family": "torchscript_shapernet",
+      "graph_signature": "linear_relu:72,72;heads:1,4;input:3"
+    },
+    {
+      "axis": 2,
+      "filename": "axis2_model.pt",
+      "sha256": "182a8599eb10e2a376ffec7c30d3fc5bc6866f4c34b8e2a0570d4d77695d09fe",
+      "checkpoint_family": "torchscript_shapernet",
+      "graph_signature": "linear_relu:72,72;heads:1,4;input:3"
+    }
+  ],
+  "corpus": {
+    "generator_version": 1,
+    "seed": 817204,
+    "calibration_sample_count": 0,
+    "generated_sample_count": 64,
+    "feature_batch_sha256": "89410be6ccb97702ba03b2ef1b227f33be4efd9452fe1126e790406f5fead187"
+  },
+  "platform": {
+    "os": "Darwin",
+    "architecture": "arm64",
+    "python_version": "3.11.15",
+    "torch_version": "2.3.1",
+    "compiler_id": "Clang 21.0.0 (clang-2100.0.123.102)",
+    "compiler_version": "",
+    "standard_library": "",
+    "eigen_version": "native-reload",
+    "nlohmann_json_version": "3.12.0",
+    "reforge_core_version": "2.0.9",
+    "git_revision": "unknown"
+  },
+  "comparisons": {
+    "body_activations": {
+      "maximum_absolute_error": 1.52587890625e-05,
+      "maximum_relative_error": 4.227640248530287e-07,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 3326,
+        "location": "final_body_or_input"
+      }
+    },
+    "raw_order_logits": {
+      "maximum_absolute_error": 1.9073486328125e-06,
+      "maximum_relative_error": 2.0289397825889577e-07,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 33,
+        "location": "raw_order_logits"
+      }
+    },
+    "raw_mode_outputs": {
+      "maximum_absolute_error": 1.52587890625e-05,
+      "maximum_relative_error": 2.1182300704999922e-07,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 114,
+        "location": "raw_mode_outputs"
+      }
+    },
+    "order_probabilities": {
+      "maximum_absolute_error": 1.1920928955078125e-07,
+      "maximum_relative_error": 1.3328979200127959e-07,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 5,
+        "location": "order_probabilities"
+      }
+    },
+    "postprocessed_mode_parameters": {
+      "maximum_absolute_error": 1.52587890625e-05,
+      "maximum_relative_error": 2.1182300704999922e-07,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 114,
+        "location": "postprocessed_mode_parameters"
+      }
+    },
+    "native_binding_order_probabilities": {
+      "maximum_absolute_error": 1.1920928955078125e-07,
+      "maximum_relative_error": 1.3328979200127959e-07,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 5,
+        "location": "bound_order_probabilities"
+      }
+    },
+    "native_binding_raw_mode_outputs": {
+      "maximum_absolute_error": 1.52587890625e-05,
+      "maximum_relative_error": 2.175278976809677e-07,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 42,
+        "location": "bound_raw_mode_outputs"
+      }
+    }
+  },
+  "decisions": {
+    "order_count": {
+      "mismatch_count": 0,
+      "comparison_count": 192,
+      "passed": true
+    },
+    "modal_validity": {
+      "mismatch_count": 0,
+      "comparison_count": 192,
+      "passed": true
+    },
+    "downstream_modal_rows": {
+      "mismatch_count": 0,
+      "comparison_count": 192,
+      "passed": true
+    }
+  },
+  "thresholds": [
+    {
+      "name": "order_probability",
+      "value": 0.5,
+      "minimum_measured_margin": 0.26723146438598633,
+      "measured_model_error_bound": 1.1920928955078125e-07,
+      "stable": true,
+      "below_count": 0,
+      "equal_count": 0,
+      "above_count": 192
+    }
+  ]
+}

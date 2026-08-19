@@ -1,0 +1,23 @@
+{
+  "hash_algorithm": "64-bit difference hash over 9x8 grayscale Lanczos samples",
+  "images": {
+    "figure_1_robot_commands.png": {
+      "dimensions_px": [1600, 1280],
+      "minimum_bytes": 50000,
+      "difference_hash": "580c8c91c8ac4851",
+      "maximum_hash_distance": 8
+    },
+    "figure_2_robot_response.png": {
+      "dimensions_px": [1600, 1120],
+      "minimum_bytes": 50000,
+      "difference_hash": "61090796716ccc9c",
+      "maximum_hash_distance": 8
+    },
+    "figure_3_residual_closeup.png": {
+      "dimensions_px": [1600, 900],
+      "minimum_bytes": 50000,
+      "difference_hash": "3616115240046d15",
+      "maximum_hash_distance": 8
+    }
+  }
+}

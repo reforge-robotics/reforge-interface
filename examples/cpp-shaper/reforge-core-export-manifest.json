@@ -1,0 +1,31 @@
+{
+  "files": {
+    "assets/README.md": "24f0d1eeb6438030e6c68a3732fec3545c3cf523eeae63b935108e2ee7cbb154",
+    "assets/model/model_bundle.json": "8b1ce914af225f691cfe0ac14a29bb53321fded2400af42ff7834187f12ae996",
+    "assets/model/shaper_models.native.json": "903daffc5d72d6b43a461c4691ee50f2d84768d687148ab6eb9cf6118704259e",
+    "assets/model/shaper_models.native.qualification.json": "7050cf893f956ec15d4af0fc720b1187b941fd7dd150860c6422b6f901ca8464",
+    "assets/modelone.urdf": "f917aca45ba89d741c15cab53e308eb6e4a107ccb2539f95ea26ad33aa3bc8e5",
+    "cpp/CMakeLists.txt": "139b8d66382adcc5570ced83dc3135946b393bb4237f929b123a1d2b00fdb937",
+    "cpp/README.md": "13cbecaf8dcce00578aaedbfa1b7f29f9533ffdcad74d8474680dd480af16fd8",
+    "cpp/build_and_run.sh": "0338f36df6b096a6f4886f554291e0c3975a6637e58475f53344fd38cdb15703",
+    "cpp/example_plot_data.cpp": "021ede5d21346d4d6c67ff07ec42a1339a4c11a9fd10bc1abe86ed38eee5e7f1",
+    "cpp/example_plot_data.hpp": "71b3a06dd13c801f3a90393430ddba4089e0382fb26526280a2cd0af0c6a3ded",
+    "cpp/example_plotting.cpp": "85476b3e27135546a39458e9e9e1c7f2d2a7156fc846e3deae139abf6fab2068",
+    "cpp/example_plotting.hpp": "717084f2027d93977a3066c6070e2a01762d65e131eb27b0a7146c277359c2f0",
+    "cpp/example_utility.cpp": "d0ecb7ba39111b8a8e3bc26da4e3ec2f13adb512554fa48e792c510ca9d24700",
+    "cpp/example_utility.hpp": "8f23f307c6849e806b9527a23482ae5ac429f48353c5707b0ba788a353bb5098",
+    "cpp/shaper_example_usage.cpp": "f27a362a6fc54950da8b24c8fac3890d5fd2bcb1668dcda5e85890b74a553ccd",
+    "cpp/third_party/LICENSE": "d0dc4eae3be039d576e127912d16f78a7ba4e0e6205cd75103efd1a45b89a4ba",
+    "cpp/third_party/README.md": "7c8288b02d230199a4860366bb73ae012683b6eaf3e50d1ca8f5454f327090b9",
+    "cpp/third_party/matplotlibcpp.h": "8a68ce477a9c46fc2994f7c03dee2a3b8526977dfa4f17eb1aa2011edb88c06e",
+    "cpp/validation/audit_hardware_free.py": "eb8eb3455f1f7f4c7308e263924c7c6f98e5c166d8b31a06a2c8dd8517c8c432",
+    "cpp/validation/compare_with_python.py": "75462ec0134250e39b31a5fe32993b1f94533cdf962b6f4c6ca4dc826e7f832d",
+    "cpp/validation/expected_metrics.json": "b91a9936b19f86094541487de372fa78286b23949e09e2668cb206b0b3a72c8d",
+    "cpp/validation/expected_plots.json": "8490a149c7a11e99cc09e6ccdb36c54ffb1fe8b18bba4fa9fa2e892453bb7fb6",
+    "cpp/validation/validate_consumer.py": "afa0878f8fe350f5443d3ff971d138456394814fc1cb320370e5ab51ae8b3125",
+    "cpp/validation/validate_plots.py": "87d1247dc38a44ba0cd31e70854897df9e4769b5a813e88644d467ad27758658"
+  },
+  "schema_version": 1,
+  "source_commit": "93fa16a0dd5dc380c553ad88027fdc582f78d7e4",
+  "source_repository": "reforge-robotics/reforge-core"
+}

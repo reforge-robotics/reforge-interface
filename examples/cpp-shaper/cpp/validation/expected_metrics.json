@@ -1,0 +1,26 @@
+{
+  "artifact_sha256": "903daffc5d72d6b43a461c4691ee50f2d84768d687148ab6eb9cf6118704259e",
+  "dominant_damping_ratio": 0.0057407013312210766,
+  "dominant_natural_frequency_rad_s": 95.03578186035156,
+  "metric_tolerance": 2e-05,
+  "model_identity": "standard-bots-22dc942",
+  "num_axes": 3,
+  "num_joints": 6,
+  "sample_time_s": 0.004,
+  "time_tolerance_s": 1e-12,
+  "position_tolerance_rad": 1e-09,
+  "velocity_tolerance_rad_s": 1e-08,
+  "acceleration_tolerance_rad_s2": 1e-07,
+  "urdf_sha256": "f917aca45ba89d741c15cab53e308eb6e4a107ccb2539f95ea26ad33aa3bc8e5",
+  "metrics": {
+    "always_on_residual_rad": 0.0005363496056409733,
+    "deceleration_start_time_s": 0.1,
+    "residual_change_start_time_s": 0.004,
+    "residual_start_time_s": 0.88,
+    "residual_tail_residual_rad": 0.00022891233012656276,
+    "slower_unshaped_residual_rad": 4.866525642560626e-05,
+    "streamed_residual_rad": 3.8969970011515365e-06,
+    "unshaped_residual_rad": 0.0015462538723233776,
+    "windowed_residual_rad": 0.0005363496056409733
+  }
+}

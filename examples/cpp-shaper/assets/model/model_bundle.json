@@ -1,0 +1,27 @@
+{
+  "artifact_filenames": [
+    "axis0_model.pt",
+    "axis1_model.pt",
+    "axis2_model.pt"
+  ],
+  "base_joint_count": 0,
+  "base_joint_reference_angles": [],
+  "calibration_schema_version": 1,
+  "feature_names": [
+    "v_deg",
+    "r_mm",
+    "inertia"
+  ],
+  "feature_units": [
+    "deg",
+    "mm",
+    "kg_m2"
+  ],
+  "input_feature_count": 3,
+  "model_type": "shaper_nn_v1",
+  "native_artifact_filename": "shaper_models.native.json",
+  "native_artifact_schema_version": 1,
+  "num_axes": 3,
+  "output_sensor": "ToolAcc",
+  "schema_version": 1
+}
