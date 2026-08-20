@@ -7,7 +7,7 @@ if [[ $# -lt 5 ]]; then
 fi
 
 docker run --rm --network host --env STANDARD_BOTS_SDK_TOKEN \
-  reforge-standard-bots-qualification:2.0.9-908 \
+  reforge-standard-bots-qualification:2.0.9-908-standardbots-2.20260731.17 \
   standard_bots_qualification_cli --preflight \
     --assets-dir /workspace/src/robot \
     --endpoint "$1" --robot-id "$2" \

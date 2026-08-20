@@ -3,7 +3,8 @@ FROM ros@sha256:bab7e640bf79cd84957e4e18fcba7d87efc3385b4e3f36a32eeca01638e43206
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      build-essential cmake g++ python3-colcon-common-extensions \
+      build-essential cmake g++ python3-colcon-common-extensions python3-pip \
+      python3-protobuf python3-setuptools python3-typing-extensions python3-urllib3 \
       ros-jazzy-ament-cmake-gtest ros-jazzy-rmw-cyclonedds-cpp \
       ros-jazzy-sensor-msgs ros-jazzy-std-msgs ros-jazzy-trajectory-msgs \
     && rm -rf /var/lib/apt/lists/*
@@ -12,6 +13,12 @@ COPY --from=reforge_artifacts . /tmp/reforge-artifacts/
 RUN apt-get update && apt-get install -y --no-install-recommends \
       /tmp/reforge-artifacts/reforge-core-shaper_2.0.9-908_amd64.deb \
       /tmp/reforge-artifacts/reforge-core-shaper-ros2_2.0.9-908_amd64.deb \
+    && echo "0f3e4f7c327f157a9f47c07ecd7dbaa0b95b284cbbcfd008ca59c26142d58320  /tmp/reforge-artifacts/standardbots-2.20260731.17-py3-none-any.whl" \
+       | sha256sum --check --strict \
+    && python3 -m pip install --break-system-packages --no-deps --no-cache-dir \
+       /tmp/reforge-artifacts/standardbots-2.20260731.17-py3-none-any.whl \
+    && test "$(python3 -c 'import importlib.metadata; print(importlib.metadata.version("standardbots"))')" = "2.20260731.17" \
+    && python3 -c 'from standardbots import StandardBotsRobot, models' \
     && rm -rf /var/lib/apt/lists/* /tmp/reforge-artifacts
 
 WORKDIR /workspace

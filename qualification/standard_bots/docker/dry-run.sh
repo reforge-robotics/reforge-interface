@@ -10,7 +10,7 @@ docker run --rm --network none \
   --tmpfs /tmp \
   --security-opt "seccomp=${repo_root}/qualification/standard_bots/docker/phase-c-no-network-seccomp.json" \
   --mount "type=bind,src=$(realpath "$output_dir"),dst=/evidence" \
-  reforge-standard-bots-qualification:2.0.9-908 \
+  reforge-standard-bots-qualification:2.0.9-908-standardbots-2.20260731.17 \
   standard_bots_qualification_cli \
     --assets-dir /workspace/src/robot \
     --output-dir /evidence

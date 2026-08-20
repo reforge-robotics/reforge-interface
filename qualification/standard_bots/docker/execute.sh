@@ -11,7 +11,7 @@ output_dir=$(realpath "$7")
 docker run --rm --interactive --tty --network host \
   --env STANDARD_BOTS_SDK_TOKEN \
   --mount "type=bind,src=${output_dir},dst=/evidence" \
-  reforge-standard-bots-qualification:2.0.9-908 \
+  reforge-standard-bots-qualification:2.0.9-908-standardbots-2.20260731.17 \
   standard_bots_qualification_cli --execute --trial "$1" \
     --assets-dir /workspace/src/robot --output-dir /evidence \
     --endpoint "$2" --robot-id "$3" \

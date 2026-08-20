@@ -42,22 +42,26 @@ It initializes ROS and observes graph/telemetry state but never calls publish.
 
 ## Clean Docker workflow
 
-Build with the extracted run 39 Debian directory, then run the no-network dry
-run:
+Place the verified
+`standardbots-2.20260731.17-py3-none-any.whl` beside the extracted run 39
+Debian packages, then build and run the no-network dry run. The build helper and
+image independently reject a wheel whose SHA-256 differs from the frozen Phase
+E value.
 
 ```bash
 qualification/standard_bots/docker/build.sh /path/to/run-39/dist
 qualification/standard_bots/docker/dry-run.sh
 ```
 
-The build installs only the local `2.0.9-908` base and ROS companion packages.
+The build installs only the local `2.0.9-908` base and ROS companion packages
+and the pinned `standardbots==2.20260731.17` wheel. It verifies the installed
+SDK metadata and imports the control-state probe symbols during the build.
 The dry-run container is pinned to `linux/amd64`, uses a read-only root
 filesystem and `--network none`, and applies a seccomp profile that rejects the
 socket API. Only the mounted evidence directory and an ephemeral `/tmp` are
 writable. Use `docker/preflight.sh` and `docker/execute.sh` only on the approved
 Ubuntu robot computer after Phase C and Phase D acceptance. Those later
-commands additionally require the Standard Bots Python SDK in the runtime
-image; its exact package must be frozen before the read-only Phase E preflight.
-It is deliberately not fetched by the Phase B build. Neither example contains
-credentials; Standard Bots must provide its own robot ID and the SDK token must
-enter only through the environment.
+commands use that same SDK from the runtime image; no virtual-environment mount
+or package download is permitted. Neither example contains credentials;
+Standard Bots must provide its own robot ID and the SDK token must enter only
+through the environment.
