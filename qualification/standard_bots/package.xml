@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>reforge_standard_bots_qualification</name>
+  <version>0.1.0</version>
+  <description>Explicitly armed Standard Bots real-hardware qualification harness.</description>
+  <maintainer email="info@reforgerobotics.com">Reforge Robotics</maintainer>
+  <license>MIT</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>trajectory_msgs</depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>
