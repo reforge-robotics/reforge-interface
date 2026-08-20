@@ -4,6 +4,7 @@
 # Version: 2.0
 
 from importlib.resources import files, as_file
+from pathlib import Path
 from typing import Optional, Sequence
 
 import numpy as np
@@ -14,7 +15,8 @@ from reforge_core.hw_interfaces.arm_client import ArmClient
 from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
 
 # Trossen WidowX AI follower configuration.
-#BOT_ID = "dd65af8b-1ea9-47db-83c7-8a75c4d0d817"
+# robot_ip = 192.168.1.3
+# BOT_ID = "dd65af8b-1ea9-47db-83c7-8a75c4d0d817"
 BOT_ID = "78554eb2-209e-4075-af33-d1d5ede177a5"
 URDF_PATH = "urdf/trossen/wxai_follower.urdf"
 ROBOT_MAX_FREQ = 200  # Trossen's documented high-rate recording frequency [Hz].
@@ -28,12 +30,13 @@ TROSSEN_GRIPPER_HOLD_POSITION_M = 0.018035
 # Fully stretched position of the robot for calibration.
 FULL_STRETCH_XYZ = [0.517762, 0.0, 0.4275]  # Fallback from the bundled URDF [m].
 FULL_STRETCH_QUAT = [0.0, 0.0, 0.0, 1.0]
-FULL_STRETCH_JOINTS = [0.0, 5*np.pi / 6, 2*np.pi / 3, np.pi / 6, 0.0, 0.0]
+FULL_STRETCH_JOINTS = [0.0, 5 * np.pi / 6, 2 * np.pi / 3, np.pi / 6, 0.0, 0.0]
 FULL_STRETCH_POSE_OVERRIDE = None
 
 # General constants
 IS_DEGREES = False
 DATA_LOCATION_PREFIX = "src/robot/data"
+SIM_DATA_LOCATION_PREFIX = str(Path(__file__).resolve().parent / "data" / "sim")
 DEFAULT_TCP_PAYLOAD = 0.0
 
 MAX_ROBOT_JOINTS_BANDWIDTH = 2.5
@@ -385,6 +388,8 @@ class RobotInterface(ArmClient):
             the mode/state codes so they can be inspected when debugging.
         """
         arm = self._require_connected_arm()
+        current_joints = self._validate_joint_target(self.get_joint_state()[0])
+        arm.set_arm_positions(current_joints, 0.0, False)
         arm.set_arm_modes(trossen_arm.Mode.position)
         return 0
 
@@ -399,18 +404,51 @@ class RobotInterface(ArmClient):
         arm.set_arm_modes(trossen_arm.Mode.position)
         return 0
 
-    def enter_teach_mode(self) -> int:
-        """Make the arm backdrivable using Trossen gravity compensation."""
+    def supports_teaching_mode(self) -> bool:
+        """Return whether the Trossen backend can enable manual teaching mode.
+
+        Returns:
+            `bool` true for hardware connections and false for simulator mode.
+        """
+        return not self.in_sim_mode
+
+    def enter_teaching_mode(self) -> int:
+        """Make the arm backdrivable using Trossen gravity compensation.
+
+        Returns:
+            `int` zero success code.
+        """
         arm = self._require_connected_arm()
         arm.set_arm_modes(trossen_arm.Mode.external_effort)
         arm.set_arm_external_efforts([0.0] * self.num_joints, 0.0, False)
         return 0
 
+    def exit_teaching_mode(self) -> int:
+        """Return the arm to position control after manual teaching.
+
+        The current joint positions are first written as the position target so
+        switching out of gravity compensation does not reuse a stale target.
+
+        Returns:
+            `int` zero success code.
+        """
+        return int(self.enter_position_mode() or 0)
+
+    def enter_teach_mode(self) -> int:
+        """Backward-compatible alias for `enter_teaching_mode()`.
+
+        Returns:
+            `int` zero success code.
+        """
+        return self.enter_teaching_mode()
+
     def exit_teach_mode(self) -> int:
-        """Brake the arm joints after manual positioning."""
-        arm = self._require_connected_arm()
-        arm.set_arm_modes(trossen_arm.Mode.idle)
-        return 0
+        """Backward-compatible alias for `exit_teaching_mode()`.
+
+        Returns:
+            `int` zero success code.
+        """
+        return self.exit_teaching_mode()
 
     def command_gripper_position(
         self,
@@ -430,7 +468,9 @@ class RobotInterface(ArmClient):
 
         limits = arm.get_joint_limits()
         if len(limits) <= TROSSEN_GRIPPER_JOINT_INDEX:
-            raise RuntimeError("Trossen controller did not report a gripper joint limit.")
+            raise RuntimeError(
+                "Trossen controller did not report a gripper joint limit."
+            )
         gripper_limit = limits[TROSSEN_GRIPPER_JOINT_INDEX]
         lower = float(gripper_limit.position_min)
         upper = float(gripper_limit.position_max)
@@ -490,7 +530,6 @@ class RobotInterface(ArmClient):
             )
         quat = Rotation.from_rotvec(pose[3:]).as_quat()
         return [*pose[:3].tolist(), *quat.tolist()]
-
 
     # {~.~} END OF REQUIRED METHODS
 
