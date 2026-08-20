@@ -194,4 +194,32 @@
     <parent link="link6" />
     <child link="link_eef" />
   </joint>
+  <!-- custom_tool: a simple 150 mm cylindrical tool rigidly mounted at the EEF flange -->
+  <link name="custom_tool">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0.075"/>
+      <mass value="0.35"/>
+      <inertia ixx="0.000274" ixy="0.0" ixz="0.0" iyy="0.000274" iyz="0.0" izz="0.0000612"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <cylinder length="0.15" radius="0.02"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0.075"/>
+      <material name="Gray">
+        <color rgba="0.5 0.5 0.5 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.15" radius="0.02"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0.075"/>
+    </collision>
+  </link>
+  <joint name="joint_custom_tool" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="link_eef" />
+    <child link="custom_tool" />
+  </joint>
 </robot>

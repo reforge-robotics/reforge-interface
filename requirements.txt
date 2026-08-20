@@ -1,7 +1,7 @@
-numpy<2
-pydantic
-scipy
 --index-url https://pypi.org/simple/
-reforge-core
-xarm-python-sdk
-git+https://github.com/twtoner/pimu.git
+mcap-protobuf-support>=0.5,<0.6
+numpy>=2,<3
+pydantic
+reforge-core[all]>=2.0.15,<3
+scipy
+xarm-python-sdk[all]

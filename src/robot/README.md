@@ -4,28 +4,33 @@ This folder contains the robot adapter layer used by Reforge calibration and ide
 
 ## Purpose
 
-Implement one concrete robot adapter in `robot_interface.py` that satisfies the interface contract defined in `robot_base.py`.
+`robot_interface.py` implements the UFACTORY adapter against the
+`reforge_core.hw_interfaces.arm_client.ArmClient` contract.
 
 The calibration flow expects strict method signatures, units, and logged data schema.
 
 ## Key Files
 
-- `src/robot/robot_interface.py`: SDK-specific implementation target.
-- `src/robot/robot_base.py`: Abstract robot interface, defaults, and shared utilities.
-- `src/robot/run.py`: CLI routes (`connect_test`, `calibrate`, `identify`, `fine_tune`, `vibration_test`).
-- `src/robot/ros_manager.py`: Optional ROS-based trajectory publishing helper.
-- `src/robot/urdf/`: Robot URDF files.
-- `src/robot/data/`: Output data from calibration runs.
+- `../../pyproject.toml`: Public package metadata and supported `reforge-core` version.
+- `../../requirements.txt`: Runtime dependencies, including the xArm SDK.
+- `../../Dockerfile`: Container build for the public package.
+- `robot_interface.py`: SDK-specific implementation target.
+- `run.py`: CLI routes (`connect_test`, `kinecal`, `calibrate`, `identify`, `fine_tune`, `vibration_test`).
+- `ros_manager.py`: Optional ROS-based trajectory publishing helper.
+- `urdf/`: Robot URDF files.
+- `config/`: Robot configuration files, including the editable kinecal config and default restore template.
+- `data/`: Output data from calibration runs.
 
 ## Integration Contract
 
 ### Required methods in `RobotInterface`
 
-- `__get_joint_positions(self) -> List`
-- `__get_tcp_pose(self) -> List`
-- `move_to_joint(self, target_joint: Tuple[float, ...]) -> None`
-- `move_to_pose(self, target_quat: List[float], target_xyz: List[float]) -> None`
-- `publish_and_record_joint_positions(...) -> Deque[Dict]`
+- `in_sim_mode` and `urdf_path` properties
+- `command_move_j(...) -> int`
+- `command_move_pose(...) -> int`
+- `command_servo_j(...) -> int`
+- `enter_position_mode(...)` and `enter_servo_mode(...)`
+- `get_joint_state(...)` and `get_tcp_pose(...)`
 
 ### Data log schema
 
@@ -45,16 +50,14 @@ If a field is unavailable, keep the key and set an empty value.
 
 ## How To Integrate a New SDK
 
-1. Add URDF file to `src/robot/urdf/`.
+1. Add URDF file to `urdf/`.
 2. Add SDK dependency in `requirements.txt` (or make local package importable).
-3. Open `src/robot/robot_interface.py` and replace all `# {~.~}` sections.
-4. Set robot constants:
-- `BOT_ID`, `URDF_PATH`, `ROBOT_MAX_FREQ`
-- `HOME_SHOULDER_ANGLE`, `HOME_XYZ`, `HOME_QUAT`, `HOME_JOINTS`, `HOME_POSE_OVERRIDE`
-- `IS_DEGREES`, `DATA_LOCATION_PREFIX`
+3. Open `robot_interface.py` and replace all `# {~.~}` sections.
+4. Set robot constants such as `BOT_ID`, `URDF_PATH`, `ROBOT_MAX_FREQ`,
+   `FULL_STRETCH_XYZ`, `FULL_STRETCH_QUAT`, and `FULL_STRETCH_JOINTS`.
 5. Implement SDK client setup in `RobotInterface.__init__`.
 6. Implement all required methods with SDK calls.
-7. Validate and run connection test before full calibration.
+7. Validate and run the non-motion connection test before calibration.
 
 ## Units and Frames
 
@@ -70,7 +73,7 @@ If a field is unavailable, keep the key and set an empty value.
 ### 5-Minute Adapter Happy Path
 
 ```bash
-# From repository root
+# From repository root.
 pip install -r requirements.txt
 pip install -e .
 
@@ -92,6 +95,14 @@ python -m robot.run connect_test <robot_ip> --local_ip <local_ip> --sdk_token <t
 python -m robot.run calibrate <robot_ip> --robot_id <robot_id> --freq 200
 ```
 
+### Build Docker image
+
+From the repository root:
+
+```bash
+docker build -t reforge-interface:latest .
+```
+
 ### Validate adapter
 
 ```bash
@@ -110,6 +121,14 @@ python -m robot.run connect_test <robot_ip> --local_ip <local_ip> --sdk_token <t
 ```bash
 python -m robot.run calibrate <robot_ip> --robot_id <robot_id> --freq 200
 ```
+
+### Run kinecal data collection
+
+```bash
+python -m robot.run kinecal <robot_ip>
+```
+
+By default, this uses `src/robot/config/kinecal_config.toml`. To restore defaults, copy `src/robot/config/kinecal_config_default.toml` over that file.
 
 ### Run identification / fine-tune manually
 

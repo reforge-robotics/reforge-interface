@@ -1,1 +1,4 @@
+recursive-include src/robot/config *.toml
+recursive-include src/robot/example_usage *.json *.pt *.urdf
+recursive-include src/robot/meshes *.stl
 recursive-include src/robot/urdf *.urdf *.xacro *.stl *.dae

@@ -6,17 +6,33 @@ requires = [
 
 [project]
 name = "reforge-interface"
-version = "0.0.5"
-description = "Reforge Interface by Reforge Robotics"
+version = "0.1.0"
+description = "Robot adapter layer for Reforge calibration and identification workflows."
 readme = "README.md"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Reforge Robotics", email = "info@reforgerobotics.com" }]
 dependencies = [
-    "numpy<2",
+    "mcap-protobuf-support>=0.5,<0.6",
+    "numpy>=2,<3",
+    "reforge-core[all]>=2.0.15,<3",
     "scipy",
-    "reforge-core",
+    "xarm-python-sdk[all]",
+]
+
+[project.optional-dependencies]
+ros = [
     "pydantic",
 ]
+dev = [
+    "pytest",
+    "ruff",
+    "black==24.1.1",
+]
+
+[project.scripts]
+reforge-robot = "robot.run:main"
+
 [tool.setuptools]
 package-dir = { "" = "src" }
 
@@ -26,10 +42,14 @@ include = ["*"]
 
 [tool.setuptools.package-data]
 robot = [
-  "models/current/*.pt",
-  "urdf/*.urdf",
-  "urdf/**/*.urdf",
-  "urdf/**/*.xacro",
-  "urdf/**/*.stl",
-  "urdf/**/*.dae"
+    "config/*.toml",
+    "example_usage/**/*.json",
+    "example_usage/**/*.pt",
+    "example_usage/**/*.urdf",
+    "meshes/**/*.stl",
+    "urdf/*.urdf",
+    "urdf/**/*.urdf",
+    "urdf/**/*.xacro",
+    "urdf/**/*.stl",
+    "urdf/**/*.dae",
 ]

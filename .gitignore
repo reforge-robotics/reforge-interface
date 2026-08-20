@@ -177,6 +177,15 @@ cython_debug/
 *.tar.zstd
 *.zip
 
+# Local robot outputs and generated model artifacts
+src/robot/data/*
+!src/robot/data/README.md
+src/robot/vibration_data/
+src/robot/example_usage/kinecal/example_results/
+src/robot/models/*
+!src/robot/models/kinecal/
+!src/robot/models/kinecal/.gitignore
+
 # Large image files
 *.png
 *.gif
