@@ -1,6 +1,23 @@
 mcap-protobuf-support>=0.5,<0.6
 numpy>=2,<3
 pydantic
-#reforge-core[all]
-# above commented out as I used the APT repository: https://github.com/reforge-robotics/reforge-core-cpp/tree/main
-# due to repeated build failures with requirements.txt
+# reforge-core[all]==2.0.9
+# commented out as new dockerfile installs 2.0.14 directly
+# specified reforge-core version 2.0.9 after reforge-core[all] failed
+# I needed to use the APT repository: https://github.com/reforge-robotics/reforge-core-cpp/tree/main
+# And then use pip to install the binary which matched the APT:
+# pip install --only-binary=:all: reforge-core==2.0.9
+# The Dockerfile installs with --no-deps per PyPI documentation, so here are the required deps:
+anytree
+bleak
+clarabel
+control
+matplotlib==3.10.5
+muse-api
+numpy
+ompl
+pyserial
+requests
+scipy
+torch==2.3.1
+reforge-core[all]==2.0.14
