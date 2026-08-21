@@ -16,6 +16,7 @@ authors = [{ name = "Reforge Robotics", email = "info@reforgerobotics.com" }]
 dependencies = [
     "mcap-protobuf-support>=0.5,<0.6",
     "numpy>=2,<3",
+    "ur-rtde==1.6.5",
     "reforge-core[all]",
 ]
 

@@ -4,14 +4,17 @@
 # Version: 2.0
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from importlib.resources import as_file, files
 from pathlib import Path
 from typing import Literal, Optional, Sequence
 
 import numpy as np
-
 from reforge_core.hw_interfaces.arm_client import ArmClient
 from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
+from rtde_control import RTDEControlInterface
+from rtde_receive import RTDEReceiveInterface
+from scipy.spatial.transform import Rotation
 
 # ------NOTES-----
 # 1. Where you see the #{~.~} symbol, you need to make a change. Use Ctrl+F to find all instances.
@@ -24,31 +27,36 @@ from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
 # 2. The REQUIRED METHODS section contains methods that must be implemented for the robot to work with the
 #    system identification and calibration workflow. The rest of the methods are pre-defined and should not
 #    need to be changed.
-# 3. The code contains examples for Standard Bots' robots, which can be used as a reference.
+# 3. This integration targets the Universal Robots UR5e via `ur_rtde`
+#    (`rtde_control.RTDEControlInterface` / `rtde_receive.RTDEReceiveInterface`).
+#    `ur_rtde` is a third-party binding, not an official UR SDK; see
+#    https://sdurobotics.gitlab.io/ur_rtde/ and the UR RTDE protocol guide.
 # 4. If you opt to use ROS for publishing joint positions, you can use the ros_manager.py file
 # in the robots folder. See detailed instructions in that file.
 
-# {~.~} Import robot's Python SDK with required modules here
-
-# ------------------------------- EXAMPLE -------------------------------
-# from standardbots import StandardBotsRobot, models
-# https://docs.standardbots.com/docs/latest/-/rest/intro/configuring-sdk
-# -----------------------------------------------------------------------
-
 
 # User constants - EDITS REQUIRED
-BOT_ID = ""  # {~.~} [CHANGE TO ROBOT's ID, IF NECESSARY] - can also enter as CLI argument (see run.py --help)
-URDF_PATH = "urdf/test_robot.urdf"  # {~.~} [CHANGE TO YOUR ROBOT'S URDF FILE PATH]
-ROBOT_MAX_FREQ = 250  # {~.~} [CHANGE TO ROBOT'S MAX SAMPLING FREQUENCY] in [Hz]
+BOT_ID = ""  # can also enter as CLI argument (see run.py --help)
+URDF_PATH = "urdf/ur5e.urdf"
+# RTDE's own interface is capped at 125 Hz regardless of the controller's internal
+# 500 Hz servo loop (Universal Robots RTDE guide: "frequency must be between 1 and
+# 125 Hz"), so 125 Hz is this adapter's real achievable command/telemetry rate.
+ROBOT_MAX_FREQ = 125  # [Hz]
 
-# Fully stretched position of the robot for calibration.
-FULL_STRETCH_XYZ = [1.28989, 0.36866, 0.171]  # {~.~} [m]
-FULL_STRETCH_QUAT = [0.499, 0.499, 0.499, 0.499]  # {~.~} [1]
-FULL_STRETCH_JOINTS = [0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0]  # {~.~} [rad]
-FULL_STRETCH_POSE_OVERRIDE = None  # {~.~} list of home pose (xyz and quaternion) to override additional height not in base height
+# Fully stretched position of the robot for calibration: shoulder_lift bent -90 deg
+# (arm pointing straight up, elbow/wrists at 0), all other joints at 0. XYZ/quat were
+# computed by forward-kinematics against src/robot/urdf/ur5e.urdf via
+# reforge_core.util.robot_dynamics.Dynamics (Pinocchio), not hand-derived, so they
+# stay self-consistent with FULL_STRETCH_JOINTS below.
+FULL_STRETCH_XYZ = [0.0997, 0.2329, 0.9797]  # [m]
+FULL_STRETCH_QUAT = [-0.5, 0.5, 0.5, 0.5]  # [qx, qy, qz, qw]
+FULL_STRETCH_JOINTS = [0.0, -np.pi / 2, 0.0, 0.0, 0.0, 0.0]  # [rad]
+FULL_STRETCH_POSE_OVERRIDE = None  # list of home pose (xyz and quaternion) to override additional height not in base height
 
 # General constants
-IS_DEGREES = False  # {~.~} [CHANGE TO TRUE IF ROBOT USES DEGREES]
+# UR RTDE reports joint/TCP telemetry in SI units (radians, m) natively -- no
+# degrees<->radians conversion is needed for this robot.
+IS_DEGREES = False
 DATA_LOCATION_PREFIX = "src/robot/data"  # {~.~} [CHANGE TO LOCATION DESIRED - will be robot/DATA_LOCATION_PREFIX/*]
 SIM_DATA_LOCATION_PREFIX = str(Path(__file__).resolve().parent / "data" / "sim")
 DEFAULT_TCP_PAYLOAD = 0.0  # {~.~} [CHANGE IF THE DEFAULT PAYLOAD IS NON_ZERO]
@@ -57,11 +65,71 @@ MAX_ROBOT_JOINTS_BANDWIDTH = (
     5.0  # {~.~} Servo motor bandwidth. Leave as is if you don't know [Hz]
 )
 
+# Conservative speed/acceleration ceiling for Reforge's 0-100 percentage-based
+# `speed` argument. These equal ur_rtde's own documented default moveJ/moveL
+# arguments (https://sdurobotics.gitlab.io/ur_rtde/api/api.html), well under
+# the UR5e's hard joint-velocity limit of pi rad/s (180 deg/s, from Universal
+# Robots' published joint_limits.yaml for the ur5e). speed=100 maps to this
+# ceiling; speed=0 maps to no motion; values are clamped into [0, 100].
+MAX_JOINT_SPEED_RAD_S = 1.05  # [rad/s] leading-axis joint speed, moveJ's default
+MAX_JOINT_ACCEL_RAD_S2 = 1.4  # [rad/s^2] leading-axis joint acceleration, moveJ's default
+MAX_LINEAR_SPEED_M_S = 0.25  # [m/s] TCP speed, moveL's default
+MAX_LINEAR_ACCEL_M_S2 = 1.2  # [m/s^2] TCP acceleration, moveL's default
+
+# servoJ's speed/acceleration parameters are documented as unused by the
+# current RTDE protocol version, so 0.0 is passed for both -- matching
+# ur_rtde's own examples/py/servoj_example.py. lookahead_time and gain are
+# also taken directly from that same official example.
+SERVO_LOOKAHEAD_TIME_S = 0.1  # [s], range [0.03, 0.2] per the ur_rtde API reference
+SERVO_GAIN = 800  # [-], range [100, 2000] per the ur_rtde API reference
+
 # {~.~} IMU information
 USE_REFORGE_IMU = True
 DEFAULT_IMU_COMM_MODE: Literal["ble", "usb", "virtual"] = "usb"
 DEFAULT_IMU_RECORD_MODE: Literal["streaming", "logging"] = "streaming"
 DEFAULT_IMU_RECORD_FREQUENCY_HZ = ROBOT_MAX_FREQ
+
+
+@dataclass
+class _RtdeClients:
+    """Bundle the two `ur_rtde` client objects behind `ArmClient.robot`.
+
+    `_require_connected_arm()` only checks `self.robot is not None`, so this
+    wrapper is what lets every required method reach both the control and
+    receive interfaces through the one `arm = self._require_connected_arm()`
+    call already used throughout this file.
+    """
+
+    control: RTDEControlInterface
+    receive: RTDEReceiveInterface
+
+
+def _speed_pct_to_joint_sa(speed: float) -> tuple[float, float]:
+    """Map a Reforge 0-100 speed percentage to moveJ's `(speed, acceleration)`.
+
+    Args:
+        speed: Speed percentage. Clamped into `[0, 100]`.
+
+    Returns:
+        `(speed_rad_s, acceleration_rad_s2)` scaled linearly against
+        `MAX_JOINT_SPEED_RAD_S`/`MAX_JOINT_ACCEL_RAD_S2`.
+    """
+    fraction = max(0.0, min(100.0, speed)) / 100.0
+    return fraction * MAX_JOINT_SPEED_RAD_S, fraction * MAX_JOINT_ACCEL_RAD_S2
+
+
+def _speed_pct_to_linear_sa(speed: float) -> tuple[float, float]:
+    """Map a Reforge 0-100 speed percentage to moveL's `(speed, acceleration)`.
+
+    Args:
+        speed: Speed percentage. Clamped into `[0, 100]`.
+
+    Returns:
+        `(speed_m_s, acceleration_m_s2)` scaled linearly against
+        `MAX_LINEAR_SPEED_M_S`/`MAX_LINEAR_ACCEL_M_S2`.
+    """
+    fraction = max(0.0, min(100.0, speed)) / 100.0
+    return fraction * MAX_LINEAR_SPEED_M_S, fraction * MAX_LINEAR_ACCEL_M_S2
 
 
 class RobotInterface(ArmClient):
@@ -105,6 +173,8 @@ class RobotInterface(ArmClient):
         imu_recorder: ImuRecorder | None = None,
         tcp_payload: float = DEFAULT_TCP_PAYLOAD,
         tcp_payload_com: Sequence[float] | None = None,
+        rtde_c: RTDEControlInterface | None = None,
+        rtde_r: RTDEReceiveInterface | None = None,
     ) -> None:
         """Initialize the robot interface and load the URDF model.
 
@@ -126,6 +196,12 @@ class RobotInterface(ArmClient):
                 by an application or integration test.
             tcp_payload: Payload mass attached at the TCP [kg].
             tcp_payload_com: Optional payload center of mass in TCP coordinates [m].
+            rtde_c: Optional pre-built `RTDEControlInterface`, injected in place
+                of connecting to `robot_ip`. Tests supply a fake here so no
+                socket is ever opened.
+            rtde_r: Optional pre-built `RTDEReceiveInterface`, injected in place
+                of connecting to `robot_ip`. Tests supply a fake here so no
+                socket is ever opened.
 
         Side Effects:
             Loads the URDF model and connects to robot hardware.
@@ -180,42 +256,19 @@ class RobotInterface(ArmClient):
         # Add it in the CLI with `--identify`
         self.reforge_api_token = api_token
         try:
-            # {~.~} Instantiate live robot mode
-            self.robot = None  # [CHANGE THIS LINE]
+            # Establish both RTDE clients. Each constructor call connects
+            # synchronously and raises on failure (e.g. unreachable robot_ip,
+            # rejected connection); those failures surface via the `except`
+            # block below. Tests inject fakes via rtde_c/rtde_r so no socket
+            # is ever opened.
+            self.robot = _RtdeClients(
+                control=rtde_c if rtde_c is not None else RTDEControlInterface(robot_ip),
+                receive=rtde_r if rtde_r is not None else RTDEReceiveInterface(robot_ip),
+            )
 
-            # ------------------- EXAMPLE --------------------
-            # self.robot = StandardBotsRobot(
-            #     url=robot_ip,
-            #     token=sdk_token,
-            #     robot_kind=StandardBotsRobot.RobotKind.Live,
-            # )
-            # ------------------------------------------------
-
-            # {~.~} Enable ROS control, if necessary
-            # [YOUR CODE HERE]
-
-            # ------------------------------ EXAMPLE -------------------------------
-            # with self.robot.connection():
-            #     ## Set teleoperation/ROS control state
-            #     self.robot.ros.control.update_ros_control_state(
-            #         models.ROSControlUpdateRequest(
-            #             action=models.ROSControlStateEnum.Enabled,
-            #             # to disable: action=models.ROSControlStateEnum.Disabled,
-            #         )
-            #     )
-
-            #     # Get teleoperation state
-            #     self.state = self.robot.ros.status.get_ros_control_state().ok()
-            #     # Enable the robot, make sure the E-stop is released before enabling
-            #     print("Enabling live robot...")
-            # -----------------------------------------------------------------------
-
-            # {~.~} Unbrake the robot if not operational
-            # [YOUR CODE HERE]
-
-            # --------------- EXAMPLE -----------------
-            # self.robot.movement.brakes.unbrake().ok()
-            # -----------------------------------------
+            # UR5e has no separate "unbrake"/ROS-handoff step over RTDE: a
+            # successful RTDEControlInterface connection means the controller
+            # already accepted remote control of the arm.
 
             # Set ID for robot
             self.id = robot_id
@@ -245,6 +298,31 @@ class RobotInterface(ArmClient):
                 imu_record_frequency_hz=imu_record_frequency_hz,
                 imu_recorder=selected_imu_recorder,
             )
+
+    def close(self) -> None:
+        """Stop any active servo streaming and disconnect both RTDE clients.
+
+        Not part of the `ArmClient` abstract contract; call this when done
+        with the robot (e.g. at the end of a calibration run, or in a
+        `finally` block) to leave the controller in a safe, disconnected
+        state rather than relying on socket teardown at process exit.
+
+        Side Effects:
+            Decelerates and stops any in-progress servo motion, terminates
+            the uploaded RTDE control script, and disconnects both clients.
+
+        Returns:
+            `None`.
+        """
+        if self.robot is None:
+            return
+        try:
+            self.robot.control.servoStop()
+            self.robot.control.stopScript()
+        finally:
+            self.robot.control.disconnect()
+            self.robot.receive.disconnect()
+            self.robot = None
 
     def create_robot_imu_recorder(self) -> ImuRecorder:
         """Create the robot-native IMU adapter used when Reforge IMU is disabled.
@@ -309,19 +387,14 @@ class RobotInterface(ArmClient):
         if IS_DEGREES:
             target_joints = list(np.rad2deg(angle) for angle in target_joints)
 
-        arm = self._require_connected_arm()  # noqa: F841
-        # ------------------------------------ EXAMPLE -------------------------------------
-        # update_request = models.ArmPositionUpdateRequest(
-        #     kind=models.ArmPositionUpdateRequestKindEnum.JointRotation,
-        #     joint_rotation=models.ArmJointRotations(
-        #         joints=target_joint)
-        # )
+        arm = self._require_connected_arm()
+        speed_rad_s, accel_rad_s2 = _speed_pct_to_joint_sa(speed)
+        q = [float(v) for v in target_joints]
 
-        # response = arm.movement.position.set_arm_position(body=update_request).ok()
-        # ----------------------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        ok = arm.control.moveJ(q, speed_rad_s, accel_rad_s2, not wait)
+        if not ok:
+            raise RuntimeError(f"moveJ to {q} failed")
+        return 0
 
     def command_move_pose(
         self,
@@ -349,38 +422,21 @@ class RobotInterface(ArmClient):
         if locked_joints is not None:
             raise RuntimeError("locked_joints is only supported in simulator mode.")
 
-        arm = self._require_connected_arm()  # noqa: F841
+        arm = self._require_connected_arm()
+        speed_m_s, accel_m_s2 = _speed_pct_to_linear_sa(speed)
 
-        # ---------------------------------- EXAMPLE ------------------------------------
-        # quatx, quaty, quatz, quatw = target_quat
-        # move_quat = models.Orientation(
-        #                 kind=models.OrientationKindEnum.Quaternion,
-        #                 quaternion=models.Quaternion(x=quatx,
-        #                                              y=quaty,
-        #                                              z=quatz,
-        #                                              w=quatw
-        #                                              ),
-        #             )
-        # x, y, z = target_xyz
-        # move_xyz = models.Position(
-        #                 unit_kind=models.LinearUnitKind.Meters,
-        #                 x=x,
-        #                 y=y,
-        #                 z=z
-        #             )
+        # RTDE poses are [x, y, z, rx, ry, rz] with orientation as a rotation
+        # vector; Reforge supplies orientation as [qx, qy, qz, qw]. scipy's
+        # Rotation.from_quat() expects that same scalar-last ordering, so no
+        # component reordering is needed here (mirrors get_tcp_pose()'s
+        # inverse conversion).
+        rotvec = Rotation.from_quat(list(target_quat)).as_rotvec()
+        pose = [*(float(v) for v in target_xyz), *rotvec.tolist()]
 
-        # update_request = models.ArmPositionUpdateRequest(
-        #     kind=models.ArmPositionUpdateRequestKindEnum.TooltipPosition,
-        #     tooltip_position=models.PositionAndOrientation(
-        #         position=move_xyz,
-        #         orientation=move_quat)
-        # )
-
-        # response = arm.movement.position.set_arm_position(body=update_request).ok()
-        # ----------------------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        ok = arm.control.moveL(pose, speed_m_s, accel_m_s2, not wait)
+        if not ok:
+            raise RuntimeError(f"moveL to {pose} failed")
+        return 0
 
     def command_servo_j(
         self,
@@ -400,24 +456,25 @@ class RobotInterface(ArmClient):
             An integer status code from the robot's command interface, if applicable.
             If the robot does not provide a status code, return 0 for success or raise an exception for failure.
         """
-        arm = self._require_connected_arm()  # noqa: F841
+        del wait  # servoJ blocks internally for `time` seconds regardless of
+        # any Python-level wait flag -- ur_rtde has no separate async servoJ
+        # variant the way moveJ/moveL do.
 
-        # {~.~} Publish joint positions to the robot
-        # [YOUR CODE HERE -- see example below]
+        arm = self._require_connected_arm()
+        q = [float(v) for v in target_joints]
+        # This adapter's own command period; the base class's streaming loop
+        # (ArmClient.stream_joint_positions) already paces calls to this
+        # method at that rate, so `time` here just needs to match it.
+        command_period_s = 1.0 / self.max_sampling_frequency_hz
 
-        # ------------------------------ EXAMPLE ------------------------------
-        # cmd_q = list(q)
-        # if IS_DEGREES:
-        #     cmd_q = [np.rad2deg(value) for value in cmd_q]
-
-        # code = arm.set_servo_angle_j(
-        #     angles=cmd_q,
-        #     wait=wait,
-        # )
-        # ---------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        # speed/acceleration args are unused by the current RTDE protocol
+        # version (see SERVO_LOOKAHEAD_TIME_S/SERVO_GAIN above), hence 0.0.
+        ok = arm.control.servoJ(
+            q, 0.0, 0.0, command_period_s, SERVO_LOOKAHEAD_TIME_S, SERVO_GAIN
+        )
+        if not ok:
+            raise RuntimeError(f"servoJ to {q} failed")
+        return 0
 
     def enter_position_mode(self) -> Optional[int | None]:
         """
@@ -426,17 +483,15 @@ class RobotInterface(ArmClient):
         Returns:
             the mode/state codes so they can be inspected when debugging.
         """
-        arm = self._require_connected_arm()  # noqa: F841
+        arm = self._require_connected_arm()
 
-        # ------------------------------ EXAMPLE ------------------------------
-        # arm.clean_error()
-        # arm.clean_warn()
-        # code_mode = arm.set_mode(0) # 0 = position mode
-        # code_state = arm.set_state(0) # start
-        # ----------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        # RTDE has no separate "position mode" handshake; moveJ/moveL can be
+        # called directly. What does matter is halting any in-progress
+        # servoJ stream first -- RTDE does not accept an interleaved
+        # moveJ/moveL command while one is active -- so this ensures a clean
+        # handoff from servo streaming back to point-to-point motion.
+        ok = arm.control.servoStop()
+        return 0 if ok else 1
 
     def enter_servo_mode(self) -> Optional[int | None]:
         """Ensure the controller is set to servo control mode.
@@ -444,16 +499,12 @@ class RobotInterface(ArmClient):
         Returns:
             the mode/state codes so they can be inspected when debugging.
         """
-        arm = self._require_connected_arm()  # noqa: F841
+        self._require_connected_arm()
 
-        # ------------------------------ EXAMPLE ------------------------------
-        # code_en = arm.motion_enable(enable=True)
-        # code_mode = arm.set_mode(1)  # 1 = servo mode
-        # code_state = arm.set_state(0)  # start
-        # ----------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        # RTDE has no explicit servo-mode enable call: servoJ() can be
+        # called directly once connected, and command_servo_j() computes its
+        # own command period. Nothing to do here beyond the liveness check.
+        return 0
 
     def supports_teaching_mode(self) -> bool:
         """Return whether the robot supports manual teaching mode.
@@ -514,24 +565,17 @@ class RobotInterface(ArmClient):
             Tuple of three lists: joint positions `q` [rad], velocities `qd` [rad/s],
             and efforts/currents `tau` [SDK units].
         """
-        arm = self._require_connected_arm()  # noqa: F841
-        q: list[float] = []
-        qd: list[float] = []
-        tau: list[float] = []
+        arm = self._require_connected_arm()
 
-        # ------------------------------ EXAMPLE ------------------------------
-        # code, payload = arm.get_joint_states()
-        # if code != 0:
-        #     raise RuntimeError(f"get_joint_states returned code {code}")
-        # q, qd, tau = payload
-        # q = list(q[: self.num_joints])
-        # qd = list(qd[: self.num_joints])
-        # tau = list(tau[: self.num_joints])
-        # ----------------------------------------------------------------------
-
-        if not IS_DEGREES:
-            q = [np.deg2rad(value) for value in q]
-            qd = [np.deg2rad(value) for value in qd]
+        # UR RTDE already reports SI radians/rad-s natively (see IS_DEGREES
+        # above), so no unit conversion is applied here.
+        q = list(arm.receive.getActualQ())
+        qd = list(arm.receive.getActualQd())
+        # `getJointTorques()` is gravity/friction-corrected and documented in
+        # N-m (`ur_rtde` docs: "[Base, Shoulder, Elbow, Wrist1, Wrist2,
+        # Wrist3]"), matching Reforge's expected effort unit directly. This
+        # lives on the control interface, not the receive interface.
+        tau = list(arm.control.getJointTorques())
 
         return q, qd, tau
 
@@ -542,31 +586,18 @@ class RobotInterface(ArmClient):
             List of 7 floats representing the TCP pose in meters for positions
             and unitless normalized for quaternions.
         """
-        position: list[float] = []
-        quat: list[float] = []
-        arm = self._require_connected_arm()  # noqa: F841
+        arm = self._require_connected_arm()
 
-        # ------------------------------ EXAMPLE ------------------------------
-        # code, pose = arm.get_position_aa()
+        # getActualTCPPose() returns [x, y, z, rx, ry, rz]: position in meters
+        # already, orientation as a rotation vector (not axis-angle + separate
+        # magnitude, and not degrees) per the ur_rtde API reference.
+        pose = arm.receive.getActualTCPPose()
+        position, rotvec = list(pose[:3]), pose[3:]
 
-        # if code != 0:
-        #     raise Exception(f"Unreliable TCP pose! Return code {code}")
-
-        # # Additional operations may be needed depending on pose return style
-        # # Decompose pose if necessary
-        # position, axang = pose[:3], pose[3:]
-
-        # # Convert position coordinates to meters
-        # position = [coord / 1000.0 for coord in position]
-
-        # # Convert rotation coordinates to radians, if necessary
-        # if not IS_DEGREES:
-        #     axang = [np.deg2rad(coord) for coord in axang]
-
-        # # Convert axis-angle to quaternion
-        # from scipy.spatial.transform import Rotation as R
-        # quat = R.from_rotvec(axang).as_quat().tolist()
-        # ----------------------------------------------------------------------
+        # scipy's Rotation.as_quat() returns scalar-last [qx, qy, qz, qw] by
+        # default, which is exactly Reforge's expected pose ordering -- no
+        # component reordering needed.
+        quat = Rotation.from_rotvec(rotvec).as_quat().tolist()
 
         # Return tooltip pose as a list
         return [*position, *quat]
