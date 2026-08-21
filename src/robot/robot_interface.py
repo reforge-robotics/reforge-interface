@@ -109,7 +109,6 @@ def _speed_pct_to_joint_sa(speed: float) -> tuple[float, float]:
 
     Args:
         speed: Speed percentage. Clamped into `[0, 100]`.
-
     Returns:
         `(speed_rad_s, acceleration_rad_s2)` scaled linearly against
         `MAX_JOINT_SPEED_RAD_S`/`MAX_JOINT_ACCEL_RAD_S2`.

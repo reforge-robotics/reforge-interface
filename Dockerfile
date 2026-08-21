@@ -51,6 +51,13 @@ RUN RUSTUP_TOOLCHAIN=1.84.1 \
 COPY src/robot/requirements.txt src/robot/requirements.txt
 RUN pip install --no-cache-dir -r src/robot/requirements.txt
 
+# pytest, for pyproject.toml's [project.optional-dependencies].dev.
+# Installed by name rather than `pip install -e ".[dev]"`, which would
+# re-resolve pyproject.toml's base `dependencies` (including unpinned
+# reforge-core[all]) and risk clobbering the from-source reforge-core
+# install above.
+RUN pip install --no-cache-dir pytest
+
 # # validate reforge_core install
 # RUN python -c "\
 # from reforge_core.control import _native_shaper; \
