@@ -236,12 +236,34 @@ int main(int count, char** values) {
                       << (snapshot.joint_state_fresh ? "fresh" : "stale/missing")
                       << "\nIMU: "
                       << (snapshot.imu_fresh ? "fresh" : "stale/missing") << '\n';
+            const bool snapshot_ready =
+                snapshot.command_subscriber_present && snapshot.control_active &&
+                snapshot.joint_state_fresh && snapshot.imu_fresh;
+            if (!snapshot_ready) {
+                rclcpp::shutdown();
+                ros_initialized = false;
+                return 1;
+            }
+            const double telemetry_duration_s = limits.max_duration_s;
+            const auto capture = transport->RecordFeedback(telemetry_duration_s);
+            reforge::qualification::WriteCaptureCsv(
+                options.output_directory, capture);
+            const auto timing = reforge::qualification::ValidateCaptureTiming(
+                capture, limits.recorder_max_gap_s);
+            std::cout << "Read-only telemetry window: " << telemetry_duration_s
+                      << " s\nJoint-state maximum callback-arrival gap: "
+                      << timing.joint_state.maximum_arrival_gap_s
+                      << " s\nIMU maximum callback-arrival gap: "
+                      << timing.imu.maximum_arrival_gap_s << " s\n";
+            if (timing.imu.maximum_source_stamp_gap_s.has_value()) {
+                std::cout << "IMU maximum source-header gap: "
+                          << *timing.imu.maximum_source_stamp_gap_s << " s\n";
+            } else {
+                std::cout << "IMU maximum source-header gap: unavailable\n";
+            }
             rclcpp::shutdown();
             ros_initialized = false;
-            return snapshot.command_subscriber_present && snapshot.control_active &&
-                           snapshot.joint_state_fresh && snapshot.imu_fresh
-                       ? 0
-                       : 1;
+            return 0;
         }
 
         RequireExecutionOptions(options);
@@ -262,12 +284,17 @@ int main(int count, char** values) {
                     options.robot_id);
             });
         const auto capture = reforge::qualification::ExecutePreparedTrial(
-            *transport, command, definition, limits);
+            *transport, command, definition, limits,
+            [&options, &command](const reforge::qualification::Capture& captured) {
+                reforge::qualification::WriteTrajectoryCsv(
+                    options.output_directory /
+                        (options.trial + "_trajectory.csv"),
+                    command);
+                reforge::qualification::WriteCaptureCsv(
+                    options.output_directory, captured);
+            });
         const auto analysis =
             reforge::qualification::AnalyzeCapture(command, capture);
-        reforge::qualification::WriteTrajectoryCsv(
-            options.output_directory / (options.trial + "_trajectory.csv"), command);
-        reforge::qualification::WriteCaptureCsv(options.output_directory, capture);
         reforge::qualification::WriteResultManifest(
             options.output_directory / (options.trial + "_manifest.json"),
             Kind(options.trial), true, command, analysis,

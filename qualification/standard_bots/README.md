@@ -38,7 +38,24 @@ host tick. A trial process performs only one publication. Run the unshaped and
 shaped cases as separate invocations and inspect the evidence between them.
 
 Read-only preflight uses `--preflight` with the explicit identity and topics.
-It initializes ROS and observes graph/telemetry state but never calls publish.
+It initializes ROS, observes graph/control state, and then records a 5.26-second
+joint-state and IMU telemetry window without ever calling publish. The same
+frozen 0.05-second callback-arrival gap is enforced before real motion. The
+Docker helper persists `joint_states.csv` and `imu.csv`; each row contains both
+the recorder's steady-clock arrival time and the message's ROS header stamp so
+transport batching can be distinguished from a source sampling pause.
+
+The Standard Bots IMU publisher advertises reliable delivery. The qualification
+recorder deliberately requests best-effort sensor-data QoS, which is compatible
+with a reliable publisher and tests whether retransmission backlog is causing
+burst delivery at this diagnostic reader. This is a recorder-side diagnostic
+mitigation, not a substitute for correcting periodic blocking, batching,
+invalid type metadata, or malformed deadline metadata in the external Standard
+Bots ROS/DDS bridge. The frozen gap limit remains unchanged.
+
+Recorder validation failures name the failing stream and measured maximum gap.
+Real-execution capture CSVs are written before gap/following-error validation,
+so a failed trial retains diagnostic evidence.
 
 ## Clean Docker workflow
 
@@ -65,3 +82,6 @@ commands use that same SDK from the runtime image; no virtual-environment mount
 or package download is permitted. Neither example contains credentials;
 Standard Bots must provide its own robot ID and the SDK token must enter only
 through the environment.
+
+`docker/preflight.sh` accepts an optional sixth `OUTPUT_DIR` argument and uses
+`qualification-preflight-output` by default.

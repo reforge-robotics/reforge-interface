@@ -7,7 +7,9 @@
 #include <iomanip>
 #include <limits>
 #include <numeric>
+#include <sstream>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 
 #include <builtin_interfaces/msg/duration.hpp>
@@ -399,22 +401,7 @@ Analysis AnalyzeCapture(
     const trajectory_msgs::msg::JointTrajectory& command,
     const Capture& capture,
     double maximum_gap_s) {
-    if (capture.joint_states.empty() || capture.imu.empty()) {
-        throw std::runtime_error("capture requires both joint-state and IMU samples");
-    }
-    if (!(maximum_gap_s > 0.0)) {
-        throw std::invalid_argument("maximum recorder gap must be positive");
-    }
-    const auto require_gaps = [maximum_gap_s](const auto& records) {
-        for (std::size_t index = 1; index < records.size(); ++index) {
-            const double gap_s = records[index].elapsed_s - records[index - 1].elapsed_s;
-            if (!(gap_s > 0.0) || gap_s > maximum_gap_s) {
-                throw std::runtime_error("recorder stream exceeded the frozen gap limit");
-            }
-        }
-    };
-    require_gaps(capture.joint_states);
-    require_gaps(capture.imu);
+    const CaptureTiming timing = ValidateCaptureTiming(capture, maximum_gap_s);
     double squared_error_sum = 0.0;
     std::size_t error_values = 0;
     double maximum_error = 0.0;
@@ -450,19 +437,133 @@ Analysis AnalyzeCapture(
     return Analysis{
         capture.joint_states.size(), maximum_error,
         std::sqrt(squared_error_sum / static_cast<double>(error_values)),
-        peak_acceleration};
+        peak_acceleration, timing};
+}
+
+CaptureTiming ValidateCaptureTiming(
+    const Capture& capture,
+    double maximum_gap_s) {
+    if (capture.joint_states.empty() || capture.imu.empty()) {
+        throw std::runtime_error("capture requires both joint-state and IMU samples");
+    }
+    if (!(maximum_gap_s > 0.0)) {
+        throw std::invalid_argument("maximum recorder gap must be positive");
+    }
+    const CaptureTiming timing = AnalyzeCaptureTiming(capture);
+    const auto require_gap = [maximum_gap_s](
+                                 std::string_view stream,
+                                 const StreamTiming& stream_timing) {
+        if (!stream_timing.arrival_times_strictly_increasing ||
+            !(stream_timing.maximum_arrival_gap_s > 0.0)) {
+            throw std::runtime_error(
+                "recorder stream '" + std::string(stream) +
+                "' has duplicate or non-monotonic callback arrival times");
+        }
+        if (stream_timing.maximum_arrival_gap_s > maximum_gap_s) {
+            std::ostringstream error;
+            error << std::setprecision(9)
+                  << "recorder stream '" << stream
+                  << "' exceeded the frozen callback-arrival gap limit: measured "
+                  << stream_timing.maximum_arrival_gap_s << " s > "
+                  << maximum_gap_s << " s";
+            if (stream_timing.maximum_source_stamp_gap_s.has_value()) {
+                error << "; measured maximum source-header gap "
+                      << *stream_timing.maximum_source_stamp_gap_s << " s";
+            } else {
+                error << "; source-header gap unavailable (valid stamps "
+                      << stream_timing.source_stamp_sample_count << '/'
+                      << stream_timing.sample_count << ')';
+            }
+            throw std::runtime_error(error.str());
+        }
+    };
+    if (capture.command_subscriber_lost) {
+        throw std::runtime_error(
+            "trajectory command subscriber was lost during trial");
+    }
+    require_gap("joint_state", timing.joint_state);
+    require_gap("imu", timing.imu);
+    if (capture.joint_state_age_at_end_s > maximum_gap_s) {
+        std::ostringstream error;
+        error << std::setprecision(9)
+              << "recorder stream 'joint_state' was stale at trial end: measured age "
+              << capture.joint_state_age_at_end_s << " s > " << maximum_gap_s << " s";
+        throw std::runtime_error(error.str());
+    }
+    if (capture.imu_age_at_end_s > maximum_gap_s) {
+        std::ostringstream error;
+        error << std::setprecision(9)
+              << "recorder stream 'imu' was stale at trial end: measured age "
+              << capture.imu_age_at_end_s << " s > " << maximum_gap_s << " s";
+        throw std::runtime_error(error.str());
+    }
+    return timing;
+}
+
+CaptureTiming AnalyzeCaptureTiming(const Capture& capture) {
+    const auto stream_timing = [](const auto& records) {
+        StreamTiming timing;
+        timing.sample_count = records.size();
+        if (records.size() > 1) {
+            for (std::size_t index = 1; index < records.size(); ++index) {
+                const double gap_s =
+                    records[index].elapsed_s - records[index - 1].elapsed_s;
+                if (!(gap_s > 0.0)) {
+                    timing.arrival_times_strictly_increasing = false;
+                } else {
+                    timing.maximum_arrival_gap_s = std::max(
+                        timing.maximum_arrival_gap_s, gap_s);
+                }
+            }
+        }
+
+        bool all_source_stamps_valid = !records.empty();
+        double maximum_source_gap_s = 0.0;
+        double previous_source_s = 0.0;
+        bool have_previous_source = false;
+        for (const auto& record : records) {
+            const double source_s =
+                static_cast<double>(record.message.header.stamp.sec) +
+                static_cast<double>(record.message.header.stamp.nanosec) * 1.0e-9;
+            if (!(source_s > 0.0) || !std::isfinite(source_s)) {
+                all_source_stamps_valid = false;
+                continue;
+            }
+            ++timing.source_stamp_sample_count;
+            if (have_previous_source) {
+                const double gap_s = source_s - previous_source_s;
+                if (!(gap_s > 0.0)) {
+                    all_source_stamps_valid = false;
+                } else {
+                    maximum_source_gap_s = std::max(maximum_source_gap_s, gap_s);
+                }
+            }
+            previous_source_s = source_s;
+            have_previous_source = true;
+        }
+        if (all_source_stamps_valid && timing.source_stamp_sample_count > 1) {
+            timing.maximum_source_stamp_gap_s = maximum_source_gap_s;
+        }
+        return timing;
+    };
+    return CaptureTiming{
+        stream_timing(capture.joint_states), stream_timing(capture.imu)};
 }
 
 Capture ExecutePreparedTrial(
     QualificationTransport& transport,
     const trajectory_msgs::msg::JointTrajectory& command,
     const TrialDefinition& definition,
-    const SafetyLimits& limits) {
+    const SafetyLimits& limits,
+    const std::function<void(const Capture&)>& capture_sink) {
     ValidateTrajectory(command, definition, limits);
     ValidatePreflight(transport.Snapshot(), command, limits);
     const double duration_s = DurationSeconds(command.points.back().time_from_start) +
                               definition.sample_period_s;
     Capture capture = transport.PublishAndRecord(command, duration_s);
+    if (capture_sink) {
+        capture_sink(capture);
+    }
     const Analysis analysis = AnalyzeCapture(
         command, capture, limits.recorder_max_gap_s);
     if (analysis.maximum_following_error_rad > limits.following_error_limit_rad) {
@@ -502,18 +603,23 @@ void WriteCaptureCsv(
     if (!joints || !imu) {
         throw std::runtime_error("cannot open recorder evidence outputs");
     }
-    joints << "elapsed_s";
+    joints << "arrival_elapsed_s,source_stamp_s";
     for (const auto& name : kJointOrder) joints << ',' << name << "_position_rad";
     joints << '\n' << std::setprecision(17);
     for (const auto& record : capture.joint_states) {
-        joints << record.elapsed_s;
+        const double source_s = static_cast<double>(record.message.header.stamp.sec) +
+                                static_cast<double>(record.message.header.stamp.nanosec) * 1.0e-9;
+        joints << record.elapsed_s << ',' << source_s;
         for (const auto value : record.message.position) joints << ',' << value;
         joints << '\n';
     }
-    imu << "elapsed_s,ax_m_s2,ay_m_s2,az_m_s2,gx_rad_s,gy_rad_s,gz_rad_s\n"
+    imu << "arrival_elapsed_s,source_stamp_s,ax_m_s2,ay_m_s2,az_m_s2,gx_rad_s,gy_rad_s,gz_rad_s\n"
         << std::setprecision(17);
     for (const auto& record : capture.imu) {
-        imu << record.elapsed_s << ',' << record.message.linear_acceleration.x << ','
+        const double source_s = static_cast<double>(record.message.header.stamp.sec) +
+                                static_cast<double>(record.message.header.stamp.nanosec) * 1.0e-9;
+        imu << record.elapsed_s << ',' << source_s << ','
+            << record.message.linear_acceleration.x << ','
             << record.message.linear_acceleration.y << ','
             << record.message.linear_acceleration.z << ','
             << record.message.angular_velocity.x << ','
@@ -583,7 +689,24 @@ void WriteResultManifest(
                << "    \"rms_following_error_rad\": "
                << analysis->rms_following_error_rad << ",\n"
                << "    \"peak_linear_acceleration_m_s2\": "
-               << analysis->peak_linear_acceleration_m_s2 << "\n  }\n";
+               << analysis->peak_linear_acceleration_m_s2 << ",\n"
+               << "    \"joint_state_maximum_arrival_gap_s\": "
+               << analysis->timing.joint_state.maximum_arrival_gap_s << ",\n"
+               << "    \"imu_maximum_arrival_gap_s\": "
+               << analysis->timing.imu.maximum_arrival_gap_s << ",\n"
+               << "    \"joint_state_maximum_source_stamp_gap_s\": ";
+        if (analysis->timing.joint_state.maximum_source_stamp_gap_s.has_value()) {
+            output << *analysis->timing.joint_state.maximum_source_stamp_gap_s;
+        } else {
+            output << "null";
+        }
+        output << ",\n    \"imu_maximum_source_stamp_gap_s\": ";
+        if (analysis->timing.imu.maximum_source_stamp_gap_s.has_value()) {
+            output << *analysis->timing.imu.maximum_source_stamp_gap_s;
+        } else {
+            output << "null";
+        }
+        output << "\n  }\n";
     } else {
         output << "\n";
     }

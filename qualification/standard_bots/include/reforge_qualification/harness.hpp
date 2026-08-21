@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -64,6 +65,23 @@ struct ImuRecord final {
 struct Capture final {
     std::vector<JointStateRecord> joint_states;
     std::vector<ImuRecord> imu;
+    double recording_duration_s = 0.0;
+    bool command_subscriber_lost = false;
+    double joint_state_age_at_end_s = 0.0;
+    double imu_age_at_end_s = 0.0;
+};
+
+struct StreamTiming final {
+    std::size_t sample_count = 0;
+    std::size_t source_stamp_sample_count = 0;
+    bool arrival_times_strictly_increasing = true;
+    double maximum_arrival_gap_s = 0.0;
+    std::optional<double> maximum_source_stamp_gap_s;
+};
+
+struct CaptureTiming final {
+    StreamTiming joint_state;
+    StreamTiming imu;
 };
 
 struct Analysis final {
@@ -71,6 +89,7 @@ struct Analysis final {
     double maximum_following_error_rad = 0.0;
     double rms_following_error_rad = 0.0;
     double peak_linear_acceleration_m_s2 = 0.0;
+    CaptureTiming timing;
 };
 
 class QualificationTransport {
@@ -80,6 +99,7 @@ public:
     [[nodiscard]] virtual Capture PublishAndRecord(
         const trajectory_msgs::msg::JointTrajectory& message,
         double recording_duration_s) = 0;
+    [[nodiscard]] virtual Capture RecordFeedback(double recording_duration_s) = 0;
 };
 
 [[nodiscard]] TrialDefinition FrozenPhaseATrial();
@@ -101,11 +121,16 @@ void ValidatePreflight(
     const trajectory_msgs::msg::JointTrajectory& command,
     const Capture& capture,
     double maximum_gap_s = 0.05);
+[[nodiscard]] CaptureTiming AnalyzeCaptureTiming(const Capture& capture);
+[[nodiscard]] CaptureTiming ValidateCaptureTiming(
+    const Capture& capture,
+    double maximum_gap_s = 0.05);
 [[nodiscard]] Capture ExecutePreparedTrial(
     QualificationTransport& transport,
     const trajectory_msgs::msg::JointTrajectory& command,
     const TrialDefinition& definition,
-    const SafetyLimits& limits);
+    const SafetyLimits& limits,
+    const std::function<void(const Capture&)>& capture_sink = {});
 void WriteTrajectoryCsv(
     const std::filesystem::path& path,
     const trajectory_msgs::msg::JointTrajectory& message);

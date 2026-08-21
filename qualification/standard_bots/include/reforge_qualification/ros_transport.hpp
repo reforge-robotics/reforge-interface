@@ -34,6 +34,7 @@ public:
     [[nodiscard]] Capture PublishAndRecord(
         const trajectory_msgs::msg::JointTrajectory& message,
         double recording_duration_s) override;
+    [[nodiscard]] Capture RecordFeedback(double recording_duration_s) override;
 
 private:
     [[nodiscard]] double SteadyNowS() const;

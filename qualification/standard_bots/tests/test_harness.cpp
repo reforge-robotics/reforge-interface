@@ -76,6 +76,11 @@ public:
         published_message = message;
         return capture;
     }
+
+    Capture RecordFeedback(double recording_duration_s) override {
+        EXPECT_GT(recording_duration_s, 0.0);
+        return capture;
+    }
 };
 
 [[nodiscard]] SafetyLimits ExecutionLimits() {
@@ -307,6 +312,54 @@ TEST(Recorder, RejectsMissingOrMisorderedStreams) {
         std::runtime_error);
 }
 
+TEST(Recorder, ReportsFailingStreamAndArrivalAndSourceGaps) {
+    const auto command =
+        reforge::qualification::GenerateUnshapedTrajectory(FrozenPhaseATrial());
+    Capture capture = DeterministicCapture(command);
+    for (std::size_t index = 0; index < capture.imu.size(); ++index) {
+        const std::uint64_t source_nanoseconds =
+            100'000'000'000ULL + index * 25'000'000ULL;
+        capture.imu[index].message.header.stamp.sec =
+            static_cast<std::int32_t>(source_nanoseconds / 1'000'000'000ULL);
+        capture.imu[index].message.header.stamp.nanosec =
+            static_cast<std::uint32_t>(source_nanoseconds % 1'000'000'000ULL);
+    }
+    capture.imu[2].elapsed_s = capture.imu[1].elapsed_s + 0.105;
+    for (std::size_t index = 3; index < capture.imu.size(); ++index) {
+        capture.imu[index].elapsed_s = capture.imu[index - 1].elapsed_s + 0.025;
+    }
+    try {
+        static_cast<void>(
+            reforge::qualification::AnalyzeCapture(command, capture));
+        FAIL() << "expected an IMU arrival-gap failure";
+    } catch (const std::runtime_error& error) {
+        const std::string message = error.what();
+        EXPECT_NE(message.find("stream 'imu'"), std::string::npos);
+        EXPECT_NE(message.find("0.105"), std::string::npos);
+        EXPECT_NE(message.find("source-header gap 0.025"), std::string::npos);
+    }
+}
+
+TEST(Recorder, PersistsCaptureBeforeGapValidationFailure) {
+    const auto definition = FrozenPhaseATrial();
+    const auto command =
+        reforge::qualification::GenerateUnshapedTrajectory(definition);
+    FakeTransport transport;
+    transport.snapshot = ReadySnapshot(command);
+    transport.capture = DeterministicCapture(command);
+    transport.capture.imu[2].elapsed_s =
+        transport.capture.imu[1].elapsed_s + 0.105;
+    bool capture_persisted = false;
+    EXPECT_THROW(
+        static_cast<void>(reforge::qualification::ExecutePreparedTrial(
+            transport, command, definition, ExecutionLimits(),
+            [&capture_persisted](const Capture& capture) {
+                capture_persisted = !capture.imu.empty();
+            })),
+        std::runtime_error);
+    EXPECT_TRUE(capture_persisted);
+}
+
 TEST(RosIntegration, PublishesOneCompleteMessageWithDeterministicStreams) {
     int argument_count = 1;
     char program_name[] = "standard_bots_qualification_tests";
@@ -335,7 +388,7 @@ TEST(RosIntegration, PublishesOneCompleteMessageWithDeterministicStreams) {
             mock->create_publisher<sensor_msgs::msg::JointState>(
                 topics.joint_state, rclcpp::SensorDataQoS());
         const auto imu_publisher = mock->create_publisher<sensor_msgs::msg::Imu>(
-            topics.imu, rclcpp::QoS(10));
+            topics.imu, rclcpp::QoS(10).reliable());
         const auto timer = mock->create_wall_timer(
             std::chrono::milliseconds(2),
             [joint_publisher, imu_publisher]() {

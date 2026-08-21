@@ -26,7 +26,7 @@ RosQualificationTransport::RosQualificationTransport(
             OnJointState(message);
         });
     imu_subscription_ = create_subscription<sensor_msgs::msg::Imu>(
-        topics.imu, rclcpp::QoS(10),
+        topics.imu, rclcpp::SensorDataQoS(),
         [this](const sensor_msgs::msg::Imu& message) { OnImu(message); });
 }
 
@@ -100,12 +100,12 @@ Capture RosQualificationTransport::PublishAndRecord(
     // This is the only command publication in the qualification path.
     publisher_->publish(message);
     const double deadline_s = SteadyNowS() + recording_duration_s;
+    bool command_subscriber_lost = false;
     while (rclcpp::ok() && SteadyNowS() < deadline_s) {
         rclcpp::spin_some(shared_from_this());
         if (publisher_->get_subscription_count() == 0) {
-            std::lock_guard<std::mutex> lock(mutex_);
-            recording_ = false;
-            throw std::runtime_error("trajectory command subscriber was lost during trial");
+            command_subscriber_lost = true;
+            break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
@@ -113,11 +113,45 @@ Capture RosQualificationTransport::PublishAndRecord(
     const double now_s = SteadyNowS();
     std::lock_guard<std::mutex> lock(mutex_);
     recording_ = false;
-    if (!have_joint_state_ || !have_imu_ ||
-        now_s - latest_joint_receive_s_ > feedback_max_age_s_ ||
-        now_s - latest_imu_receive_s_ > feedback_max_age_s_) {
-        throw std::runtime_error("recorder feedback was lost during trial");
+    capture_.recording_duration_s = now_s - recording_epoch_s_;
+    capture_.command_subscriber_lost = command_subscriber_lost;
+    capture_.joint_state_age_at_end_s = have_joint_state_
+                                            ? now_s - latest_joint_receive_s_
+                                            : capture_.recording_duration_s;
+    capture_.imu_age_at_end_s = have_imu_
+                                    ? now_s - latest_imu_receive_s_
+                                    : capture_.recording_duration_s;
+    return capture_;
+}
+
+Capture RosQualificationTransport::RecordFeedback(double recording_duration_s) {
+    if (!(recording_duration_s > 0.0)) {
+        throw std::invalid_argument("recording duration must be positive");
     }
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        capture_ = Capture{};
+        recording_epoch_s_ = SteadyNowS();
+        recording_ = true;
+    }
+
+    // Read-only telemetry qualification: this path never publishes a command.
+    const double deadline_s = SteadyNowS() + recording_duration_s;
+    while (rclcpp::ok() && SteadyNowS() < deadline_s) {
+        rclcpp::spin_some(shared_from_this());
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    const double now_s = SteadyNowS();
+    std::lock_guard<std::mutex> lock(mutex_);
+    recording_ = false;
+    capture_.recording_duration_s = now_s - recording_epoch_s_;
+    capture_.joint_state_age_at_end_s = have_joint_state_
+                                            ? now_s - latest_joint_receive_s_
+                                            : capture_.recording_duration_s;
+    capture_.imu_age_at_end_s = have_imu_
+                                    ? now_s - latest_imu_receive_s_
+                                    : capture_.recording_duration_s;
     return capture_;
 }
 
