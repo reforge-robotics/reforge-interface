@@ -15,8 +15,17 @@
   Licensed under BSD-3-Clause; (c) Universal Robots A/S and contributors.
 
   This file is a manually flattened, mesh-free URDF (kinematics + inertials
-  only) built from the upstream xacro macros and per-robot config values. It
-  preserves the full functional kinematic/dynamic chain, including the
+  only) built from the upstream xacro macros and per-robot config values. The
+  first two joints are named `base_joint`/`shoulder_joint` (not the upstream
+  `shoulder_pan_joint`/`shoulder_lift_joint`) to match Universal Robots' own
+  datasheet/RTDE terminology; see `ur_rtde`'s RTDEControlInterface.getJointTorques()
+  docstring: "[Base, Shoulder, Elbow, Wrist1, Wrist2, Wrist3]". Renaming a
+  URDF joint's `name` attribute does not affect the kinematic tree (that's
+  defined by parent/child *link* names, left unchanged) or Pinocchio's
+  config-vector ordering (built from URDF declaration order, not name
+  lookups); confirmed no code in reforge_core, ur_rtde, or this adapter
+  references these two joint names by string.
+  It preserves the full functional kinematic/dynamic chain, including the
   `base_link_inertia` frame (pi rotation about Z between `base_link` and the
   serial chain) and the `flange`/`tool0` tool-frame chain, since
   `reforge_core.util.robot_dynamics` looks up the TCP frame by the exact name
@@ -37,7 +46,7 @@
     <child link="base_link_inertia"/>
     <origin rpy="0.0 0.0 3.141592653589793" xyz="0.0 0.0 0.0"/>
   </joint>
-  <joint name="shoulder_pan_joint" type="revolute">
+  <joint name="base_joint" type="revolute">
     <parent link="base_link_inertia"/>
     <child link="shoulder_link"/>
     <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.1625"/>
@@ -45,7 +54,7 @@
     <limit lower="-6.283185307179586" upper="6.283185307179586" effort="150.0" velocity="3.141592653589793"/>
     <dynamics damping="0" friction="0"/>
   </joint>
-  <joint name="shoulder_lift_joint" type="revolute">
+  <joint name="shoulder_joint" type="revolute">
     <parent link="shoulder_link"/>
     <child link="upper_arm_link"/>
     <origin rpy="1.570796327 0.0 0.0" xyz="0.0 0.0 0.0"/>
@@ -59,7 +68,7 @@
     <origin rpy="0.0 0.0 0.0" xyz="-0.425 0.0 0.0"/>
     <axis xyz="0 0 1"/>
     <!-- Position range is artificially limited to +-pi (half the physical
-         range) upstream: the shoulder_lift joint physically blocks the full
+         range) upstream: the shoulder joint physically blocks the full
          +-2pi sweep, and allowing it causes IK/planning search-space splits.
          See https://github.com/ros-industrial/universal_robot/issues/265 -->
     <limit lower="-3.141592653589793" upper="3.141592653589793" effort="150.0" velocity="3.141592653589793"/>

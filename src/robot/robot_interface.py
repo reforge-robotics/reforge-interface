@@ -43,7 +43,7 @@ URDF_PATH = "urdf/ur5e.urdf"
 # 125 Hz"), so 125 Hz is this adapter's real achievable command/telemetry rate.
 ROBOT_MAX_FREQ = 125  # [Hz]
 
-# Fully stretched position of the robot for calibration: shoulder_lift bent -90 deg
+# Fully stretched position of the robot for calibration: shoulder bent -90 deg
 # (arm pointing straight up, elbow/wrists at 0), all other joints at 0. XYZ/quat were
 # computed by forward-kinematics against src/robot/urdf/ur5e.urdf via
 # reforge_core.util.robot_dynamics.Dynamics (Pinocchio), not hand-derived, so they
