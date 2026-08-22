@@ -1,15 +1,4 @@
-<?xml version="1.0"?>
-<!--
-  Derived from TrossenRobotics/trossen_arm_description wxai_follower.urdf
-  at commit 21d8b360c211c2ad8a065d8f462cbec0207626e7.
-  See LICENSE in this directory.
-
-  Reforge modifications:
-  - fixed the two gripper carriage joints so the dynamics model has six joints;
-  - folded the rigid follower tool, gripper, and camera inertias into link_6;
-  - renamed the end-effector reference link to tool0;
-  - made mesh paths relative to this packaged URDF.
--->
+<?xml version="1.0" ?>
 <robot name="wxai">
   <material name="trossen_black">
     <texture filename="meshes/trossen_black.png"/>
@@ -23,14 +12,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/base_link.stl"/>
+        <mesh filename="meshes/base_link.stl"/>
       </geometry>
       <material name="trossen_black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/base_link.stl"/>
+        <mesh filename="meshes/base_link.stl"/>
       </geometry>
     </collision>
   </link>
@@ -43,14 +32,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/link_1.stl"/>
+        <mesh filename="meshes/link_1.stl"/>
       </geometry>
       <material name="trossen_black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/link_1.stl"/>
+        <mesh filename="meshes/link_1.stl"/>
       </geometry>
     </collision>
   </link>
@@ -70,14 +59,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/link_2.stl"/>
+        <mesh filename="meshes/link_2.stl"/>
       </geometry>
       <material name="trossen_black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/link_2.stl"/>
+        <mesh filename="meshes/link_2.stl"/>
       </geometry>
     </collision>
   </link>
@@ -97,14 +86,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/link_3.stl"/>
+        <mesh filename="meshes/link_3.stl"/>
       </geometry>
       <material name="trossen_black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/link_3.stl"/>
+        <mesh filename="meshes/link_3.stl"/>
       </geometry>
     </collision>
   </link>
@@ -124,14 +113,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/link_4.stl"/>
+        <mesh filename="meshes/link_4.stl"/>
       </geometry>
       <material name="trossen_black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/link_4.stl"/>
+        <mesh filename="meshes/link_4.stl"/>
       </geometry>
     </collision>
   </link>
@@ -151,14 +140,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/link_5.stl"/>
+        <mesh filename="meshes/link_5.stl"/>
       </geometry>
       <material name="trossen_black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/link_5.stl"/>
+        <mesh filename="meshes/link_5.stl"/>
       </geometry>
     </collision>
   </link>
@@ -171,21 +160,21 @@
   </joint>
   <link name="link_6">
     <inertial>
-      <origin rpy="0 0 0" xyz="0.05492514 0.00113986 0.00724364"/>
-      <mass value="0.83441558"/>
-      <inertia ixx="0.00126805" ixy="-0.00000263" ixz="0.00001408" iyy="0.00111139" iyz="-0.00004150" izz="0.00149647"/>
+      <origin rpy="0 0 0" xyz="0.04572768 -0.00000726 0.00001402"/>
+      <mass value="0.55469347"/>
+      <inertia ixx="0.00082429" ixy="-0.00000051" ixz="0.00000010" iyy="0.00048759" iyz="0.00000004" izz="0.00108600"/>
     </inertial>
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/link_6.stl"/>
+        <mesh filename="meshes/link_6.stl"/>
       </geometry>
       <material name="trossen_black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/link_6.stl"/>
+        <mesh filename="meshes/link_6.stl"/>
       </geometry>
     </collision>
   </link>
@@ -205,21 +194,24 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/carriage_right.stl"/>
+        <mesh filename="meshes/carriage_right.stl"/>
       </geometry>
       <material name="trossen_black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/carriage_right.stl"/>
+        <mesh filename="meshes/carriage_right.stl"/>
       </geometry>
     </collision>
   </link>
-  <joint name="right_carriage_joint" type="fixed">
+  <joint name="right_carriage_joint" type="prismatic">
     <origin rpy="0 0 0" xyz="0.0865 -0.023 0"/>
     <parent link="link_6"/>
     <child link="carriage_right"/>
+    <mimic joint="left_carriage_joint"/>
+    <axis xyz="0 -1 0"/>
+    <limit effort="400.0" lower="0.0" upper="0.044" velocity="0.0875"/>
   </joint>
   <link name="carriage_left">
     <inertial>
@@ -230,21 +222,23 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/carriage_left.stl"/>
+        <mesh filename="meshes/carriage_left.stl"/>
       </geometry>
       <material name="trossen_black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/carriage_left.stl"/>
+        <mesh filename="meshes/carriage_left.stl"/>
       </geometry>
     </collision>
   </link>
-  <joint name="left_carriage_joint" type="fixed">
+  <joint name="left_carriage_joint" type="prismatic">
     <origin rpy="0 0 0" xyz="0.0865 0.023 0"/>
     <parent link="link_6"/>
     <child link="carriage_left"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="400.0" lower="0.0" upper="0.044" velocity="0.0875"/>
   </joint>
   <link name="camera_mount_d405">
     <inertial>
@@ -255,14 +249,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/camera_mount_d405.stl"/>
+        <mesh filename="meshes/camera_mount_d405.stl"/>
       </geometry>
       <material name="trossen_black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/camera_mount_d405.stl"/>
+        <mesh filename="meshes/camera_mount_d405.stl"/>
       </geometry>
     </collision>
   </link>
@@ -270,6 +264,7 @@
     <origin rpy="0 0 0" xyz="0.012 0 0"/>
     <parent link="link_6"/>
     <child link="camera_mount_d405"/>
+    <axis xyz="0 0 0"/>
   </joint>
   <joint name="camera_joint" type="fixed">
     <origin rpy="0 0.3490658503988659 0" xyz="0.02927207801 0 0.03824951197"/>
@@ -286,7 +281,7 @@
     <visual>
       <origin rpy="1.5707963267948966 0 1.5707963267948966" xyz="0.0038 -0.009 0"/>
       <geometry>
-        <mesh filename="meshes/peripherals/d405.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="meshes/d405.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="aluminum">
         <color rgba="0.5 0.5 0.5 1"/>
@@ -361,14 +356,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/gripper_left.stl"/>
+        <mesh filename="meshes/gripper_left.stl"/>
       </geometry>
       <material name="trossen_black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/gripper_left.stl"/>
+        <mesh filename="meshes/gripper_left.stl"/>
       </geometry>
     </collision>
   </link>
@@ -376,6 +371,7 @@
     <origin rpy="0 0 0" xyz="0 0 0"/>
     <parent link="carriage_left"/>
     <child link="gripper_left"/>
+    <axis xyz="0 0 0"/>
   </joint>
   <link name="gripper_right">
     <inertial>
@@ -386,14 +382,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/gripper_right.stl"/>
+        <mesh filename="meshes/gripper_right.stl"/>
       </geometry>
       <material name="trossen_black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/wxai/gripper_right.stl"/>
+        <mesh filename="meshes/gripper_right.stl"/>
       </geometry>
     </collision>
   </link>
@@ -401,11 +397,13 @@
     <origin rpy="0 0 0" xyz="0 0 0"/>
     <parent link="carriage_right"/>
     <child link="gripper_right"/>
+    <axis xyz="0 0 0"/>
   </joint>
   <joint name="ee_gripper" type="fixed">
     <origin rpy="0 0 0" xyz="0.156062 0 0"/>
     <parent link="link_6"/>
-    <child link="tool0"/>
+    <child link="ee_gripper_link"/>
+    <axis xyz="1 0 0"/>
   </joint>
-  <link name="tool0"/>
+  <link name="ee_gripper_link"/>
 </robot>
