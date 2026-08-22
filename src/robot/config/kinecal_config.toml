@@ -1,4 +1,4 @@
-eef_link = "link_6" # the existing link in the robot URDF where KineCal attaches the calibration probe
+eef_link = "centered_fixture" # the existing link in the robot URDF where KineCal attaches the calibration probe
 # probe_link = "smr_ball_link"
 # probe_link = "prod_ball_link"
 probe_link = "trossen_calibration_link"
