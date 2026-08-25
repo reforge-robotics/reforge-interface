@@ -13,9 +13,17 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
 authors = [{ name = "Reforge Robotics", email = "info@reforgerobotics.com" }]
+# This list intentionally does not match src/robot/requirements.txt. This is
+# the normal `pip install reforge-interface` dependency set, relying on real
+# resolution to pull in reforge-core's transitive deps. requirements.txt
+# exists separately because the Dockerfile installs reforge-core with
+# --no-deps (no binary is published for 2.0.14, so it's built from source)
+# and must therefore enumerate those transitive deps by hand. Keep both;
+# don't try to reconcile them into one list.
 dependencies = [
     "mcap-protobuf-support>=0.5,<0.6",
     "numpy>=2,<3",
+    "ur-rtde==1.6.5",
     "reforge-core[all]",
 ]
 
