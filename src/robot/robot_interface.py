@@ -26,6 +26,15 @@ TROSSEN_INTERPOLATION_SPACE = trossen_arm.InterpolationSpace.joint
 TROSSEN_DEFAULT_MOVE_TIME_S = 2.0
 TROSSEN_GRIPPER_JOINT_INDEX = 6
 TROSSEN_GRIPPER_HOLD_POSITION_M = 0.018035
+TROSSEN_EFFORT_CORRECTIONS = [
+    1.2000000476837158,
+    1.1591770648956299,
+    1.05,
+    1.1,
+    1.108412265777588,
+    1.2000000476837158,
+    0.2,
+] # These gains are for gravity compensation while using KineCal.
 
 # Fully stretched position of the robot for calibration.
 FULL_STRETCH_XYZ = [0.517762, 0.0, 0.4275]  # Fallback from the bundled URDF [m].
@@ -430,6 +439,7 @@ class RobotInterface(ArmClient):
             `int` zero success code.
         """
         arm = self._require_connected_arm()
+        arm.set_effort_corrections(TROSSEN_EFFORT_CORRECTIONS)
         arm.set_arm_modes(trossen_arm.Mode.external_effort)
         arm.set_arm_external_efforts([0.0] * self.num_joints, 0.0, False)
         return 0
