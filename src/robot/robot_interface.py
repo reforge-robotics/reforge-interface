@@ -3,9 +3,13 @@
 # Description: Specific code to create calibration interface for any Python Robot.
 # Version: 2.0
 
+from collections.abc import Mapping
+from importlib.resources import as_file, files
+from pathlib import Path
+from typing import Literal, Optional, Sequence
+
 import numpy as np
-from importlib.resources import files, as_file
-from typing import Optional, Sequence
+
 from reforge_core.hw_interfaces.arm_client import ArmClient
 from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
 
@@ -46,6 +50,7 @@ FULL_STRETCH_POSE_OVERRIDE = None  # {~.~} list of home pose (xyz and quaternion
 # General constants
 IS_DEGREES = False  # {~.~} [CHANGE TO TRUE IF ROBOT USES DEGREES]
 DATA_LOCATION_PREFIX = "src/robot/data"  # {~.~} [CHANGE TO LOCATION DESIRED - will be robot/DATA_LOCATION_PREFIX/*]
+SIM_DATA_LOCATION_PREFIX = str(Path(__file__).resolve().parent / "data" / "sim")
 DEFAULT_TCP_PAYLOAD = 0.0  # {~.~} [CHANGE IF THE DEFAULT PAYLOAD IS NON_ZERO]
 
 MAX_ROBOT_JOINTS_BANDWIDTH = (
@@ -54,7 +59,8 @@ MAX_ROBOT_JOINTS_BANDWIDTH = (
 
 # {~.~} IMU information
 USE_REFORGE_IMU = True
-DEFAULT_IMU_COMM_MODE = "usb"
+DEFAULT_IMU_COMM_MODE: Literal["ble", "usb", "virtual"] = "usb"
+DEFAULT_IMU_RECORD_MODE: Literal["streaming", "logging"] = "streaming"
 DEFAULT_IMU_RECORD_FREQUENCY_HZ = ROBOT_MAX_FREQ
 
 
@@ -62,7 +68,7 @@ class RobotInterface(ArmClient):
     """Provide a concrete robot implementation for system identification and calibration.
 
     Args:
-        robot_ip: Robot internet protocol address or `sim` for simulator mode.
+        robot_ip: Live robot internet protocol address.
         tcp_payload: Optional payload of the robot for NN prediction of
             payload changes.
         tcp_payload_com: Optional 3x1 center of mass location of the
@@ -73,9 +79,10 @@ class RobotInterface(ArmClient):
 
     Side Effects:
         Loads the robot model from the configured Unified Robot Description Format file.
-        Connects to the robot hardware when not in simulator mode.
+        Connects to the robot hardware.
 
     Raises:
+        ValueError: If the simulator sentinel is passed to the hardware adapter.
         RuntimeError: If the robot connection fails or required telemetry is missing.
         ValueError: If reported joint counts do not match the loaded model.
 
@@ -92,6 +99,9 @@ class RobotInterface(ArmClient):
         api_token: str = "",
         robot_id: str = BOT_ID,
         use_reforge_imu: bool = USE_REFORGE_IMU,
+        imu_record_mode: Literal["streaming", "logging"] = DEFAULT_IMU_RECORD_MODE,
+        imu_comm_mode: Literal["ble", "usb", "virtual"] = DEFAULT_IMU_COMM_MODE,
+        imu_record_frequency_hz: float | int = DEFAULT_IMU_RECORD_FREQUENCY_HZ,
         imu_recorder: ImuRecorder | None = None,
         tcp_payload: float = DEFAULT_TCP_PAYLOAD,
         tcp_payload_com: Sequence[float] | None = None,
@@ -99,30 +109,41 @@ class RobotInterface(ArmClient):
         """Initialize the robot interface and load the URDF model.
 
         Args:
-            robot_ip: Robot IP address or `sim` for simulator mode.
-            tcp_payload: Payload of the tcp (default=0)
-            tcp_payload_com: Optional 3x1 center of mass of the tcp payload.
+            robot_ip: Live robot IP address.
             local_ip: Local machine IP address if required by the SDK.
             sdk_token: SDK authentication token.
             api_token: Reforge API token.
             robot_id: Reforge robot ID (most cases) or SDK identifier used by the control stack.
             use_reforge_imu: Whether to use the built-in Reforge IMU backend
                 when `imu_recorder` is not supplied.
+            imu_record_mode: Reforge IMU acquisition backend used when
+                `imu_recorder` is not supplied.
+            imu_comm_mode: Reforge IMU communication backend used when
+                `imu_recorder` is not supplied.
+            imu_record_frequency_hz: Reforge IMU recording frequency [Hz] used
+                when `imu_recorder` is not supplied.
             imu_recorder: Optional vendor-specific recorder supplied directly
                 by an application or integration test.
-            tcp_payload: payload of end-effector [kg].
-            tcp_payload_com: (N x 3) center of mass of end-effector payload [m].
+            tcp_payload: Payload mass attached at the TCP [kg].
+            tcp_payload_com: Optional payload center of mass in TCP coordinates [m].
 
         Side Effects:
-            Loads the URDF model and may connect to robot hardware.
+            Loads the URDF model and connects to robot hardware.
 
         Raises:
+            ValueError: If the simulator sentinel is passed to the hardware adapter.
             RuntimeError: If the robot connection fails.
             ValueError: If reported joint counts do not match the URDF.
 
         Preconditions:
             The URDF file is available and the SDK is installed.
         """
+        if robot_ip == "sim":
+            raise ValueError(
+                "RobotInterface is hardware-only; construct simulator mode "
+                "through reforge_core.calibration.run_helpers."
+            )
+
         super().__init__(
             name="My Robot", recording_data_frequency_hz=ROBOT_MAX_FREQ
         )  # {~.~} [Edit with your robot's name and sampling frequency]
@@ -142,9 +163,6 @@ class RobotInterface(ArmClient):
             self._urdf_path = str(p)
         print(f"URDF Path: {self._urdf_path}")
 
-        # Is robot in simulation mode?
-        self._in_sim_mode = robot_ip == "sim"
-
         # Load robot model from URDF
         if not self.model_is_loaded:
             self.model = self.initialize_model_from_urdf(
@@ -158,64 +176,58 @@ class RobotInterface(ArmClient):
 
         self.use_reforge_imu = use_reforge_imu
 
-        # Reforge API and robot ID token is needed for "feedforward" product
+        # Reforge API and robot ID token is needed for "joint_tracker" product
         # Add it in the CLI with `--identify`
         self.reforge_api_token = api_token
         try:
-            if robot_ip != "sim":
-                # {~.~} Instantiate live robot mode
-                self.robot = None  # [CHANGE THIS LINE]
+            # {~.~} Instantiate live robot mode
+            self.robot = None  # [CHANGE THIS LINE]
 
-                # ------------------- EXAMPLE --------------------
-                # self.robot = StandardBotsRobot(
-                #     url=robot_ip,
-                #     token=sdk_token,
-                #     robot_kind=StandardBotsRobot.RobotKind.Live,
-                # )
-                # ------------------------------------------------
+            # ------------------- EXAMPLE --------------------
+            # self.robot = StandardBotsRobot(
+            #     url=robot_ip,
+            #     token=sdk_token,
+            #     robot_kind=StandardBotsRobot.RobotKind.Live,
+            # )
+            # ------------------------------------------------
 
-                # {~.~} Enable ROS control, if necessary
-                # [YOUR CODE HERE]
+            # {~.~} Enable ROS control, if necessary
+            # [YOUR CODE HERE]
 
-                # ------------------------------ EXAMPLE -------------------------------
-                # with self.robot.connection():
-                #     ## Set teleoperation/ROS control state
-                #     self.robot.ros.control.update_ros_control_state(
-                #         models.ROSControlUpdateRequest(
-                #             action=models.ROSControlStateEnum.Enabled,
-                #             # to disable: action=models.ROSControlStateEnum.Disabled,
-                #         )
-                #     )
+            # ------------------------------ EXAMPLE -------------------------------
+            # with self.robot.connection():
+            #     ## Set teleoperation/ROS control state
+            #     self.robot.ros.control.update_ros_control_state(
+            #         models.ROSControlUpdateRequest(
+            #             action=models.ROSControlStateEnum.Enabled,
+            #             # to disable: action=models.ROSControlStateEnum.Disabled,
+            #         )
+            #     )
 
-                #     # Get teleoperation state
-                #     self.state = self.robot.ros.status.get_ros_control_state().ok()
-                #     # Enable the robot, make sure the E-stop is released before enabling
-                #     print("Enabling live robot...")
-                # -----------------------------------------------------------------------
+            #     # Get teleoperation state
+            #     self.state = self.robot.ros.status.get_ros_control_state().ok()
+            #     # Enable the robot, make sure the E-stop is released before enabling
+            #     print("Enabling live robot...")
+            # -----------------------------------------------------------------------
 
-                # {~.~} Unbrake the robot if not operational
-                # [YOUR CODE HERE]
+            # {~.~} Unbrake the robot if not operational
+            # [YOUR CODE HERE]
 
-                # --------------- EXAMPLE -----------------
-                # self.robot.movement.brakes.unbrake().ok()
-                # -----------------------------------------
+            # --------------- EXAMPLE -----------------
+            # self.robot.movement.brakes.unbrake().ok()
+            # -----------------------------------------
 
-                # Set ID for robot
-                self.id = robot_id
+            # Set ID for robot
+            self.id = robot_id
 
-                # Should be equivalent to Dynamics model joints
-                num_joints_sdk = len(self._get_joint_positions())
-                if num_joints_sdk != self.num_joints:
-                    raise RuntimeError(
-                        f"Number of robot joints in URDF ({self.num_joints}) is not equivalent to the number"
-                        f"of joints returned by the robot SDK ({num_joints_sdk})."
-                    )
-                self.pose_length = len(self.get_tcp_pose())
-            else:
-                # Simulation mode
-                self.id = robot_id
-                self.num_joints = 6
-                self.pose_length = 7
+            # Should be equivalent to Dynamics model joints
+            num_joints_sdk = len(self._get_joint_positions())
+            if num_joints_sdk != self.num_joints:
+                raise RuntimeError(
+                    f"Number of robot joints in URDF ({self.num_joints}) is not equivalent to the number"
+                    f"of joints returned by the robot SDK ({num_joints_sdk})."
+                )
+            self.pose_length = len(self.get_tcp_pose())
 
         except Exception as e:
             # Print exception error message
@@ -228,13 +240,14 @@ class RobotInterface(ArmClient):
             self.use_reforge_imu = selected_imu_recorder is None
             self.arm_imu_manager = self.initialize_arm_imu_manager(
                 arm_sample_time_s=1.0 / ROBOT_MAX_FREQ,
-                imu_comm_mode=DEFAULT_IMU_COMM_MODE,
-                imu_record_frequency_hz=DEFAULT_IMU_RECORD_FREQUENCY_HZ,
+                imu_record_mode=imu_record_mode,
+                imu_comm_mode=imu_comm_mode,
+                imu_record_frequency_hz=imu_record_frequency_hz,
                 imu_recorder=selected_imu_recorder,
             )
 
     def create_robot_imu_recorder(self) -> ImuRecorder:
-        """Create the robot SDK adapter used when the Reforge IMU is disabled.
+        """Create the robot-native IMU adapter used when Reforge IMU is disabled.
 
         Robot integrations should override this method and return an
         `ImuRecorder` that converts SDK samples into `IMUState` values in SI
@@ -260,18 +273,9 @@ class RobotInterface(ArmClient):
         """Return whether the interface is running in simulator mode.
 
         Returns:
-            `bool` indicating simulator mode.
-
-        Side Effects:
-            None.
-
-        Raises:
-            None.
-
-        Preconditions:
-            None.
+            `bool` always false for the hardware adapter.
         """
-        return self._in_sim_mode
+        return False
 
     @property
     def urdf_path(self) -> str:
@@ -279,22 +283,13 @@ class RobotInterface(ArmClient):
 
         Returns:
             `str` path to the URDF file.
-
-        Side Effects:
-            None.
-
-        Raises:
-            None.
-
-        Preconditions:
-            The URDF path has been initialized.
         """
         return self._urdf_path
 
     # {~.~} REQUIRED METHODS
     def command_move_j(
         self,
-        target_joints: np.ndarray | list[float],
+        target_joints: np.ndarray | list[float] | tuple[float, ...],
         *,
         speed: float = 50.0,
         wait: bool = True,
@@ -314,7 +309,7 @@ class RobotInterface(ArmClient):
         if IS_DEGREES:
             target_joints = list(np.rad2deg(angle) for angle in target_joints)
 
-        arm = self._require_connected_arm()
+        arm = self._require_connected_arm()  # noqa: F841
         # ------------------------------------ EXAMPLE -------------------------------------
         # update_request = models.ArmPositionUpdateRequest(
         #     kind=models.ArmPositionUpdateRequestKindEnum.JointRotation,
@@ -335,6 +330,7 @@ class RobotInterface(ArmClient):
         *,
         speed: float = 50.0,
         wait: bool = True,
+        locked_joints: Mapping[int, float] | None = None,
     ) -> int:
         """Send a blocking/non-blocking point-to-point pose command using the
         robot's native position control interface.
@@ -344,12 +340,16 @@ class RobotInterface(ArmClient):
             target_xyz: Target TCP position `[x, y, z]` [m] in the robot's base frame.
             speed: Speed percentage for the motion, if supported by the robot. Default is 50%.
             wait: If `True`, block until the motion is complete. If `False`, return immediately after sending the command.
+            locked_joints: Simulator-only joint-index to fixed position map [rad].
 
         Returns:
             An integer status code from the robot's command interface, if applicable.
             If the robot does not provide a status code, return 0 for success or raise an exception for failure.
         """
-        arm = self._require_connected_arm()
+        if locked_joints is not None:
+            raise RuntimeError("locked_joints is only supported in simulator mode.")
+
+        arm = self._require_connected_arm()  # noqa: F841
 
         # ---------------------------------- EXAMPLE ------------------------------------
         # quatx, quaty, quatz, quatw = target_quat
@@ -400,7 +400,7 @@ class RobotInterface(ArmClient):
             An integer status code from the robot's command interface, if applicable.
             If the robot does not provide a status code, return 0 for success or raise an exception for failure.
         """
-        arm = self._require_connected_arm()
+        arm = self._require_connected_arm()  # noqa: F841
 
         # {~.~} Publish joint positions to the robot
         # [YOUR CODE HERE -- see example below]
@@ -426,7 +426,7 @@ class RobotInterface(ArmClient):
         Returns:
             the mode/state codes so they can be inspected when debugging.
         """
-        arm = self._require_connected_arm()
+        arm = self._require_connected_arm()  # noqa: F841
 
         # ------------------------------ EXAMPLE ------------------------------
         # arm.clean_error()
@@ -444,7 +444,7 @@ class RobotInterface(ArmClient):
         Returns:
             the mode/state codes so they can be inspected when debugging.
         """
-        arm = self._require_connected_arm()
+        arm = self._require_connected_arm()  # noqa: F841
 
         # ------------------------------ EXAMPLE ------------------------------
         # code_en = arm.motion_enable(enable=True)
@@ -455,6 +455,58 @@ class RobotInterface(ArmClient):
         # {~.~} Return 0 for success - edit after implementation and testing
         return 1
 
+    def supports_teaching_mode(self) -> bool:
+        """Return whether the robot supports manual teaching mode.
+
+        Override this method when the robot SDK supports hand-guided teaching.
+
+        Returns:
+            `bool` indicating whether manual teaching mode is implemented.
+        """
+        return False
+
+    def enter_teaching_mode(self) -> Optional[int | None]:
+        """Ensure the controller is set to manual teaching mode.
+
+        Override this method with the robot SDK's teaching-mode command.
+
+        Returns:
+            Vendor-specific mode/state code when available.
+        """
+        arm = self._require_connected_arm()  # noqa: F841
+
+        # {~.~} Enable manual teaching mode using the robot SDK.
+        # [YOUR CODE HERE]
+
+        # {~.~} Return 0 for success - edit after implementation and testing
+        return 1
+
+    def supports_flange_button(self) -> bool:
+        """Return whether the robot exposes a readable flange button.
+
+        Override this method when the robot SDK exposes a button or equivalent
+        operator input near the tool flange.
+
+        Returns:
+            `bool` indicating whether flange-button reads are implemented.
+        """
+        return False
+
+    def read_flange_button_pressed(self) -> bool:
+        """Return whether the flange button is currently pressed.
+
+        Override this method with the robot SDK's flange-button read.
+
+        Returns:
+            `bool` indicating the current flange-button state.
+        """
+        arm = self._require_connected_arm()  # noqa: F841
+
+        # {~.~} Read the flange-button state using the robot SDK.
+        # [YOUR CODE HERE]
+
+        return False
+
     def get_joint_state(self) -> tuple[list[float], list[float], list[float]]:
         """Return one joint state sample as ``(q, qd, tau)``.
 
@@ -462,7 +514,7 @@ class RobotInterface(ArmClient):
             Tuple of three lists: joint positions `q` [rad], velocities `qd` [rad/s],
             and efforts/currents `tau` [SDK units].
         """
-        arm = self._require_connected_arm()
+        arm = self._require_connected_arm()  # noqa: F841
         q: list[float] = []
         qd: list[float] = []
         tau: list[float] = []
@@ -492,7 +544,7 @@ class RobotInterface(ArmClient):
         """
         position: list[float] = []
         quat: list[float] = []
-        arm = self._require_connected_arm()
+        arm = self._require_connected_arm()  # noqa: F841
 
         # ------------------------------ EXAMPLE ------------------------------
         # code, pose = arm.get_position_aa()
@@ -520,3 +572,46 @@ class RobotInterface(ArmClient):
         return [*position, *quat]
 
     # {~.~} END OF REQUIRED METHODS
+
+    # {~.~} OPTIONAL OVERRIDES
+    def command_joint_trajectory(
+        self,
+        time_data: Sequence[float],
+        position_stream: Sequence[Sequence[float]],
+        velocity_stream: Sequence[Sequence[float]] | None = None,
+        acceleration_stream: Sequence[Sequence[float]] | None = None,
+        Ts: float = 1.0 / ROBOT_MAX_FREQ,
+    ) -> list[tuple[float, list[float]]]:
+        """Send one complete joint trajectory and return command timestamps.
+
+        *OVERRIDE* this method when the robot SDK supports a native trajectory
+        upload/stream API, requires velocity or acceleration feedforward, or
+        needs controller-specific readiness checks before publishing a full
+        trajectory. The default implementation delegates to `ArmClient`, which
+        streams each sample through `command_servo_j()` at the requested timing.
+
+        Args:
+            time_data: Command timestamps [s].
+            position_stream: Joint position commands [rad].
+            velocity_stream: Optional joint velocity commands [rad/s].
+            acceleration_stream: Optional joint acceleration commands [rad/s^2].
+            Ts: Sampling time [s].
+
+        Returns:
+            `list[tuple[float, list[float]]]` host publish timestamps [s] and
+            joint position commands [rad].
+        """
+        # {~.~} OPTIONAL: Only override this method if the robot SDK has a
+        # native trajectory upload/stream API or requires special handling for
+        # velocity/acceleration feedforward. Otherwise, the default
+        # implementation in `ArmClient` will stream each sample using
+        # `command_servo_j()` at the specified timing.
+        return super().command_joint_trajectory(
+            time_data=time_data,
+            position_stream=position_stream,
+            velocity_stream=velocity_stream,
+            acceleration_stream=acceleration_stream,
+            Ts=Ts,
+        )
+
+    # {~.~} END OF OPTIONAL OVERRIDES
