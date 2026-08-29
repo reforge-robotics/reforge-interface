@@ -402,6 +402,12 @@
     <parent link="carriage_right"/>
     <child link="gripper_right"/>
   </joint>
+    <joint name="ee_gripper" type="fixed">
+    <origin rpy="0 0 0" xyz="0.156062 0 0"/>
+    <parent link="link_6"/>
+    <child link="tool0"/>
+  </joint>
+  <link name="tool0"/>
   <!-- Added by Reforge Robotics for calibration. -->
   <link name="centered_fixture"/>
   <joint name="centered_fixture_joint" type="fixed">
