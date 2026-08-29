@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 import json
 from pathlib import Path
 from typing import Any, Literal, Sequence
 
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 
-EXAMPLE_MODEL_DIRECTORY = Path(__file__).resolve().parent / "example_models"
+EXAMPLE_MODEL_DIRECTORY = Path(__file__).resolve().parent.parent / "example_models"
 JOINT_CONTROLLER_ARTIFACT_FILENAME = "joint_controller_models.json"
 EXAMPLE_AXIS_COUNT = 6
 QUINTIC_MAX_VELOCITY_FACTOR = 1.875
@@ -144,6 +143,8 @@ class AppendablePlannerSimulationResult:
         terminal_padding_samples: Total terminal lookahead padding used [samples].
         hold_samples_added: Total held-reference samples committed because of
             planner underruns [samples].
+        planner_update_sample_counts: Number of source samples supplied in each
+            planner update, including the startup update [samples/update].
     Raises:
         None.
     """
@@ -156,6 +157,7 @@ class AppendablePlannerSimulationResult:
     appended_source_samples: int
     terminal_padding_samples: int
     hold_samples_added: int
+    planner_update_sample_counts: tuple[int, ...] = ()
 
 
 @dataclass
@@ -172,6 +174,8 @@ class AppendablePlannerSimulationState:
         next_delay_index: Next delay threshold to evaluate [count].
         remaining_delay_windows: Remaining output windows to consume before appending resumes [windows].
         has_finished_appending: Whether `finish()` should already have been called.
+        append_batch_sizes: Number of source samples supplied by each planner
+            update, including startup [samples/update].
     Returns:
         `None`.
     Raises:
@@ -187,6 +191,7 @@ class AppendablePlannerSimulationState:
     next_delay_index: int = 0
     remaining_delay_windows: int = 0
     has_finished_appending: bool = False
+    append_batch_sizes: list[int] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -619,20 +624,19 @@ def create_appendable_planner_simulation_state(
         low_watermark_samples=int(low_watermark_samples),
         delay_thresholds=tuple(int(value) for value in delay_after_source_samples),
         delay_windows=tuple(int(value) for value in delay_windows),
+        append_batch_sizes=[append_stop_index] if append_stop_index else [],
     )
     return state, source_positions_rad[:append_stop_index].copy()
 
 
 def next_appendable_planner_decision(
     planner_state: AppendablePlannerSimulationState,
-    available_reference_samples: int,
     emitted_stop_index: int,
 ) -> AppendablePlannerDecision:
     """Return the planner append or finish action after one output window.
 
     Args:
         planner_state: Mutable simulated-planner state.
-        available_reference_samples: Samples currently committed to the input stream [samples].
         emitted_stop_index: One-past-last optimized sample consumed by the robot [samples].
     Returns:
         `AppendablePlannerDecision`: Desired samples to append and finish signal.
@@ -640,8 +644,8 @@ def next_appendable_planner_decision(
         ValueError: If sample counts are negative.
     """
 
-    if available_reference_samples < 0 or emitted_stop_index < 0:
-        raise ValueError("sample counts must be non-negative.")
+    if emitted_stop_index < 0:
+        raise ValueError("emitted_stop_index must be non-negative.")
     if planner_state.has_finished_appending:
         return AppendablePlannerDecision(command_to_append=None, should_finish=False)
 
@@ -658,7 +662,7 @@ def next_appendable_planner_decision(
         ]
         planner_state.next_delay_index += 1
     elif (
-        available_reference_samples - emitted_stop_index
+        planner_state.append_stop_index - emitted_stop_index
         <= planner_state.low_watermark_samples
     ):
         next_chunk_stop_index = (
@@ -681,6 +685,7 @@ def next_appendable_planner_decision(
                 planner_state.append_stop_index : next_stop_index
             ].copy()
             planner_state.append_stop_index = next_stop_index
+            planner_state.append_batch_sizes.append(int(command_to_append.shape[0]))
         else:
             command_to_append = None
     else:
@@ -707,6 +712,7 @@ def build_appendable_planner_result(
     window_records: Sequence[WindowStreamRecord],
     sample_time_s: float,
     appended_source_samples: int,
+    planner_update_sample_counts: Sequence[int] = (),
 ) -> AppendablePlannerSimulationResult:
     """Build a plotting and diagnostics result from a visible controller loop.
 
@@ -717,6 +723,8 @@ def build_appendable_planner_result(
         window_records: Metadata for emitted optimized windows.
         sample_time_s: Controller sample period [s].
         appended_source_samples: Number of original planner samples appended [samples].
+        planner_update_sample_counts: Number of source samples supplied in each
+            planner update, including startup [samples/update].
     Returns:
         `AppendablePlannerSimulationResult`: Committed desired trajectory and optimized output.
     Raises:
@@ -746,6 +754,9 @@ def build_appendable_planner_result(
         ),
         hold_samples_added=sum(
             window_record.hold_samples_added for window_record in window_records
+        ),
+        planner_update_sample_counts=tuple(
+            int(sample_count) for sample_count in planner_update_sample_counts
         ),
     )
 
@@ -1165,6 +1176,26 @@ def print_appendable_stream_comparison(
     """
 
     print(f"\n{label_prefix} comparison")
+    update_counts = appendable_result.planner_update_sample_counts
+    lifecycle_rows: tuple[tuple[str, str, str], ...] = ()
+    if update_counts:
+        lifecycle_rows = (
+            (
+                "Planner updates",
+                str(len(update_counts)),
+                "Input append calls, including startup.",
+            ),
+            (
+                "Max samples per planner update",
+                str(max(update_counts)),
+                "Must remain one for this online example.",
+            ),
+            (
+                "Optimized output samples",
+                str(appendable_result.optimized_positions_rad.shape[0]),
+                "Output samples emitted to the robot loop.",
+            ),
+        )
     print(
         _format_terminal_table(
             headers=("Metric", "Value", "What it means"),
@@ -1184,6 +1215,7 @@ def print_appendable_stream_comparison(
                     str(appendable_result.terminal_padding_samples),
                     "Lookahead padding used to drain the final windows.",
                 ),
+                *lifecycle_rows,
             ),
         )
     )
@@ -1570,7 +1602,7 @@ def _plot_command_profiles(
             "-",
         ),
         (
-            "Example 2 command",
+            "Example 2A command",
             streamed_time_s,
             streamed_positions_rad,
             streamed_velocity_rad_s,
@@ -1584,6 +1616,8 @@ def _plot_command_profiles(
         ("Velocity [rad/s]", 1),
         ("Acceleration [rad/s^2]", 2),
     )
+    import matplotlib.pyplot as plt
+
     figure, axes = plt.subplots(
         len(profile_rows),
         len(modeled_axes),
@@ -1645,6 +1679,8 @@ def _plot_response_comparison(
     Raises:
         OSError: If Matplotlib cannot render the figure.
     """
+
+    import matplotlib.pyplot as plt
 
     figure, axes = plt.subplots(
         len(modeled_axes),
