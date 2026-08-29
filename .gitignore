@@ -185,6 +185,10 @@ src/robot/example_usage/kinecal/example_results/
 src/robot/models/*
 !src/robot/models/kinecal/
 !src/robot/models/kinecal/.gitignore
+!src/robot/models/joint_tracker/
+!src/robot/models/joint_tracker/identification_parameters.csv
+!src/robot/models/joint_tracker/joint_controller_models.json
+!src/robot/models/joint_tracker/model_bundle.json
 
 # Large image files
 *.png

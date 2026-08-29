@@ -47,6 +47,8 @@ robot = [
     "example_usage/**/*.pt",
     "example_usage/**/*.urdf",
     "meshes/**/*.stl",
+    "models/joint_tracker/*.csv",
+    "models/joint_tracker/*.json",
     "urdf/*.urdf",
     "urdf/**/*.urdf",
     "urdf/**/*.xacro",
