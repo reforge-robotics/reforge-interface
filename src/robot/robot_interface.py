@@ -5,7 +5,7 @@
 
 from importlib.resources import files, as_file
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Literal, Optional, Sequence
 
 import numpy as np
 import trossen_arm
@@ -42,7 +42,8 @@ DEFAULT_TCP_PAYLOAD = 0.0
 MAX_ROBOT_JOINTS_BANDWIDTH = 2.5
 
 USE_REFORGE_IMU = True
-DEFAULT_IMU_COMM_MODE = "usb"
+DEFAULT_IMU_COMM_MODE: Literal["ble", "usb", "virtual"] = "usb"
+DEFAULT_IMU_RECORD_MODE: Literal["streaming", "logging"] = "streaming"
 DEFAULT_IMU_RECORD_FREQUENCY_HZ = ROBOT_MAX_FREQ
 DEFAULT_IMU_TO_TCP_X = 0.0
 DEFAULT_IMU_TO_TCP_Y = 0.0
@@ -83,6 +84,9 @@ class RobotInterface(ArmClient):
         api_token: str = "",
         robot_id: str = BOT_ID,
         use_reforge_imu: bool = USE_REFORGE_IMU,
+        imu_record_mode: Literal["streaming", "logging"] = DEFAULT_IMU_RECORD_MODE,
+        imu_comm_mode: Literal["ble", "usb", "virtual"] = DEFAULT_IMU_COMM_MODE,
+        imu_record_frequency_hz: float | int = DEFAULT_IMU_RECORD_FREQUENCY_HZ,
         imu_recorder: ImuRecorder | None = None,
         tcp_payload: float = DEFAULT_TCP_PAYLOAD,
         tcp_payload_com: Sequence[float] | None = None,
@@ -98,6 +102,12 @@ class RobotInterface(ArmClient):
             api_token: Reforge API token.
             robot_id: Reforge robot ID (most cases) or SDK identifier used by the control stack.
             use_reforge_imu: Whether to use the built-in Reforge IMU backend
+                when `imu_recorder` is not supplied.
+            imu_record_mode: Reforge IMU acquisition backend used when
+                `imu_recorder` is not supplied.
+            imu_comm_mode: Reforge IMU communication backend used when
+                `imu_recorder` is not supplied.
+            imu_record_frequency_hz: Reforge IMU recording frequency [Hz] used
                 when `imu_recorder` is not supplied.
             imu_recorder: Optional vendor-specific recorder supplied directly
                 by an application or integration test.
@@ -199,8 +209,9 @@ class RobotInterface(ArmClient):
             self.use_reforge_imu = selected_imu_recorder is None
             self.arm_imu_manager = self.initialize_arm_imu_manager(
                 arm_sample_time_s=1.0 / ROBOT_MAX_FREQ,
-                imu_comm_mode=DEFAULT_IMU_COMM_MODE,
-                imu_record_frequency_hz=DEFAULT_IMU_RECORD_FREQUENCY_HZ,
+                imu_record_mode=imu_record_mode,
+                imu_comm_mode=imu_comm_mode,
+                imu_record_frequency_hz=imu_record_frequency_hz,
                 imu_recorder=selected_imu_recorder,
             )
 
