@@ -6,6 +6,3 @@ __pycache__/
 
 data/*
 !data/README.md
-
-models/current/*
-!models/current/README.md

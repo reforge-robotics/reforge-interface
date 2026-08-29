@@ -1,2 +1,2 @@
 max_disp,max_vel,max_acc,sysid_type,ctrl_config,single_pt_run_time,output_sensor,nV,nR,sine_cycles,min_freq,max_freq,freq_space,dwell,axes,num_joints,sample_time,start_pose,start_axis,shoulder_len,base_height,robot_name,tcp_payload,tcp_payload_com_x,tcp_payload_com_y,tcp_payload_com_z,imu_to_tcp_x,imu_to_tcp_y,imu_to_tcp_z,joint_controller_id_completed
-0.17453292519943295,18.0,2.0,joint_tracker,joint,6.0,JointPos,1,1,40,0.4,5.0,0.2,0.5,6,6,0.005,0,0,0.0022976646900551034,0.17717282,Trossen WidowX AI Follower,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1
+0.17453292519943295,18.0,2.0,joint_tracker,joint,6.0,JointPos,1,1,40,0.4,5.0,0.2,0.5,6,6,0.005,0,0,0.0025107697238143612,0.17376766,Trossen WidowX AI Follower,0.0,0.0,0.0,0.0,0.0,0.0,0.043,1
