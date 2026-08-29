@@ -41,6 +41,8 @@ include-package-data = false
 [tool.setuptools.package-data]
 robot = [
     "config/*.toml",
+    "models/joint_tracker/*.csv",
+    "models/joint_tracker/*.json",
     "urdf/*.urdf",
     "urdf/**/*.urdf",
     "urdf/**/*.xacro",

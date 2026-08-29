@@ -1,0 +1,170 @@
+{
+  "axes": [
+    {
+      "axis": 0,
+      "damping_ratio": 1.0,
+      "denominator": [
+        1.0,
+        50.38841069283855,
+        634.7479830375415
+      ],
+      "measured_frequency_max_hz": 5.0,
+      "measured_frequency_min_hz": 0.4,
+      "natural_frequency_hz": 4.009782318154885,
+      "natural_frequency_rad_s": 25.194205346419274,
+      "numerator": [
+        632.7279553270888
+      ],
+      "poles": [
+        {
+          "imag": 0.0,
+          "real": -25.194205346419274
+        },
+        {
+          "imag": 0.0,
+          "real": -25.194205346419274
+        }
+      ],
+      "selected_pose": 0
+    },
+    {
+      "axis": 1,
+      "damping_ratio": 0.9513806519645234,
+      "denominator": [
+        1.0,
+        40.7881706626738,
+        459.5151497342336
+      ],
+      "measured_frequency_max_hz": 5.0,
+      "measured_frequency_min_hz": 0.4,
+      "natural_frequency_hz": 3.411693819522007,
+      "natural_frequency_rad_s": 21.436304479416076,
+      "numerator": [
+        463.63021068248105
+      ],
+      "poles": [
+        {
+          "imag": 6.602759516473607,
+          "real": -20.3940853313369
+        },
+        {
+          "imag": -6.602759516473607,
+          "real": -20.3940853313369
+        }
+      ],
+      "selected_pose": 0
+    },
+    {
+      "axis": 2,
+      "damping_ratio": 0.9999999999999994,
+      "denominator": [
+        1.0,
+        37.65055475901204,
+        354.3910684153413
+      ],
+      "measured_frequency_max_hz": 5.0,
+      "measured_frequency_min_hz": 0.4,
+      "natural_frequency_hz": 2.996135950024427,
+      "natural_frequency_rad_s": 18.82527737950603,
+      "numerator": [
+        350.5432302364186
+      ],
+      "poles": [
+        {
+          "imag": 5.820954467182598e-07,
+          "real": -18.82527737950602
+        },
+        {
+          "imag": -5.820954467182598e-07,
+          "real": -18.82527737950602
+        }
+      ],
+      "selected_pose": 0
+    },
+    {
+      "axis": 3,
+      "damping_ratio": 0.9092015208346188,
+      "denominator": [
+        1.0,
+        109.68348742988944,
+        3638.3309664175777
+      ],
+      "measured_frequency_max_hz": 5.0,
+      "measured_frequency_min_hz": 0.4,
+      "natural_frequency_hz": 9.599999999999996,
+      "natural_frequency_rad_s": 60.31857894892401,
+      "numerator": [
+        3630.384471295928
+      ],
+      "poles": [
+        {
+          "imag": 25.114022233045397,
+          "real": -54.84174371494473
+        },
+        {
+          "imag": -25.114022233045397,
+          "real": -54.84174371494473
+        }
+      ],
+      "selected_pose": 0
+    },
+    {
+      "axis": 4,
+      "damping_ratio": 1.0,
+      "denominator": [
+        1.0,
+        98.66101820586898,
+        2433.4991283547033
+      ],
+      "measured_frequency_max_hz": 5.0,
+      "measured_frequency_min_hz": 0.4,
+      "natural_frequency_hz": 7.851194368971766,
+      "natural_frequency_rad_s": 49.3305091029345,
+      "numerator": [
+        2421.78607189024
+      ],
+      "poles": [
+        {
+          "imag": 0.0,
+          "real": -49.3305091029345
+        },
+        {
+          "imag": 0.0,
+          "real": -49.3305091029345
+        }
+      ],
+      "selected_pose": 0
+    },
+    {
+      "axis": 5,
+      "damping_ratio": 0.9999999999999997,
+      "denominator": [
+        1.0,
+        96.40898699335273,
+        2323.673193271115
+      ],
+      "measured_frequency_max_hz": 5.0,
+      "measured_frequency_min_hz": 0.4,
+      "natural_frequency_hz": 7.671983419237168,
+      "natural_frequency_rad_s": 48.20449349667638,
+      "numerator": [
+        2298.106779641492
+      ],
+      "poles": [
+        {
+          "imag": 1.0339682531203624e-06,
+          "real": -48.20449349667636
+        },
+        {
+          "imag": -1.0339682531203624e-06,
+          "real": -48.20449349667636
+        }
+      ],
+      "selected_pose": 0
+    }
+  ],
+  "model_type": "joint_controller_tf_v1",
+  "num_axes": 6,
+  "output_sensor": "JointPos",
+  "schema_version": 1
+}

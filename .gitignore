@@ -170,6 +170,7 @@ cython_debug/
 
 # Large data files
 *.csv
+!src/robot/models/joint_tracker/identification_parameters.csv
 *.tsv
 *.npz
 *.pkl
