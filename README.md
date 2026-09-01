@@ -11,6 +11,28 @@ Robot interface code for integrating external robot SDKs with Reforge calibratio
 - run identification / fine-tuning against Reforge Cloud,
 - and run vibration tests for controller evaluation.
 
+## Standard Bots C++ Shaper release
+
+The customer-facing C++/ROS 2 path is a separate, hardware-free example under
+`src/robot/example_usage/shaper_cpp/`. It uses the installed `ReforgeShaper`
+and `ReforgeShaperRos2` packages with the selected native model and matching
+URDF. It validates a complete 1,053-point trajectory at 0.005 s, compares the
+native and ROS adapter results, and exercises the one-point bridge transport
+without connecting to a robot.
+
+On Ubuntu 24.04 with ROS 2 Jazzy:
+
+```bash
+./install_reforge_shaper.sh
+source /opt/ros/jazzy/setup.bash
+./run_shaper_example.sh
+```
+
+See `src/robot/example_usage/shaper_cpp/README.md` and the model manifest next
+to the native artifacts for the exact asset contract. Robot endpoints,
+identifiers, and credentials are supplied by the consuming application; none
+are embedded in this release.
+
 Core implementation lives in `src/robot/`.
 
 ## Repository Layout

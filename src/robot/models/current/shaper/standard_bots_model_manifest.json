@@ -1,0 +1,45 @@
+{
+  "schema": "standard_bots_shaper_model_manifest",
+  "version": 1,
+  "robot": {
+    "family": "Standard Bots",
+    "sku": "Model One",
+    "joint_count": 6,
+    "joint_order": ["joint0", "joint1", "joint2", "joint3", "joint4", "joint5"],
+    "joint_units": "radians"
+  },
+  "model": {
+    "directory": "src/robot/models/current/shaper",
+    "native_artifact": "shaper_models.native.json",
+    "axes": 3,
+    "native_artifact_sha256": "903daffc5d72d6b43a461c4691ee50f2d84768d687148ab6eb9cf6118704259e",
+    "bundle": "model_bundle.json",
+    "bundle_sha256": "8b1ce914af225f691cfe0ac14a29bb53321fded2400af42ff7834187f12ae996",
+    "axis_artifacts": [
+      {"axis": 0, "file": "axis0_model.pt", "sha256": "1cb1e61700c6528138eae4f8b69b328f75d16a8ed4f37dd1c6cd2a384c4970a4"},
+      {"axis": 1, "file": "axis1_model.pt", "sha256": "0629e35130c8b56a356754252ae7d12b5fb4691bf2ad6a9f5383de1f1efb9677"},
+      {"axis": 2, "file": "axis2_model.pt", "sha256": "182a8599eb10e2a376ffec7c30d3fc5bc6866f4c34b8e2a0570d4d77695d09fe"}
+    ]
+  },
+  "urdf": {
+    "file": "src/robot/urdf/modelone.urdf",
+    "sha256": "f917aca45ba89d741c15cab53e308eb6e4a107ccb2539f95ea26ad33aa3bc8e5"
+  },
+  "trajectory_contract": {
+    "sample_period_s": 0.005,
+    "point_count": 1053,
+    "duration_s": 5.26,
+    "position_units": "rad",
+    "velocity_units": "rad/s",
+    "acceleration_units": "rad/s^2",
+    "assumptions": [
+      "The installed ReforgeShaper and ReforgeShaperRos2 packages are available.",
+      "The complete trajectory is validated before transport.",
+      "The receiving bridge accepts one JointTrajectory point per sample."
+    ],
+    "limitations": [
+      "This example performs no robot connection, readiness check, or motion.",
+      "The one-point wire timestamp is a bridge compatibility convention, not a ROS duration."
+    ]
+  }
+}
