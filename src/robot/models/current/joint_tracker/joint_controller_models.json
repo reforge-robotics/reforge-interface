@@ -2,88 +2,169 @@
   "axes": [
     {
       "axis": 0,
-      "damping_ratio": 0.41071153576089603,
+      "damping_ratio": 0.6491994688812928,
       "denominator": [
         1.0,
-        25.74113455193624,
-        982.0228105798983
+        71.91665306067144,
+        3067.9101196877955
       ],
       "measured_frequency_max_hz": 20.0,
-      "measured_frequency_min_hz": 1.0,
-      "natural_frequency_hz": 4.9874771561314075,
-      "natural_frequency_rad_s": 31.33724318729869,
+      "measured_frequency_min_hz": 0.4,
+      "natural_frequency_hz": 8.815388315824118,
+      "natural_frequency_rad_s": 55.388718343068696,
       "numerator": [
-        997.2181476344479
+        3065.2106948179567
       ],
       "poles": [
         {
-          "imag": 28.572212175025523,
-          "real": -12.87056727596812
+          "imag": 42.12966737140882,
+          "real": -35.95832653033572
         },
         {
-          "imag": -28.572212175025523,
-          "real": -12.87056727596812
+          "imag": -42.12966737140882,
+          "real": -35.95832653033572
         }
       ],
       "selected_pose": 0
     },
     {
       "axis": 1,
-      "damping_ratio": 0.4042006411222107,
+      "damping_ratio": 0.7059898870821416,
       "denominator": [
         1.0,
-        25.238827311272235,
-        974.7300537910087
+        81.52991978838668,
+        3334.0881552416604
       ],
       "measured_frequency_max_hz": 20.0,
-      "measured_frequency_min_hz": 1.0,
-      "natural_frequency_hz": 4.968923494627999,
-      "natural_frequency_rad_s": 31.22066709394609,
+      "measured_frequency_min_hz": 0.4,
+      "natural_frequency_hz": 9.189855252627533,
+      "natural_frequency_rad_s": 57.741563498416454,
       "numerator": [
-        988.8462399535446
+        3331.668384595881
       ],
       "poles": [
         {
-          "imag": 28.556618370860246,
-          "real": -12.619413655636118
+          "imag": 40.893840612816845,
+          "real": -40.76495989419334
         },
         {
-          "imag": -28.556618370860246,
-          "real": -12.619413655636118
+          "imag": -40.893840612816845,
+          "real": -40.76495989419334
         }
       ],
       "selected_pose": 0
     },
     {
       "axis": 2,
-      "damping_ratio": 0.5112549247174121,
+      "damping_ratio": 0.7237903169932937,
       "denominator": [
         1.0,
-        32.1617609980703,
-        989.3378858941405
+        84.89286037865351,
+        3439.1950345311066
       ],
       "measured_frequency_max_hz": 20.0,
-      "measured_frequency_min_hz": 1.0,
-      "natural_frequency_hz": 5.006018518268846,
-      "natural_frequency_rad_s": 31.453742001455737,
+      "measured_frequency_min_hz": 0.4,
+      "natural_frequency_hz": 9.33358601604365,
+      "natural_frequency_rad_s": 58.64465051930232,
       "numerator": [
-        1009.2773567137052
+        3442.5825533288858
       ],
       "poles": [
         {
-          "imag": 27.032261619588763,
-          "real": -16.080880499035153
+          "imag": 40.46598075808514,
+          "real": -42.44643018932675
         },
         {
-          "imag": -27.032261619588763,
-          "real": -16.080880499035153
+          "imag": -40.46598075808514,
+          "real": -42.44643018932675
+        }
+      ],
+      "selected_pose": 0
+    },
+    {
+      "axis": 3,
+      "damping_ratio": 0.7211687253862005,
+      "denominator": [
+        1.0,
+        83.6420390868164,
+        3362.9116917485653
+      ],
+      "measured_frequency_max_hz": 20.0,
+      "measured_frequency_min_hz": 0.4,
+      "natural_frequency_hz": 9.229493392009948,
+      "natural_frequency_rad_s": 57.99061727338799,
+      "numerator": [
+        3361.0978254769275
+      ],
+      "poles": [
+        {
+          "imag": 40.1735487117884,
+          "real": -41.8210195434082
+        },
+        {
+          "imag": -40.1735487117884,
+          "real": -41.8210195434082
+        }
+      ],
+      "selected_pose": 0
+    },
+    {
+      "axis": 4,
+      "damping_ratio": 0.6733110468585262,
+      "denominator": [
+        1.0,
+        76.18220096687072,
+        3200.483261253654
+      ],
+      "measured_frequency_max_hz": 20.0,
+      "measured_frequency_min_hz": 0.4,
+      "natural_frequency_hz": 9.003842960893277,
+      "natural_frequency_rad_s": 56.572813800036975,
+      "numerator": [
+        3200.3040955279835
+      ],
+      "poles": [
+        {
+          "imag": 41.82763829353127,
+          "real": -38.09110048343537
+        },
+        {
+          "imag": -41.82763829353127,
+          "real": -38.09110048343537
+        }
+      ],
+      "selected_pose": 0
+    },
+    {
+      "axis": 5,
+      "damping_ratio": 0.7649908671741341,
+      "denominator": [
+        1.0,
+        91.60316575375509,
+        3584.6641600106614
+      ],
+      "measured_frequency_max_hz": 20.0,
+      "measured_frequency_min_hz": 0.4,
+      "natural_frequency_hz": 9.528935088095452,
+      "natural_frequency_rad_s": 59.872064938589354,
+      "numerator": [
+        3583.5480018877065
+      ],
+      "poles": [
+        {
+          "imag": 38.56007217295085,
+          "real": -45.80158287687754
+        },
+        {
+          "imag": -38.56007217295085,
+          "real": -45.80158287687754
         }
       ],
       "selected_pose": 0
     }
   ],
   "model_type": "joint_controller_tf_v1",
-  "num_axes": 3,
+  "num_axes": 6,
   "output_sensor": "JointPos",
   "schema_version": 1
 }

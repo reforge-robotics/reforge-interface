@@ -3,7 +3,7 @@
     "joint_controller_models.json"
   ],
   "model_type": "joint_controller_tf_v1",
-  "num_axes": 3,
+  "num_axes": 6,
   "output_sensor": "JointPos",
   "schema_version": 1
 }
