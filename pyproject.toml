@@ -49,5 +49,6 @@ robot = [
     "urdf/**/*.urdf",
     "urdf/**/*.xacro",
     "urdf/**/*.stl",
+    "urdf/**/*.STL",
     "urdf/**/*.dae",
 ]
