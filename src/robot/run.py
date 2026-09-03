@@ -449,7 +449,8 @@ def _build_parser() -> argparse.ArgumentParser:
     vibration_test = sub.add_parser(
         "vibration_test",
         help="Run vibration test to quantify controller performance in random poses."
-        "Exemple use: PYTHONPATH=src:$PYTHONPATH python3 -m robot.run vibration_test 10.0.0.4:3000 /home/ipereira/Reforge_Robotics/reforge-core/src/robot/data/2026-1-16 --sdk_token 6xthi-hndyc-u9ejy0-okge14tw",
+        "Example: python3 -m robot.run vibration_test <robot_host>:3000 "
+        "<data_folder> --sdk_token <token>",
     )
     vibration_test.add_argument("robot_ip", help="Robot IP address")
     vibration_test.add_argument(

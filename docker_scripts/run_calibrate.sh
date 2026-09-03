@@ -7,7 +7,7 @@ fi
 
 usage() {
   echo "Usage: $0 <robot_ip> [calibrate flags]"
-  echo "Example: $0 10.0.0.4:3000 --sdk_token <token> --robot_id <id> --freq 200"
+  echo "Example: $0 <robot_host>:3000 --sdk_token <token> --robot_id <id> --freq 200"
 }
 
 if [[ $# -lt 1 ]]; then

@@ -37,8 +37,9 @@ from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
 
 
 # User constants - EDITS REQUIRED
-BOT_ID = "bot_0sapi_D9lfDQKWSUUaXogOBejf"
-URDF_PATH = "urdf/RO1/modelone.urdf"
+# The customer supplies its robot identifier at invocation time.
+BOT_ID = ""
+URDF_PATH = "urdf/modelone.urdf"
 ROBOT_MAX_FREQ = 200  # [Hz]
 
 # Fully stretched position of the robot for calibration.

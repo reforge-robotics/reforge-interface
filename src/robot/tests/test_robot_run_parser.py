@@ -1,9 +1,8 @@
-from robot.robot_interface import BOT_ID
 from robot.run import _build_parser
 
 
-def test_connect_test_defaults_to_configured_robot_id() -> None:
-    """Verify omitted `--robot_id` keeps the configured robot identifier.
+def test_connect_test_accepts_explicit_robot_id() -> None:
+    """Verify the customer supplies its robot identifier explicitly.
 
     Args:
         None.
@@ -12,18 +11,19 @@ def test_connect_test_defaults_to_configured_robot_id() -> None:
         `None`.
 
     Raises:
-        AssertionError: If `connect_test` overrides `BOT_ID` with an empty
-            default.
+        AssertionError: If `connect_test` discards the supplied identifier.
     """
     parser = _build_parser()
 
     args = parser.parse_args(
         [
             "connect_test",
-            "10.0.0.4:3000",
+            "robot-host:3000",
             "--sdk_token",
             "token",
+            "--robot_id",
+            "customer_bot",
         ]
     )
 
-    assert args.robot_id == BOT_ID
+    assert args.robot_id == "customer_bot"
