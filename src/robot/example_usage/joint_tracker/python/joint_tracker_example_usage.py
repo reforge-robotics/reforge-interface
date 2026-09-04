@@ -3,13 +3,25 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
+import sys
 import time
+from typing import Any
 
+import matplotlib
 import numpy as np
 
-from reforge_core.control.joint_tracker import JointTrackerInterface
-from robot.example_usage.joint_tracker.example_utility import (
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/reforge-matplotlib-cache")
+
+THIS_DIR = Path(__file__).resolve().parent
+REPO_ROOT = THIS_DIR.parents[4]
+for source_path in (REPO_ROOT / "src", REPO_ROOT / "src/core_sdk"):
+    source_path_string = str(source_path)
+    if source_path_string not in sys.path:
+        sys.path.insert(0, source_path_string)
+
+from robot.example_usage.joint_tracker.python.example_utility import (  # noqa: E402
     WindowStreamRecord,
     append_window_payload_from_payload_time,
     build_appendable_planner_result,
@@ -23,9 +35,7 @@ from robot.example_usage.joint_tracker.example_utility import (
     report_and_plot_joint_tracker_stream,
 )
 
-THIS_DIR = Path(__file__).resolve().parent
-
-MODEL_DIRECTORY = THIS_DIR / "example_models"
+MODEL_DIRECTORY = THIS_DIR.parent / "example_models"
 
 SAMPLE_TIME_S = 0.01
 NUM_AXES = 6
@@ -35,6 +45,44 @@ DWELL_DURATION_S = 0.75
 COBOT_JOINT_POSITION_LIMIT_RAD = np.deg2rad(350.0)
 COBOT_MAX_JOINT_SPEED_RAD_S = np.deg2rad(180.0)
 COBOT_MAX_JOINT_ACCELERATION_RAD_S2 = np.deg2rad(720.0)
+# n_apply_scale tunes how many optimized samples Joint Tracker makes available
+# per window. Smaller positive values make shorter windows; this example uses
+# one-sample windows.
+SINGLE_SAMPLE_N_APPLY_SCALE = 1.0e-9
+ONLINE_PLANNER_UPDATE_SAMPLES = 1
+ONLINE_PLANNER_DELAY_THRESHOLDS = (56, 111, 170)
+ONLINE_PLANNER_DELAY_WINDOWS = (3, 3, 4)
+
+
+def _new_tracker(*, n_apply_scale: float | None = None) -> Any:
+    """Construct the public native-backed tracker used by this example.
+
+    Args:
+        n_apply_scale: Optional apply-window scale for online streaming [unitless].
+    Returns:
+        Native-backed Joint Tracker configured for the example model bundle.
+    """
+
+    # Load the optional native extension only when the executable example runs;
+    # importing this module must remain possible for documentation and tests.
+    from reforge_core.control.joint_tracker import (
+        JointTrackerConfig,
+        JointTrackerInterface,
+        JointTrackerOptimizerOptions,
+    )
+
+    optimizer_options = JointTrackerOptimizerOptions(lam_u=1.0e-2)
+    if n_apply_scale is not None:
+        optimizer_options.n_apply_scale = n_apply_scale
+    return JointTrackerInterface(
+        JointTrackerConfig(
+            sample_time_s=SAMPLE_TIME_S,
+            num_joints=NUM_JOINTS,
+            model_directory=str(MODEL_DIRECTORY),
+            modeled_axis_indices=list(MODELED_AXES),
+            optimizer_options=optimizer_options,
+        )
+    )
 
 
 def parse_cli_args() -> argparse.Namespace:
@@ -68,6 +116,11 @@ def parse_cli_args() -> argparse.Namespace:
             "controller usage."
         ),
     )
+    parser.add_argument(
+        "--no-plots",
+        action="store_true",
+        help="Run the numerical example without opening matplotlib windows.",
+    )
     return parser.parse_args()
 
 
@@ -90,6 +143,11 @@ def main(
         ValueError: If trajectory or controller inputs are invalid.
         RuntimeError: If Joint Tracker initialization or trajectory optimization fails.
     """
+    # Select a headless backend before any plotting helper imports pyplot. This
+    # keeps `--no-plots` safe in CI and on robot controllers without a display.
+    if not show_plots:
+        matplotlib.use("Agg", force=True)
+
     # SIMULATION ONLY: this helper creates a feasible desired trajectory so the
     # example can run without a robot SDK. In your application, replace this
     # block with the trajectory from your planner, teach pendant, or robot SDK.
@@ -114,13 +172,7 @@ def main(
     # CONTROLLER CODE TO COPY: use this pattern when the complete desired
     # trajectory is available before execution starts.
     # =========================================================================
-    initializing_JTC = JointTrackerInterface(
-        sample_time=SAMPLE_TIME_S,
-        num_joints=NUM_JOINTS,
-        model_directory=str(MODEL_DIRECTORY),
-        num_axes=NUM_AXES,
-        axis_indices=list(MODELED_AXES),
-    )
+    initializing_JTC = _new_tracker()
     JTC_offline_mode = initializing_JTC.process_trajectory(
         command=desired_trajectory_rad,
         command_dot=desired_velocity_rad_s,
@@ -141,13 +193,7 @@ def main(
     # trajectory is known before execution, but you want JTC to optimize and emit
     # windows while your robot loop consumes them.
     # =========================================================================
-    initializing_JTC = JointTrackerInterface(
-        sample_time=SAMPLE_TIME_S,
-        num_joints=NUM_JOINTS,
-        model_directory=str(MODEL_DIRECTORY),
-        num_axes=NUM_AXES,
-        axis_indices=list(MODELED_AXES),
-    )
+    initializing_JTC = _new_tracker()
     JTC_stream_mode = initializing_JTC.process_trajectory_stream_mode()
     # CONTROLLER CODE TO COPY: append the complete desired trajectory before
     # execution starts. JTC will optimize and emit windows while the robot loop
@@ -246,12 +292,10 @@ def main(
     # point-to-point moves. JTC keeps holding the last desired sample until more
     # samples arrive.
     # =========================================================================
-    initializing_JTC = JointTrackerInterface(
-        sample_time=SAMPLE_TIME_S,
-        num_joints=NUM_JOINTS,
-        model_directory=str(MODEL_DIRECTORY),
-        num_axes=NUM_AXES,
-        axis_indices=list(MODELED_AXES),
+    # Single-sample online streaming setting: append one desired sample at a
+    # time and make one optimized sample available to send to the robot.
+    initializing_JTC = _new_tracker(
+        n_apply_scale=SINGLE_SAMPLE_N_APPLY_SCALE,
     )
     JTC_online_mode = initializing_JTC.process_trajectory_stream_mode()
     # SIMULATION ONLY: this helper mimics an online planner that sometimes
@@ -259,31 +303,36 @@ def main(
     simulated_planner_state, desired_trajectory_beginning_rad = (
         create_appendable_planner_simulation_state(
             source_positions_rad=desired_trajectory_rad,
-            initial_chunk_samples=56,
-            append_chunk_samples=60,
+            initial_chunk_samples=ONLINE_PLANNER_UPDATE_SAMPLES,
+            append_chunk_samples=ONLINE_PLANNER_UPDATE_SAMPLES,
             low_watermark_samples=10,
-            delay_after_source_samples=(56, 111, 170),
-            delay_windows=(3, 3, 4),
+            delay_after_source_samples=ONLINE_PLANNER_DELAY_THRESHOLDS,
+            delay_windows=ONLINE_PLANNER_DELAY_WINDOWS,
         )
     )
-    # CONTROLLER CODE TO COPY: append the first desired samples before starting
-    # the stream. In your application this is the first planner output chunk.
+    # CONTROLLER CODE TO COPY: append exactly one first desired sample before
+    # running the stream. Each planner update below also appends one sample.
     JTC_online_mode.append_reference(desired_trajectory_beginning_rad)
-    JTC_online_mode.start()
 
     # SIMULATION/REPORTING ONLY: these lists store emitted windows for plots.
     online_stream_times_s: list[float] = []
     online_stream_positions_rad: list[np.ndarray] = []
     online_stream_records: list[WindowStreamRecord] = []
-    # CONTROLLER CODE TO COPY: each loop iteration consumes one optimized command
-    # window and appends more desired samples when the planner has produced them.
-    while not JTC_online_mode.is_complete():
+    # SIMULATION ONLY: prefill one window synchronously so the fake planner
+    # cannot race the background producer. A live application can use start()
+    # and pop() directly once planner timing is owned by the application.
+    while True:
+        produced_windows = JTC_online_mode.prefill(1)
+        if produced_windows == 0:
+            if simulated_planner_state.has_finished_appending:
+                break
+            raise RuntimeError(
+                "Appendable Joint Tracker stream did not produce a window."
+            )
         pop_start_wall_s = time.perf_counter()
-        optimized_command_window = JTC_online_mode.pop()
+        optimized_command_window = JTC_online_mode.pop_nowait()
         pop_wait_time_s = time.perf_counter() - pop_start_wall_s
         if optimized_command_window is None:
-            if JTC_online_mode.is_complete():
-                break
             raise RuntimeError(
                 "Appendable Joint Tracker stream did not produce a window."
             )
@@ -302,7 +351,6 @@ def main(
         # more desired samples. Replace it with your own planner output check.
         planner_decision = next_appendable_planner_decision(
             planner_state=simulated_planner_state,
-            available_reference_samples=JTC_online_mode.available_reference_samples(),
             emitted_stop_index=int(optimized_command_window.stop_index),
         )
         if planner_decision.command_to_append is not None:
@@ -327,6 +375,7 @@ def main(
         window_records=online_stream_records,
         sample_time_s=SAMPLE_TIME_S,
         appended_source_samples=desired_trajectory_rad.shape[0],
+        planner_update_sample_counts=simulated_planner_state.append_batch_sizes,
     )
 
     # SIMULATION/REPORTING ONLY: build a benchmark for the delayed reference.
@@ -334,13 +383,7 @@ def main(
         trajectory_rad=online_stream_result.desired_positions_rad,
         sample_time_s=SAMPLE_TIME_S,
     )
-    initializing_JTC = JointTrackerInterface(
-        sample_time=SAMPLE_TIME_S,
-        num_joints=NUM_JOINTS,
-        model_directory=str(MODEL_DIRECTORY),
-        num_axes=NUM_AXES,
-        axis_indices=list(MODELED_AXES),
-    )
+    initializing_JTC = _new_tracker()
     JTC_delayed_reference_offline_mode = initializing_JTC.process_trajectory(
         command=online_stream_result.desired_positions_rad,
         command_dot=delayed_velocity_rad_s,
@@ -387,4 +430,5 @@ if __name__ == "__main__":
     main(
         show_timing_analysis=cli_args.show_timing_analysis,
         show_online_planner_analysis=cli_args.show_online_planner_analysis,
+        show_plots=not cli_args.no_plots,
     )
