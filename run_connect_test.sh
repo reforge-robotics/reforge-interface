@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <robot_ip> [--local_ip <local_ip>] [--sdk_token <token>] [--robot_id <robot_id>]"
+  echo "Usage: $0 <robot_ip> --robot_id <robot_id> [--local_ip <local_ip>] [--sdk_token <token>]"
   exit 1
 fi
 

@@ -8,7 +8,7 @@ find_package(ReforgeShaperRos2 CONFIG REQUIRED)
 
 set(STANDARD_BOTS_MODEL_DIRECTORY
     "${CMAKE_CURRENT_SOURCE_DIR}/../../models/current/shaper")
-set(STANDARD_BOTS_URDF "${CMAKE_CURRENT_SOURCE_DIR}/../../urdf/modelone.urdf")
+set(STANDARD_BOTS_URDF "${CMAKE_CURRENT_SOURCE_DIR}/../../urdf/RO1/modelone.urdf")
 
 add_library(standard_bots_ros_transport standard_bots_ros_transport.cpp)
 target_compile_features(standard_bots_ros_transport PUBLIC cxx_std_17)

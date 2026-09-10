@@ -56,6 +56,24 @@ def test_standardbots_url_rejects_empty_host() -> None:
         _standardbots_url("")
 
 
+@pytest.mark.parametrize("robot_id", ["", "   ", None])
+def test_standardbots_rejects_empty_robot_id_before_initialization(
+    robot_id: str | None,
+) -> None:
+    """Verify an invalid robot ID is rejected before adapter initialization.
+
+    Args:
+        robot_id: Empty identifier supplied to the Standard Bots adapter.
+
+    Raises:
+        AssertionError: If initialization proceeds with an empty robot ID.
+    """
+    with pytest.raises(
+        ValueError, match="robot_id must be non-empty for Standard Bots"
+    ):
+        RobotInterface(robot_ip="robot-host:3000", robot_id=robot_id)  # type: ignore[arg-type]
+
+
 def test_require_rejects_missing_sdk_value() -> None:
     """Verify omitted SDK telemetry raises a clear adapter error.
 

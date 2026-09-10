@@ -22,8 +22,8 @@
     ]
   },
   "urdf": {
-    "file": "src/robot/urdf/modelone.urdf",
-    "sha256": "f917aca45ba89d741c15cab53e308eb6e4a107ccb2539f95ea26ad33aa3bc8e5"
+    "file": "src/robot/urdf/RO1/modelone.urdf",
+    "sha256": "6543d4015bddb52488b3fbc5f6e45c85301e36873fb521e54bab348e8587a058"
   },
   "trajectory_contract": {
     "sample_period_s": 0.005,

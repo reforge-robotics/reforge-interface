@@ -705,7 +705,8 @@
       if (!this._elements.connectTest) return;
       const isConnecting = !!this.connecting;
       const isCalibrating = !!this.calibrating;
-      this._elements.connectTest.disabled = isConnecting || isCalibrating;
+      const hasRobotId = !!this.robotId;
+      this._elements.connectTest.disabled = isConnecting || isCalibrating || !hasRobotId;
       this._elements.connectTest.textContent = isConnecting
         ? "Connecting..."
         : "Connect test";

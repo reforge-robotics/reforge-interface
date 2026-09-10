@@ -6,7 +6,7 @@ if [[ "${DEBUG:-0}" == "1" ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 <robot_ip> <data_folder> [vibration_test flags]"
+  echo "Usage: $0 <robot_ip> <data_folder> --robot_id <robot_id> [vibration_test flags]"
   echo "Example: $0 cb2002.sb.app ./src/robot/data/2026-2-25 --sdk_token <token> --robot_id <id> --freq 200"
 }
 

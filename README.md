@@ -258,7 +258,7 @@ Serve `ui-widget/` as static files from your host machine or robot control box, 
   data-robot-ip="<robot_ip>"
   data-local-ip="<optional_local_ip>"
   data-sdk-token="<optional_sdk_token>"
-  data-robot-id="<optional_robot_id>"
+  data-robot-id="<robot_id>"
   data-reforge-identify-api-token="<optional_reforge_api_token>"
   data-reforge-robot-id="<optional_reforge_robot_id>"
   data-freq="200"
@@ -276,7 +276,7 @@ Use this option when the widget JS should be bundled and served from your own en
   data-robot-ip="<robot_ip>"
   data-local-ip="<optional_local_ip>"
   data-sdk-token="<optional_sdk_token>"
-  data-robot-id="<optional_robot_id>"
+  data-robot-id="<robot_id>"
   data-reforge-identify-api-token="<optional_reforge_api_token>"
   data-reforge-robot-id="<optional_reforge_robot_id>"
   data-freq="200"
@@ -291,7 +291,7 @@ Use this option when you want to consume the hosted widget script directly.
 - `data-robot-ip` (required): Robot IP for `connect_test` and `calibrate`.
 - `data-local-ip` (optional): Passed as `--local_ip` when non-empty.
 - `data-sdk-token` (optional): Passed as `--sdk_token` when non-empty.
-- `data-robot-id` (optional): Passed as `--robot_id` when non-empty.
+- `data-robot-id` (required): Standard Bots robot ID used in the ROS topic namespace.
 - `data-freq` (optional): Calibration sampling frequency (`--freq`), default is `200`.
 - `data-reforge-identify-api-token` (optional): If set with `data-reforge-robot-id`, runs identify after calibration.
 - `data-reforge-robot-id` (optional): Target Reforge robot ID for identify call.
@@ -363,7 +363,7 @@ Request:
   "robotIp": "<robot_ip>",
   "localIp": "<optional_local_ip>",
   "sdkToken": "<optional_sdk_token>",
-  "robotId": "<optional_robot_id>"
+  "robotId": "<robot_id>"
 }
 ```
 
@@ -403,7 +403,7 @@ Request:
   "robotIp": "<robot_ip>",
   "localIp": "<optional_local_ip>",
   "sdkToken": "<optional_sdk_token>",
-  "robotId": "<optional_robot_id>",
+  "robotId": "<robot_id>",
   "freq": "200",
   "identifyApiToken": "<optional_reforge_api_token>",
   "reforgeRobotId": "<optional_reforge_robot_id>"

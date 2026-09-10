@@ -85,7 +85,7 @@ def test_selected_model_manifest_matches_assets() -> None:
             hashlib.sha256(path.read_bytes()).hexdigest()
             == manifest["model"][hash_key]
         )
-    urdf = ROOT / "src/robot/urdf/modelone.urdf"
+    urdf = ROOT / manifest["urdf"]["file"]
     assert (
         hashlib.sha256(urdf.read_bytes()).hexdigest()
         == manifest["urdf"]["sha256"]
