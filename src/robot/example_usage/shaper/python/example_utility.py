@@ -1,7 +1,8 @@
 """Utility functions for the Covalent Shaper example.
 
 The functions in this file keep trajectory generation, simulation, and plotting
-out of `shaper_example_usage.py` so the main example can focus on Shaper usage.
+out of `python/shaper_example_usage.py` so the main example can focus on Shaper
+usage.
 """
 
 from __future__ import annotations

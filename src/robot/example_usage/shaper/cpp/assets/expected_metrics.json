@@ -1,0 +1,24 @@
+{
+  "dominant_damping_ratio": 0.099999996802456373,
+  "dominant_natural_frequency_rad_s": 20.0,
+  "metric_tolerance": 2e-05,
+  "model_identity": "synthetic-example-fixture-v1",
+  "num_axes": 2,
+  "num_joints": 6,
+  "sample_time_s": 0.004,
+  "time_tolerance_s": 1e-12,
+  "position_tolerance_rad": 1e-09,
+  "velocity_tolerance_rad_s": 1e-08,
+  "acceleration_tolerance_rad_s2": 1e-07,
+  "metrics": {
+    "always_on_residual_rad": 0.00017587049487061135,
+    "deceleration_start_time_s": 0.1,
+    "residual_change_start_time_s": 0.008,
+    "residual_start_time_s": 0.88,
+    "residual_tail_residual_rad": 0.0001626303732030765,
+    "slower_unshaped_residual_rad": 0.0018468629343132426,
+    "streamed_residual_rad": 7.0408211839678714e-06,
+    "unshaped_residual_rad": 0.0537119179916975,
+    "windowed_residual_rad": 0.00017587049487061135
+  }
+}

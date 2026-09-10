@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "model_type": "shaper_nn_v1",
+  "num_axes": 2,
+  "output_sensor": "synthetic_example_fixture",
+  "artifact_filenames": ["axis0_model.pt", "axis1_model.pt"],
+  "native_artifact_schema_version": 1,
+  "native_artifact_filename": "shaper_models.native.json",
+  "feature_names": ["j0_rad", "j1_rad", "v_deg", "r_mm", "inertia"],
+  "feature_units": ["rad", "rad", "deg", "mm", "kg_m2"],
+  "input_feature_count": 5,
+  "base_joint_count": 2,
+  "base_joint_reference_angles": [0.0, 0.0],
+  "calibration_schema_version": 2
+}
