@@ -4,11 +4,9 @@ This folder contains the robot adapter layer used by Reforge calibration and ide
 
 ## Purpose
 
-Implement one concrete robot adapter in `robot_interface.py` that satisfies
-`reforge_core.hw_interfaces.arm_client.ArmClient`.
+Implement one concrete robot adapter in `robot_interface.py` that satisfies the interface contract defined in `robot_base.py`.
 
-The calibration flow expects strict method signatures, units, and telemetry
-dimensions. `reforge-core` owns the recorded data schema.
+The calibration flow expects strict method signatures, units, and logged data schema.
 
 ## Key Files
 
@@ -16,8 +14,9 @@ dimensions. `reforge-core` owns the recorded data schema.
 - `requirements.txt`: Robot runtime dependencies and SDK additions.
 - `Dockerfile`: Container build for the robot package.
 - `robot_interface.py`: SDK-specific implementation target.
-- `run.py`: CLI routes (`connect_test`, `calibrate`, `identify`, `fine_tune`, `vibration_test`).
-- `ros_manager.py`: Optional ROS 2 adapter for robots that require ROS control.
+- `robot_base.py`: Abstract robot interface, defaults, and shared utilities.
+- `run.py`: CLI routes (`connect_test`, `kinecal`, `calibrate`, `identify`, `fine_tune`, `vibration_test`).
+- `ros_manager.py`: Optional ROS-based trajectory publishing helper.
 - `urdf/`: Robot URDF files.
 - `config/`: Robot configuration files, including the editable kinecal config and default restore template.
 - `data/`: Output data from calibration runs.
@@ -26,19 +25,27 @@ dimensions. `reforge-core` owns the recorded data schema.
 
 ### Required methods in `RobotInterface`
 
-- `command_move_j(...) -> int`
-- `command_move_pose(...) -> int`
-- `command_servo_j(...) -> int`
-- `enter_position_mode()`
-- `enter_servo_mode()`
-- `get_joint_state() -> tuple[list[float], list[float], list[float]]`
-- `get_tcp_pose() -> list[float]`
+- `__get_joint_positions(self) -> List`
+- `__get_tcp_pose(self) -> List`
+- `move_to_joint(self, target_joint: Tuple[float, ...]) -> None`
+- `move_to_pose(self, target_quat: List[float], target_xyz: List[float]) -> None`
+- `publish_and_record_joint_positions(...) -> Deque[Dict]`
 
-`get_joint_state` returns positions, velocities, and efforts as `(q, qd, tau)`.
-Prefer one atomic SDK state snapshot when available.
+### Data log schema
 
-Trajectory execution, arm/IMU timestamp alignment, and calibration data-log
-construction are handled by `reforge-core`, not by the SDK adapter.
+`publish_and_record_joint_positions` must return `data_log` rows with keys:
+
+- `cmd_time`
+- `input_positions`
+- `output_positions`
+- `velocities`
+- `efforts`
+- `imu_time`
+- `linear_acceleration`
+- `angular_velocity`
+- `orientation`
+
+If a field is unavailable, keep the key and set an empty value.
 
 ## How To Integrate a New SDK
 
@@ -47,33 +54,20 @@ construction are handled by `reforge-core`, not by the SDK adapter.
 3. Open `robot_interface.py` and replace all `# {~.~}` sections.
 4. Set robot constants:
 - `BOT_ID`, `URDF_PATH`, `ROBOT_MAX_FREQ`
-- `FULL_STRETCH_XYZ`, `FULL_STRETCH_QUAT`, `FULL_STRETCH_JOINTS`
-- `FULL_STRETCH_POSE_OVERRIDE`
-- `IS_DEGREES`, `DATA_LOCATION_PREFIX`, `DEFAULT_TCP_PAYLOAD`
+- `HOME_SHOULDER_ANGLE`, `HOME_XYZ`, `HOME_QUAT`, `HOME_JOINTS`, `HOME_POSE_OVERRIDE`
+- `IS_DEGREES`, `DATA_LOCATION_PREFIX`
 5. Implement SDK client setup in `RobotInterface.__init__`.
 6. Implement all required methods with SDK calls.
-7. Keep `USE_REFORGE_IMU=True` for the standard Reforge USB IMU path.
-8. Validate and run a connection test before motion or full calibration.
+7. Validate and run connection test before full calibration.
 
 ## Units and Frames
 
 - Internal joint representation should be radians.
 - Use `IS_DEGREES=True` only when SDK APIs are degree-based; convert at SDK boundaries.
 - TCP pose format is `[x, y, z, qx, qy, qz, qw]`.
-- Payload and IMU settings:
+- Payload settings:
   - `--tcp_payload` uses same units as URDF inertias.
   - `--tcp_payload_com_x/y/z` are in meters, TCP frame.
-  - `--imu_to_tcp_x/y/z` are the measured IMU-to-TCP translation in meters,
-    resolved in the IMU frame.
-
-## Reforge IMU
-
-The default interface initializes the Reforge IMU through
-`ArmClient.initialize_arm_imu_manager()`. Do not read a vendor IMU or combine
-IMU and arm samples in `RobotInterface`.
-
-Only override `create_robot_imu_recorder()` when explicitly supporting a
-vendor-native IMU with `use_reforge_imu=False`.
 
 ## Commands
 
@@ -157,9 +151,8 @@ python -m robot.run fine_tune <fine_tune_api_token> <robot_id> <data_folder>
 ## Common Pitfalls
 
 1. Joint count mismatch
-- Select arm-only SDK telemetry when the URDF models only the arm.
-- The interface initialization requires the SDK and URDF actuated joint counts
-  to match exactly.
+- Hardware may expose extra joints (for example grippers).
+- Truncate extras to URDF joint count, but fail when fewer than expected joints are returned.
 
 2. Degree/radian mismatch
 - Incorrect conversion causes wrong motion and unstable trajectories.
@@ -167,10 +160,8 @@ python -m robot.run fine_tune <fine_tune_api_token> <robot_id> <data_folder>
 3. Missing control-state setup
 - Some SDKs require explicit teleop/ROS enable, motor enable, or unbrake before motion commands.
 
-4. Reforge IMU not detected
-- Confirm USB access and `DEFAULT_IMU_COMM_MODE`.
-- Confirm IMU recording frequency does not exceed the supported arm sampling
-  frequency.
+4. Schema drift in recorded data
+- Do not rename or remove required `data_log` keys.
 
 ## Developer Notes
 

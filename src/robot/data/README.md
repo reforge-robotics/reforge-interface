@@ -8,5 +8,6 @@ Kinecal data-collection runs write timestamped artifact folders under:
 src/robot/data/kinecal/datacol/
 ```
 
-Each run folder may include `run.log`, `terminal.txt`, `metadata.json`,
-`hole_0.csv`, and `hole_1.csv`.
+Each current run folder contains `metadata.json`, including both sockets' joint
+rows, and may include `run.log` and `terminal.txt`. Historical run folders may
+instead contain the joint rows in `hole_0.csv` and `hole_1.csv`.

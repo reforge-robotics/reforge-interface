@@ -4,8 +4,9 @@ eef_link = "link_eef"
 # probe_link = "smr_ball_link"
 probe_link = "prod_ball_link"
 
-# recording_method = "keyboard"s
 recording_method = "flange_button"
+# recording_method = "keyboard"
+# keyboard_capture_key = "b"  # Omit to use the default, Enter.
 
 [tcp_config]
 policy = "cones"

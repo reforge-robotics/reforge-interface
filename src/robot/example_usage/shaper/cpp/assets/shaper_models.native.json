@@ -1,0 +1,63 @@
+{
+  "schema": "reforge_shaper_weights",
+  "version": 1,
+  "scalar": "float32",
+  "layout": "out_features_by_in_features",
+  "feature_names": ["j0_rad", "j1_rad", "v_deg", "r_mm", "inertia"],
+  "feature_units": ["rad", "rad", "deg", "mm", "kg_m2"],
+  "input_feature_count": 5,
+  "axes": [
+    {
+      "axis": 0,
+      "layers": [],
+      "order_head": {
+        "kind": "linear_sigmoid_nan_to_num_clamp",
+        "in_features": 5,
+        "out_features": 1,
+        "weight": [[0.0, 0.0, 0.0, 0.0, 0.0]],
+        "bias": [2.0],
+        "nan_replacement": 0.5,
+        "clamp_min": 0.000001,
+        "clamp_max": 0.999999
+      },
+      "mode_head": {
+        "kind": "linear",
+        "in_features": 5,
+        "out_features": 4,
+        "weight": [
+          [0.0, 0.0, 0.0, 0.0, 0.0],
+          [0.0, 0.0, 0.0, 0.0, 0.0],
+          [0.0, 0.0, 0.0, 0.0, 0.0],
+          [0.0, 0.0, 0.0, 0.0, 0.0]
+        ],
+        "bias": [20.0, -2.3025851, 30.0, -1.6094379]
+      }
+    },
+    {
+      "axis": 1,
+      "layers": [],
+      "order_head": {
+        "kind": "linear_sigmoid_nan_to_num_clamp",
+        "in_features": 5,
+        "out_features": 1,
+        "weight": [[0.0, 0.0, 0.0, 0.0, 0.0]],
+        "bias": [-2.0],
+        "nan_replacement": 0.5,
+        "clamp_min": 0.000001,
+        "clamp_max": 0.999999
+      },
+      "mode_head": {
+        "kind": "linear",
+        "in_features": 5,
+        "out_features": 4,
+        "weight": [
+          [0.0, 0.0, 0.0, 0.0, 0.0],
+          [0.0, 0.0, 0.0, 0.0, 0.0],
+          [0.0, 0.0, 0.0, 0.0, 0.0],
+          [0.0, 0.0, 0.0, 0.0, 0.0]
+        ],
+        "bias": [25.0, -1.8971200, 35.0, -1.3862944]
+      }
+    }
+  ]
+}

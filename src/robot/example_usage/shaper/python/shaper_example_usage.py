@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from robot.example_usage.shaper.example_utility import (
+from robot.example_usage.shaper.python.example_utility import (
     concatenate_windowed_outputs,
     estimate_derivatives,
     generate_point_to_point_sample,
@@ -21,7 +21,7 @@ from reforge_core.control.shaper import (
 )
 
 THIS_DIR = Path(__file__).resolve().parent
-REPO_ROOT = THIS_DIR.parents[3]
+REPO_ROOT = THIS_DIR.parents[4]
 
 SAMPLE_TIME_S = 0.004
 NUM_AXES = 1
@@ -94,6 +94,7 @@ def main() -> None:
         residual_shaping_strategy=None,
         finalize_tail=False,
     )
+    # In a robot application, send the shaped trajectory through the robot SDK.
     # =========================================================================
     # End Example 1.
     # =========================================================================
@@ -132,6 +133,7 @@ def main() -> None:
         residual_switch_limits=speed_first_switch_limits,
         finalize_tail=False,
     )
+    # In a robot application, send the shaped trajectory through the robot SDK.
     # =========================================================================
     # End Example 2.
     # =========================================================================
@@ -177,6 +179,7 @@ def main() -> None:
     windowed_time_s, windowed_positions_rad = concatenate_windowed_outputs(
         shaped_windows
     )
+    # Each popped window would be sent to the robot SDK in timestamp order.
     # =========================================================================
     # End Example 3.
     # =========================================================================
