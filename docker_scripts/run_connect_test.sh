@@ -6,7 +6,7 @@ if [[ "${DEBUG:-0}" == "1" ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 <robot_ip> [--local_ip <local_ip>] [--sdk_token <sdk_token>] [--robot_id <robot_id>]"
+  echo "Usage: $0 <robot_ip> --robot_id <robot_id> [--local_ip <local_ip>] [--sdk_token <sdk_token>]"
 }
 
 if [[ $# -lt 1 ]]; then

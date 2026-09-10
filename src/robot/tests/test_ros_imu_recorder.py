@@ -41,7 +41,7 @@ def test_ros_imu_recorder_resolves_standardbots_topic() -> None:
     Raises:
         AssertionError: If topic templating changes unexpectedly.
     """
-    bot_id = "bot_0sapi_D9lfDQKWSUUaXogOBejf"
+    bot_id = "customer_bot"
     recorder = RosImuRecorder(bot_id=bot_id)
 
     assert recorder.topic == DEFAULT_ROS_IMU_TOPIC_TEMPLATE.replace("<BOT_ID>", bot_id)

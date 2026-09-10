@@ -137,7 +137,7 @@ python -m robot.run calibrate <robot_ip> --robot_id <robot_id> --freq 200
 ### Run kinecal data collection
 
 ```bash
-python -m robot.run kinecal <robot_ip>
+python -m robot.run kinecal <robot_ip> --robot_id <robot_id>
 ```
 
 By default, this uses `src/robot/config/kinecal_config.toml`. To restore defaults, copy `src/robot/config/kinecal_config_default.toml` over that file.

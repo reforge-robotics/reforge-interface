@@ -37,7 +37,8 @@ from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
 
 
 # User constants - EDITS REQUIRED
-BOT_ID = "bot_0sapi_D9lfDQKWSUUaXogOBejf"
+# The customer supplies its robot identifier at invocation time.
+BOT_ID = ""
 URDF_PATH = "urdf/RO1/modelone.urdf"
 ROBOT_MAX_FREQ = 200  # [Hz]
 
@@ -221,11 +222,15 @@ class RobotInterface(ArmClient):
 
         Raises:
             RuntimeError: If the robot connection fails.
-            ValueError: If reported joint counts do not match the URDF.
+            ValueError: If `robot_id` is empty or reported joint counts do not
+                match the URDF.
 
         Preconditions:
             The URDF file is available and the SDK is installed.
         """
+        if not isinstance(robot_id, str) or not robot_id.strip():
+            raise ValueError("robot_id must be non-empty for Standard Bots.")
+
         super().__init__(
             name="Standard Bots", recording_data_frequency_hz=ROBOT_MAX_FREQ
         )

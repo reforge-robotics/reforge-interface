@@ -18,7 +18,7 @@ def test_standardbots_ros_topics_use_hardware_namespace() -> None:
         AssertionError: If a topic template drifts away from the hardware
             namespace used by the robot controller.
     """
-    bot_id = "bot_0sapi_D9lfDQKWSUUaXogOBejf"
+    bot_id = "customer_bot"
 
     assert (
         JOINT_COMMAND_TOPIC_TEMPLATE.replace("<BOT_ID>", bot_id)

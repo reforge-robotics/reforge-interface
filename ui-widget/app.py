@@ -51,6 +51,8 @@ def _build_connect_command(params: dict) -> list[str]:
     local_ip = (params.get("localIp") or "").strip()
     sdk_token = (params.get("sdkToken") or "").strip()
     robot_id = (params.get("robotId") or "").strip()
+    if not robot_id:
+        raise ValueError("Missing required field: robotId")
 
     if local_ip:
         cmd.extend(["--local_ip", local_ip])
@@ -70,6 +72,8 @@ def _build_calibrate_command(params: dict) -> list[str]:
     local_ip = (params.get("localIp") or "").strip()
     sdk_token = (params.get("sdkToken") or "").strip()
     robot_id = (params.get("robotId") or "").strip()
+    if not robot_id:
+        raise ValueError("Missing required field: robotId")
     freq = str(params.get("freq") or DEFAULT_FREQ).strip()
     identify_api_token = (params.get("identifyApiToken") or "").strip()
     reforge_robot_id = (params.get("reforgeRobotId") or "").strip()

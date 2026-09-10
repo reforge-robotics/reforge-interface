@@ -42,6 +42,9 @@ include = ["*"]
 [tool.setuptools.package-data]
 robot = [
     "models/current/*.pt",
+    "models/current/*.json",
+    "models/current/**/*.pt",
+    "models/current/**/*.json",
     "urdf/*.urdf",
     "urdf/**/*.urdf",
     "urdf/**/*.xacro",

@@ -6,8 +6,8 @@ if [[ "${DEBUG:-0}" == "1" ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 <robot_ip> [calibrate flags]"
-  echo "Example: $0 10.0.0.4:3000 --sdk_token <token> --robot_id <id> --freq 200"
+  echo "Usage: $0 <robot_ip> --robot_id <robot_id> [calibrate flags]"
+  echo "Example: $0 <robot_host>:3000 --sdk_token <token> --robot_id <id> --freq 200"
 }
 
 if [[ $# -lt 1 ]]; then

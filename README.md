@@ -11,6 +11,28 @@ Robot interface code for integrating external robot SDKs with Reforge calibratio
 - run identification / fine-tuning against Reforge Cloud,
 - and run vibration tests for controller evaluation.
 
+## Standard Bots C++ Shaper release
+
+The customer-facing C++/ROS 2 path is a separate, hardware-free example under
+`src/robot/example_usage/shaper_cpp/`. It uses the installed `ReforgeShaper`
+and `ReforgeShaperRos2` packages with the selected native model and matching
+URDF. It validates a complete 1,053-point trajectory at 0.005 s, compares the
+native and ROS adapter results, and exercises the one-point bridge transport
+without connecting to a robot.
+
+On Ubuntu 24.04 with ROS 2 Jazzy:
+
+```bash
+./install_reforge_shaper.sh
+source /opt/ros/jazzy/setup.bash
+./run_shaper_example.sh
+```
+
+See `src/robot/example_usage/shaper_cpp/README.md` and the model manifest next
+to the native artifacts for the exact asset contract. Robot endpoints,
+identifiers, and credentials are supplied by the consuming application; none
+are embedded in this release.
+
 Core implementation lives in `src/robot/`.
 
 ## Repository Layout
@@ -44,7 +66,8 @@ rg "\{~\.~\}" src/robot/robot_interface.py
 5. Install dependencies (venv or docker [on the robot control box]).
 
 ```bash
-python3 -m venv .venv
+# Keep ROS 2's apt-installed Python dependencies visible inside the venv.
+python3 -m venv --system-site-packages .venv
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash # Your ROS installation
 pip install -r requirements.txt
@@ -80,7 +103,8 @@ python3 -m py_compile src/robot/robot_interface.py
 rg "\{~\.~\}" src/robot/robot_interface.py
 
 # 4) Install
-python3 -m venv .venv
+# Keep ROS 2's apt-installed Python dependencies visible inside the venv.
+python3 -m venv --system-site-packages .venv
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash # Your ROS installation
 pip install -r requirements.txt
@@ -236,7 +260,7 @@ Serve `ui-widget/` as static files from your host machine or robot control box, 
   data-robot-ip="<robot_ip>"
   data-local-ip="<optional_local_ip>"
   data-sdk-token="<optional_sdk_token>"
-  data-robot-id="<optional_robot_id>"
+  data-robot-id="<robot_id>"
   data-reforge-identify-api-token="<optional_reforge_api_token>"
   data-reforge-robot-id="<optional_reforge_robot_id>"
   data-freq="200"
@@ -254,7 +278,7 @@ Use this option when the widget JS should be bundled and served from your own en
   data-robot-ip="<robot_ip>"
   data-local-ip="<optional_local_ip>"
   data-sdk-token="<optional_sdk_token>"
-  data-robot-id="<optional_robot_id>"
+  data-robot-id="<robot_id>"
   data-reforge-identify-api-token="<optional_reforge_api_token>"
   data-reforge-robot-id="<optional_reforge_robot_id>"
   data-freq="200"
@@ -269,7 +293,7 @@ Use this option when you want to consume the hosted widget script directly.
 - `data-robot-ip` (required): Robot IP for `connect_test` and `calibrate`.
 - `data-local-ip` (optional): Passed as `--local_ip` when non-empty.
 - `data-sdk-token` (optional): Passed as `--sdk_token` when non-empty.
-- `data-robot-id` (optional): Passed as `--robot_id` when non-empty.
+- `data-robot-id` (required): Standard Bots robot ID used in the ROS topic namespace.
 - `data-freq` (optional): Calibration sampling frequency (`--freq`), default is `200`.
 - `data-reforge-identify-api-token` (optional): If set with `data-reforge-robot-id`, runs identify after calibration.
 - `data-reforge-robot-id` (optional): Target Reforge robot ID for identify call.
@@ -341,7 +365,7 @@ Request:
   "robotIp": "<robot_ip>",
   "localIp": "<optional_local_ip>",
   "sdkToken": "<optional_sdk_token>",
-  "robotId": "<optional_robot_id>"
+  "robotId": "<robot_id>"
 }
 ```
 
@@ -381,7 +405,7 @@ Request:
   "robotIp": "<robot_ip>",
   "localIp": "<optional_local_ip>",
   "sdkToken": "<optional_sdk_token>",
-  "robotId": "<optional_robot_id>",
+  "robotId": "<robot_id>",
   "freq": "200",
   "identifyApiToken": "<optional_reforge_api_token>",
   "reforgeRobotId": "<optional_reforge_robot_id>"
@@ -423,7 +447,8 @@ Purpose:
 1. Install dependencies and editable package:
 
 ```bash
-python3 -m venv .venv
+# Keep ROS 2's apt-installed Python dependencies visible inside the venv.
+python3 -m venv --system-site-packages .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e .

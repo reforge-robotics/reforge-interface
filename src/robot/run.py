@@ -40,7 +40,7 @@ from reforge_core.util.utility import (
     DEFAULT_IMU_TO_TCP_Z,
     SysIdType,
 )
-from robot.robot_interface import RobotInterface, BOT_ID
+from robot.robot_interface import RobotInterface
 from reforge_core.calibration.api import ROBOT_MODELS_PATH, ReforgeAPIManager
 from reforge_core.util.vibration_test import run_vibration_test, run_velocity_test
 
@@ -135,7 +135,9 @@ def _build_parser() -> argparse.ArgumentParser:
         default=PLACEHOLDER_IP,
     )
     connect_test.add_argument(
-        "--robot_id", help="Reforge robot ID, if necessary", default=BOT_ID
+        "--robot_id",
+        required=True,
+        help="Standard Bots robot ID used in the ROS topic namespace",
     )
 
     # ======================== Route: kinecal ======================================
@@ -144,6 +146,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Run interactive kinematic-calibration data collection.",
     )
     kinecal.add_argument("robot_ip", help="Robot IP address")
+    kinecal.add_argument(
+        "--robot_id",
+        required=True,
+        help="Standard Bots robot ID used in the ROS topic namespace",
+    )
     kinecal.add_argument(
         "--config",
         type=Path,
@@ -187,8 +194,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "--robot_id",
         dest="robot_id",
         type=str,
-        default=BOT_ID,
-        help="Reforge robot ID, if necessary",
+        required=True,
+        help="Standard Bots robot ID used in the ROS topic namespace",
     )
     # timing parameters
     calibrate.add_argument(
@@ -449,7 +456,8 @@ def _build_parser() -> argparse.ArgumentParser:
     vibration_test = sub.add_parser(
         "vibration_test",
         help="Run vibration test to quantify controller performance in random poses."
-        "Exemple use: PYTHONPATH=src:$PYTHONPATH python3 -m robot.run vibration_test 10.0.0.4:3000 /home/ipereira/Reforge_Robotics/reforge-core/src/robot/data/2026-1-16 --sdk_token 6xthi-hndyc-u9ejy0-okge14tw",
+        "Example: python3 -m robot.run vibration_test <robot_host>:3000 "
+        "<data_folder> --sdk_token <token>",
     )
     vibration_test.add_argument("robot_ip", help="Robot IP address")
     vibration_test.add_argument(
@@ -475,8 +483,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "--robot_id",
         dest="robot_id",
         type=str,
-        default=BOT_ID,
-        help="Reforge robot ID, if necessary",
+        required=True,
+        help="Standard Bots robot ID used in the ROS topic namespace",
     )
     # timing parameters
     vibration_test.add_argument(
@@ -643,8 +651,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "--robot_id",
         dest="robot_id",
         type=str,
-        default=BOT_ID,
-        help="Reforge robot ID, if necessary",
+        required=True,
+        help="Standard Bots robot ID used in the ROS topic namespace",
     )
     velocity_test.add_argument(
         "--freq",
@@ -792,7 +800,9 @@ def route_user_input(args: argparse.Namespace) -> None:
         )
         run_kinecal_entrypoint(
             cli_options=cli_options,
-            robot_factory=lambda robot_ip: RobotInterface(robot_ip=robot_ip),
+            robot_factory=lambda robot_ip: RobotInterface(
+                robot_ip=robot_ip, robot_id=args.robot_id
+            ),
             script_path=Path(__file__).resolve(),
         )
 
