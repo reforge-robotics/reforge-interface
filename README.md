@@ -66,7 +66,8 @@ rg "\{~\.~\}" src/robot/robot_interface.py
 5. Install dependencies (venv or docker [on the robot control box]).
 
 ```bash
-python3 -m venv .venv
+# Keep ROS 2's apt-installed Python dependencies visible inside the venv.
+python3 -m venv --system-site-packages .venv
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash # Your ROS installation
 pip install -r requirements.txt
@@ -102,7 +103,8 @@ python3 -m py_compile src/robot/robot_interface.py
 rg "\{~\.~\}" src/robot/robot_interface.py
 
 # 4) Install
-python3 -m venv .venv
+# Keep ROS 2's apt-installed Python dependencies visible inside the venv.
+python3 -m venv --system-site-packages .venv
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash # Your ROS installation
 pip install -r requirements.txt
@@ -445,7 +447,8 @@ Purpose:
 1. Install dependencies and editable package:
 
 ```bash
-python3 -m venv .venv
+# Keep ROS 2's apt-installed Python dependencies visible inside the venv.
+python3 -m venv --system-site-packages .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e .

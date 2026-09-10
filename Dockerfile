@@ -37,7 +37,7 @@ WORKDIR /control-box-bot/reforge-interface
 
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-RUN python3 -m venv "$VIRTUAL_ENV"
+RUN python3 -m venv --system-site-packages "$VIRTUAL_ENV"
 
 COPY requirements.txt pyproject.toml MANIFEST.in ./
 RUN python -m pip install --no-cache-dir -r requirements.txt
