@@ -1,0 +1,89 @@
+{
+  "axes": [
+    {
+      "axis": 0,
+      "damping_ratio": 0.8900191662985423,
+      "denominator": [
+        1.0,
+        39.55789686158106,
+        493.864350668642
+      ],
+      "measured_frequency_max_hz": 14.0,
+      "measured_frequency_min_hz": 1.0,
+      "natural_frequency_hz": 3.536909688149437,
+      "natural_frequency_rad_s": 22.223058985401675,
+      "numerator": [
+        487.9645629109432
+      ],
+      "poles": [
+        {
+          "imag": 10.132006200194065,
+          "real": -19.77894843079053
+        },
+        {
+          "imag": -10.132006200194065,
+          "real": -19.77894843079053
+        }
+      ],
+      "selected_pose": 0
+    },
+    {
+      "axis": 1,
+      "damping_ratio": 0.8749617911296965,
+      "denominator": [
+        1.0,
+        38.696879411796154,
+        489.0054738881855
+      ],
+      "measured_frequency_max_hz": 14.0,
+      "measured_frequency_min_hz": 1.0,
+      "natural_frequency_hz": 3.519467765938951,
+      "natural_frequency_rad_s": 22.11346815603978,
+      "numerator": [
+        482.484595572608
+      ],
+      "poles": [
+        {
+          "imag": 10.707163715728468,
+          "real": -19.348439705898073
+        },
+        {
+          "imag": -10.707163715728468,
+          "real": -19.348439705898073
+        }
+      ],
+      "selected_pose": 0
+    },
+    {
+      "axis": 2,
+      "damping_ratio": 0.8849364849097363,
+      "denominator": [
+        1.0,
+        39.01936263907055,
+        486.04462982839766
+      ],
+      "measured_frequency_max_hz": 14.0,
+      "measured_frequency_min_hz": 1.0,
+      "natural_frequency_hz": 3.5087967024756215,
+      "natural_frequency_rad_s": 22.046419886875007,
+      "numerator": [
+        478.1004211004629
+      ],
+      "poles": [
+        {
+          "imag": 10.267276398274962,
+          "real": -19.509681319535275
+        },
+        {
+          "imag": -10.267276398274962,
+          "real": -19.509681319535275
+        }
+      ],
+      "selected_pose": 0
+    }
+  ],
+  "model_type": "joint_controller_tf_v1",
+  "num_axes": 3,
+  "output_sensor": "JointPos",
+  "schema_version": 1
+}

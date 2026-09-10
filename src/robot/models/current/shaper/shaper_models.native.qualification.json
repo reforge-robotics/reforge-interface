@@ -1,0 +1,162 @@
+{
+  "schema": "reforge_shaper_qualification",
+  "version": 1,
+  "status": "passed",
+  "artifact": {
+    "filename": "shaper_models.native.json",
+    "schema": "reforge_shaper_weights",
+    "version": 1,
+    "sha256": "f41aa6330e9b5e2ba7c574765e707d3b732e1c2a2415aedb1f9696481183b351"
+  },
+  "sources": [
+    {
+      "axis": 0,
+      "filename": "axis0_model.pt",
+      "sha256": "6458d2b885504a3b14ff38a33ad3d410af45c06b542cc81f11298bf55a3f266e",
+      "checkpoint_family": "torchscript_shapernet",
+      "graph_signature": "linear_relu:59;heads:1,4;input:4"
+    },
+    {
+      "axis": 1,
+      "filename": "axis1_model.pt",
+      "sha256": "00aeead999bf884a2b2e92fbc825a0cc2ece6537b2b89de6e57934739ab8dc5d",
+      "checkpoint_family": "torchscript_shapernet",
+      "graph_signature": "linear_relu:79,85;heads:1,4;input:4"
+    },
+    {
+      "axis": 2,
+      "filename": "axis2_model.pt",
+      "sha256": "844a77d917db9a7939b5e113dfa730a020c8898d2ab0ab3157ffbe392c073979",
+      "checkpoint_family": "torchscript_shapernet",
+      "graph_signature": "linear_relu:121;heads:1,4;input:4"
+    }
+  ],
+  "corpus": {
+    "generator_version": 1,
+    "seed": 817204,
+    "calibration_sample_count": 91,
+    "generated_sample_count": 0,
+    "feature_batch_sha256": "1e2172448682469bf1cffa64bf54337f8c5eead12aefe10aab9a131b2c368653"
+  },
+  "platform": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "python_version": "3.12.3",
+    "torch_version": "2.3.1+cpu",
+    "compiler_id": "GCC 13.3.0",
+    "compiler_version": "",
+    "standard_library": "glibc",
+    "eigen_version": "native-reload",
+    "nlohmann_json_version": "3.12.0",
+    "reforge_core_version": "2.0.9",
+    "git_revision": "unknown"
+  },
+  "comparisons": {
+    "body_activations": {
+      "maximum_absolute_error": 0.0,
+      "maximum_relative_error": 0.0,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 0,
+        "location": "final_body_or_input"
+      }
+    },
+    "raw_order_logits": {
+      "maximum_absolute_error": 1.9073486328125e-06,
+      "maximum_relative_error": 2.0920699044237865e-07,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 12,
+        "location": "raw_order_logits"
+      }
+    },
+    "raw_mode_outputs": {
+      "maximum_absolute_error": 7.62939453125e-06,
+      "maximum_relative_error": 1.0599895803024256e-07,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 18,
+        "location": "raw_mode_outputs"
+      }
+    },
+    "order_probabilities": {
+      "maximum_absolute_error": 1.1920928955078125e-07,
+      "maximum_relative_error": 1.2121604420409727e-07,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 49,
+        "location": "order_probabilities"
+      }
+    },
+    "postprocessed_mode_parameters": {
+      "maximum_absolute_error": 7.62939453125e-06,
+      "maximum_relative_error": 1.0599895803024256e-07,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 18,
+        "location": "postprocessed_mode_parameters"
+      }
+    },
+    "native_binding_order_probabilities": {
+      "maximum_absolute_error": 1.1920928955078125e-07,
+      "maximum_relative_error": 1.2342188153943126e-07,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 16,
+        "location": "bound_order_probabilities"
+      }
+    },
+    "native_binding_raw_mode_outputs": {
+      "maximum_absolute_error": 7.62939453125e-06,
+      "maximum_relative_error": 1.1078104514161418e-07,
+      "approved_absolute_ceiling": 2e-06,
+      "approved_relative_ceiling": 2e-05,
+      "passed": true,
+      "worst_case": {
+        "flat_index": 2,
+        "location": "bound_raw_mode_outputs"
+      }
+    }
+  },
+  "decisions": {
+    "order_count": {
+      "mismatch_count": 0,
+      "comparison_count": 273,
+      "passed": true
+    },
+    "modal_validity": {
+      "mismatch_count": 0,
+      "comparison_count": 273,
+      "passed": true
+    },
+    "downstream_modal_rows": {
+      "mismatch_count": 0,
+      "comparison_count": 273,
+      "passed": true
+    }
+  },
+  "thresholds": [
+    {
+      "name": "order_probability",
+      "value": 0.5,
+      "minimum_measured_margin": 0.4233216643333435,
+      "measured_model_error_bound": 1.1920928955078125e-07,
+      "stable": true,
+      "below_count": 0,
+      "equal_count": 0,
+      "above_count": 273
+    }
+  ]
+}

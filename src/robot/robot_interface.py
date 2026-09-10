@@ -54,7 +54,7 @@ DATA_LOCATION_PREFIX = "src/robot/data"
 SIM_DATA_LOCATION_PREFIX = str(Path(__file__).resolve().parent / "data" / "sim")
 DEFAULT_TCP_PAYLOAD = 0.0
 
-MAX_ROBOT_JOINTS_BANDWIDTH = 5.0
+MAX_ROBOT_JOINTS_BANDWIDTH = 7.0
 TEACHING_DETECTION_PARAM = 1
 FLANGE_BUTTON_INPUT_INDEX = 2
 FLANGE_BUTTON_PRESSED_VALUE = 1
@@ -62,8 +62,8 @@ FLANGE_BUTTON_PRESSED_VALUE = 1
 
 # {~.~} IMU information
 USE_REFORGE_IMU = True
-DEFAULT_IMU_COMM_MODE: Literal["ble", "usb", "virtual"] = "usb"
-DEFAULT_IMU_RECORD_MODE: Literal["streaming", "logging"] = "streaming"
+DEFAULT_IMU_COMM_MODE: Literal["ble", "usb", "virtual"] = "ble"
+DEFAULT_IMU_RECORD_MODE: Literal["streaming", "logging"] = "logging"
 DEFAULT_IMU_RECORD_FREQUENCY_HZ = ROBOT_MAX_FREQ
 
 
