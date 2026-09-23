@@ -1,57 +1,78 @@
-# {~.~} Include for robots that require ROS2
-# FROM ros:jazzy
+# Public package image template. The exporter renders the integration token
+# before publishing a target-specific package tree.
 FROM python:3.11-slim-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive \
-    TZ=UTC
+    TZ=UTC \
+    PYTHONUNBUFFERED=1
 
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
       build-essential \
+      ca-certificates \
       cmake \
       git \
+      libeigen3-dev \
+      libfftw3-dev \
       pkg-config \
       wget \
       unzip \
-      ca-certificates \
-      zlib1g-dev \
-      libeigen3-dev \
-      libfftw3-dev
+      zlib1g-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-# {~.~} Use ROS2 packages only when needed
-# RUN apt-get install -y \
-#       ros-jazzy-rmw-cyclonedds-cpp \
-#       ros-jazzy-trajectory-msgs \
-#       ros-jazzy-std-msgs \
-#       ros-jazzy-builtin-interfaces \
-#       ros-jazzy-geometry-msgs \
-#       ros-jazzy-sensor-msgs \
-#       ros-jazzy-rclcpp
+ARG ROBOT_INTEGRATION_ID=template
+ARG SDK_CANDIDATE_URL=PHASE5_REQUIRED
+ARG SDK_CANDIDATE_SHA256=PHASE5_REQUIRED
+ARG SDK_CANDIDATE_FILENAME=PHASE5_REQUIRED
+ENV REFORGE_ROBOT_DATA_DIR=/opt/reforge-interface/src/robot/data \
+    REFORGE_ROBOT_MODELS_DIR=/opt/reforge-interface/src/robot/models
 
-RUN rm -rf /var/lib/apt/lists/*
+WORKDIR /opt/reforge-interface
+ENV VIRTUAL_ENV=/opt/venv \
+    PATH=/opt/venv/bin:$PATH \
+    PYTHONPATH=/opt/reforge-interface
 
-RUN mkdir -p /control-box-bot/reforge-interface/src/robot
-WORKDIR /control-box-bot/reforge-interface/src/robot
-
-ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-RUN python -m venv "$VIRTUAL_ENV"
+RUN python -m venv "$VIRTUAL_ENV" && \
+    mkdir -p "$REFORGE_ROBOT_DATA_DIR" "$REFORGE_ROBOT_MODELS_DIR"
 
 COPY requirements.txt pyproject.toml README.md ./
+RUN set -eu; \
+    phase5_sentinel='PHASE5_'; \
+    phase5_sentinel="${phase5_sentinel}REQUIRED"; \
+    if [ "$SDK_CANDIDATE_URL" = "$phase5_sentinel" ] || \
+       [ "$SDK_CANDIDATE_SHA256" = "$phase5_sentinel" ] || \
+       [ "$SDK_CANDIDATE_FILENAME" = "$phase5_sentinel" ]; then \
+      echo "Phase 5 SDK candidate URL, SHA256, and filename must be reviewed before this image can be built." >&2; \
+      exit 1; \
+    fi; \
+    case "$SDK_CANDIDATE_URL" in \
+      https://?*) ;; \
+      *) echo "candidate URL must use HTTPS" >&2; exit 1 ;; \
+    esac; \
+    if ! printf '%s\n' "$SDK_CANDIDATE_SHA256" | grep -Eq '^[0-9a-fA-F]{64}$'; then \
+      echo "candidate SHA256 must be exactly 64 hexadecimal characters" >&2; \
+      exit 1; \
+    fi; \
+    case "$SDK_CANDIDATE_FILENAME" in \
+      [A-Za-z0-9]*.whl) ;; \
+      *) echo "candidate filename must be a conservative .whl basename" >&2; exit 1 ;; \
+    esac; \
+    case "$SDK_CANDIDATE_FILENAME" in \
+      *..*|*[!A-Za-z0-9._-]*) \
+        echo "candidate filename must not contain path traversal or unsafe characters" >&2; \
+        exit 1; \
+        ;; \
+    esac; \
+    candidate_path="/tmp/${SDK_CANDIDATE_FILENAME}"; \
+    wget --https-only --no-verbose --output-document="$candidate_path" "$SDK_CANDIDATE_URL"; \
+    printf '%s  %s\n' "$SDK_CANDIDATE_SHA256" "$candidate_path" | sha256sum --check --status; \
+    python -c 'import email,re,sys,zipfile; wheel=zipfile.ZipFile(sys.argv[1]); paths=[name for name in wheel.namelist() if name.endswith(".dist-info/METADATA")]; assert len(paths)==1; metadata=email.message_from_bytes(wheel.read(paths[0])); assert re.sub(r"[-_.]+","-",metadata["Name"]).lower()=="reforge-core"; candidate_version=metadata["Version"]; assert candidate_version and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.!+_-]*",candidate_version); print(candidate_version)' \
+      "$candidate_path" > /opt/reforge-core-candidate-version; \
+    python -m pip install --no-cache-dir --no-deps "$candidate_path"; \
+    rm -f "$candidate_path"
 RUN python -m pip install --no-cache-dir -r requirements.txt
 
-# {~.~} source ROS2 packages
-# RUN . /opt/ros/jazzy/setup.sh
-
 COPY . .
-RUN python -m pip install --no-cache-dir -e .
-
-# {~.~} Set environment variables for ROS2 and Python
-ENV PYTHONPATH=/control-box-bot/reforge-interface/src/robot
-ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-ENV CYCLONEDDS_URI=""
-ENV PYTHONUNBUFFERED=1
-
-# Enable core dumps for debugging.
-RUN echo 'ulimit -c unlimited' >> /etc/bash.bashrc
-ENV SEGFAULT_SIGNALS="all"
+RUN python -m pip install --no-cache-dir -e . && \
+    python -m pip check && \
+    python -c 'from importlib.metadata import version; from pathlib import Path; assert version("reforge-core")==Path("/opt/reforge-core-candidate-version").read_text().strip()'

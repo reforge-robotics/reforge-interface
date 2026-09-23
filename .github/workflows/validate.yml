@@ -1,0 +1,349 @@
+name: Validate public robot package
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Public package checks (Python 3.11)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    # Phase 5 replaces all three sentinels only after the exact candidate
+    # artifact, filename, and compatibility have been reviewed. A public PR
+    # must not pass while any value is still a sentinel.
+    env:
+      REFORGE_ROBOT_INTEGRATION_ID: "template"
+      REFORGE_CORE_CANDIDATE_URL: "PHASE5_REQUIRED"
+      REFORGE_CORE_CANDIDATE_SHA256: "PHASE5_REQUIRED"
+      REFORGE_CORE_CANDIDATE_FILENAME: "PHASE5_REQUIRED"
+
+    steps:
+      - name: Check out public source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: src/robot/requirements.txt
+
+      - name: Check public structure and metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          internal_package_marker='_inter'
+          internal_package_marker+='nal'
+          test -f src/robot/pyproject.toml
+          test -f src/robot/requirements.txt
+          test -f src/robot/README.md
+          test -f src/robot/__init__.py
+          test -f src/robot/run.py
+          test -f src/robot/robot_interface.py
+          test ! -d src/robot/integrations
+          test ! -d "src/robot/${internal_package_marker}"
+
+          selector_marker='ACTIVE_'
+          selector_marker+='INTEGRATION'
+          catalog_path_marker='src/robot/'
+          catalog_path_marker+='integrations/'
+          internal_source_marker='src/'
+          internal_source_marker+='internal'
+          internal_import_marker='(from|import) internal'
+          path_mutation_marker='sys.path.'
+          path_mutation_marker+='insert'
+          private_markers="${selector_marker}|integration\\.toml"
+          private_markers+="|${catalog_path_marker}|${internal_source_marker}"
+          private_markers+="|${internal_package_marker}|${internal_import_marker}"
+          private_markers+="|${path_mutation_marker}"
+          if rg -n \
+            --glob '*.py' --glob '*.toml' --glob '*.yml' --glob '*.yaml' \
+            "$private_markers" \
+            src/robot; then
+            echo "private selector or catalog content found in public package" >&2
+            exit 1
+          fi
+
+          if rg -n '(^|[[:space:]])(-e[[:space:]]|--editable|/src/|\.\./)' \
+            src/robot/requirements.txt; then
+            echo "requirements.txt contains a private or editable source path" >&2
+            exit 1
+          fi
+
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import tomllib
+
+          manifest = tomllib.loads(
+              Path("src/robot/pyproject.toml").read_text(encoding="utf-8")
+          )
+          project = manifest["project"]
+          assert project["requires-python"] == ">=3.11"
+          assert project["dynamic"] == ["dependencies"]
+          assert "dependencies" not in project
+          assert "optional-dependencies" not in project
+
+          setuptools = manifest["tool"]["setuptools"]
+          packages = setuptools["packages"]
+          assert packages and packages[0] == "robot"
+          assert len(packages) == len(set(packages))
+          for package_name in packages:
+              assert package_name.startswith("robot")
+              package_path = Path("src") / Path(package_name.replace(".", "/"))
+              assert (package_path / "__init__.py").is_file(), package_path
+          assert setuptools["package-dir"] == {"robot": "."}
+          assert setuptools["include-package-data"] is False
+          assert setuptools["dynamic"]["dependencies"]["file"] == [
+              "requirements.txt"
+          ]
+
+          package_data = setuptools["package-data"]["robot"]
+          assert package_data, "generated package-data list must not be empty"
+          package_data_marker = "@" + "PACKAGE_DATA" + "@"
+          assert package_data_marker not in package_data
+          assert len(package_data) == len(set(package_data))
+
+          package_root = Path("src/robot")
+          package_files = []
+          for relative_name in package_data:
+              relative_path = Path(relative_name)
+              assert not relative_path.is_absolute()
+              assert ".." not in relative_path.parts
+              assert not any(character in relative_name for character in "*?[]")
+              package_file = package_root / relative_path
+              assert package_file.is_file(), package_file
+              package_files.append(package_file)
+
+          relative_files = [path.relative_to(package_root) for path in package_files]
+          config_files = [
+              path
+              for path in relative_files
+              if path.parts[0] == "config" and path.suffix == ".toml"
+          ]
+          if os.environ["REFORGE_ROBOT_INTEGRATION_ID"] in {
+              "standard_bots_sdk",
+              "denso_bcap",
+          }:
+              assert not config_files
+          else:
+              assert config_files
+          assert any(path.parts[0] == "urdf" for path in relative_files)
+          assert any(
+              path.parts[0] == "example_usage" for path in relative_files
+          )
+          notice_files = [
+              path
+              for path in relative_files
+              if path.name.upper().startswith(
+                  ("LICENSE", "NOTICE", "PROVENANCE", "THIRD_PARTY_NOTICES")
+              )
+          ]
+          if os.environ["REFORGE_ROBOT_INTEGRATION_ID"] != "standard_bots_sdk":
+              assert notice_files
+
+          mesh_suffixes = {".stl", ".dae", ".obj", ".mtl"}
+          selected_meshes = [
+              path
+              for path in package_root.rglob("*")
+              if path.is_file() and path.suffix.lower() in mesh_suffixes
+          ]
+          if selected_meshes:
+              assert any(
+                  path.suffix.lower() in mesh_suffixes for path in relative_files
+              )
+          license_text = project["license"]["text"]
+          license_marker = "@" + "LICENSE_TEXT" + "@"
+          assert license_text and license_marker not in license_text
+          PY
+
+      - name: Require reviewed SDK candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          phase5_sentinel='PHASE5_'
+          phase5_sentinel+='REQUIRED'
+          if [[ "$REFORGE_CORE_CANDIDATE_URL" == "$phase5_sentinel" || \
+                "$REFORGE_CORE_CANDIDATE_SHA256" == "$phase5_sentinel" || \
+                "$REFORGE_CORE_CANDIDATE_FILENAME" == "$phase5_sentinel" ]]; then
+            echo "Phase 5 SDK candidate URL, SHA256, and filename must be reviewed before this public PR can pass." >&2
+            exit 1
+          fi
+          case "$REFORGE_CORE_CANDIDATE_URL" in
+            https://*) ;;
+            *) echo "candidate URL must use HTTPS" >&2; exit 1 ;;
+          esac
+          if [[ ! "$REFORGE_CORE_CANDIDATE_SHA256" =~ ^[0-9a-fA-F]{64}$ ]]; then
+            echo "candidate SHA256 must be exactly 64 hexadecimal characters" >&2
+            exit 1
+          fi
+          case "$REFORGE_CORE_CANDIDATE_FILENAME" in
+            */*|*\\*|*..*)
+              echo "candidate filename must not contain path separators or traversal" >&2
+              exit 1
+              ;;
+          esac
+          if [[ ! "$REFORGE_CORE_CANDIDATE_FILENAME" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*\.whl$ ]]; then
+            echo "candidate filename must be a conservative .whl basename" >&2
+            exit 1
+          fi
+
+      - name: Download and verify reviewed SDK candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_path="${RUNNER_TEMP}/${REFORGE_CORE_CANDIDATE_FILENAME}"
+          curl --fail --location --retry 3 --silent --show-error \
+            "$REFORGE_CORE_CANDIDATE_URL" --output "$candidate_path"
+          printf '%s  %s\n' "$REFORGE_CORE_CANDIDATE_SHA256" "$candidate_path" \
+            | sha256sum --check --status
+          echo "REFORGE_CORE_CANDIDATE_PATH=${candidate_path}" >> "$GITHUB_ENV"
+
+          candidate_version="$(python - "$candidate_path" <<'PY'
+          import email
+          import re
+          import sys
+          import zipfile
+
+          with zipfile.ZipFile(sys.argv[1]) as wheel:
+              metadata_paths = [
+                  name
+                  for name in wheel.namelist()
+                  if name.endswith(".dist-info/METADATA")
+              ]
+              assert len(metadata_paths) == 1
+              metadata = email.message_from_bytes(wheel.read(metadata_paths[0]))
+
+          distribution_name = re.sub(r"[-_.]+", "-", metadata["Name"]).lower()
+          assert distribution_name == "reforge-core"
+          candidate_version = metadata["Version"]
+          assert candidate_version and re.fullmatch(
+              r"[A-Za-z0-9][A-Za-z0-9.!+_-]*", candidate_version
+          )
+          print(candidate_version)
+          PY
+          )"
+          echo "REFORGE_CORE_CANDIDATE_VERSION=${candidate_version}" >> "$GITHUB_ENV"
+
+      - name: Install candidate and public package
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --no-cache-dir --no-deps \
+            "$REFORGE_CORE_CANDIDATE_PATH"
+          python -m pip install --no-cache-dir -r src/robot/requirements.txt
+          python -m pip install --no-cache-dir -e src/robot
+          python -m pip check
+          python - <<'PY'
+          import os
+          from importlib.metadata import version
+
+          assert version("reforge-core") == os.environ[
+              "REFORGE_CORE_CANDIDATE_VERSION"
+          ]
+          PY
+
+      - name: Run import, resource, and offline help smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile src/robot/*.py
+          python - <<'PY'
+          import inspect
+          import os
+          from importlib.resources import files
+          from unittest.mock import Mock
+
+          package = files("robot")
+          assert package.joinpath("run.py").is_file()
+          assert package.joinpath("robot_interface.py").is_file()
+          assert package.joinpath("urdf").is_dir()
+          if package.joinpath("config").is_dir():
+              assert any(
+                  path.name.endswith(".toml")
+                  for path in package.joinpath("config").iterdir()
+              )
+          if os.environ["REFORGE_ROBOT_INTEGRATION_ID"] == "standard_bots_sdk":
+              from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
+              from robot.ros_imu_recorder import RosImuRecorder
+
+              assert not inspect.isabstract(RosImuRecorder)
+              recorder = RosImuRecorder(bot_id="offline", ready_timeout_s=0.01)
+              assert isinstance(recorder, ImuRecorder)
+              recorder._ensure_ros_subscription = lambda: setattr(
+                  recorder, "_latest_state", object()
+              )
+              recorder.prepare(
+                  arm=None,
+                  arm_recording_hz=123.0,
+                  force_recalibration=False,
+              )
+              assert recorder.recording_frequency_hz == 123.0
+              recorder._ensure_ros_subscription = lambda: None
+              try:
+                  recorder.prepare(
+                      arm=None,
+                      arm_recording_hz=456.0,
+                      force_recalibration=True,
+                  )
+              except RuntimeError:
+                  pass
+              else:
+                  raise AssertionError(
+                      "forced preparation succeeded without a new IMU sample"
+                  )
+              assert not recorder.is_prepared
+              try:
+                  recorder.recording_frequency_hz
+              except RuntimeError:
+                  pass
+              else:
+                  raise AssertionError(
+                      "forced preparation exposed a stale recording frequency"
+                  )
+              failed_recorder = RosImuRecorder(bot_id="offline")
+              failed_recorder._ensure_ros_subscription = lambda: setattr(
+                  failed_recorder, "_latest_state", object()
+              )
+              failed_recorder.prepare(
+                  arm=None,
+                  arm_recording_hz=123.0,
+                  force_recalibration=False,
+              )
+              assert failed_recorder.is_prepared
+              assert failed_recorder.recording_frequency_hz == 123.0
+              failed_recorder._ensure_ros_subscription = Mock(
+                  side_effect=RuntimeError("offline preparation failure")
+              )
+              try:
+                  failed_recorder.prepare(
+                      arm=None,
+                      arm_recording_hz=456.0,
+                      force_recalibration=True,
+                  )
+              except RuntimeError:
+                  pass
+              else:
+                  raise AssertionError(
+                      "forced offline preparation failure was not raised"
+                  )
+              assert not failed_recorder.is_prepared
+              assert failed_recorder._latest_state is None
+              try:
+                  failed_recorder.recording_frequency_hz
+              except RuntimeError:
+                  pass
+              else:
+                  raise AssertionError(
+                      "failed preparation exposed a recording frequency"
+                  )
+          PY
+          python -m robot.run --help

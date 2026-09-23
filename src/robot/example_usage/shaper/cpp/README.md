@@ -74,9 +74,12 @@ behavior stays parallel with Python.
 
 ## Deterministic assets
 
-By default, CMake copies the example-local `assets/` directory and the
-repository-owned `src/robot/urdf/test_robot.urdf` beside the executable. A
-custom `--assets-dir` must contain all four inputs:
+CMake copies the example-local `assets/` directory and its co-located
+`assets/test_robot.urdf` beside the executable. Generated public layouts place
+the URDF at that same path. Private qualification may override the
+`REFORGE_SHAPER_EXAMPLE_URDF` cache entry with
+`/path/to/test_robot.urdf`. A custom `--assets-dir`
+must contain all four inputs:
 
 ```text
 model_bundle.json

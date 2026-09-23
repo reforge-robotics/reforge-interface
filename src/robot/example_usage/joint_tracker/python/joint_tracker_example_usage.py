@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
-import sys
 import time
 from typing import Any
 
@@ -15,11 +14,6 @@ import numpy as np
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/reforge-matplotlib-cache")
 
 THIS_DIR = Path(__file__).resolve().parent
-REPO_ROOT = THIS_DIR.parents[4]
-for source_path in (REPO_ROOT / "src", REPO_ROOT / "src/core_sdk"):
-    source_path_string = str(source_path)
-    if source_path_string not in sys.path:
-        sys.path.insert(0, source_path_string)
 
 from robot.example_usage.joint_tracker.python.example_utility import (  # noqa: E402
     WindowStreamRecord,

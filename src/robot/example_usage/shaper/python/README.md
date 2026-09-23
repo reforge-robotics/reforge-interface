@@ -11,7 +11,8 @@ The example demonstrates the four frozen controller modes and opens the two
 interactive figures described in the Covalent Shaper documentation. It does
 not connect to or command a robot.
 
-The colocated `axis0_model.pt` preserves the Phase 1 legacy Python-backend
-baseline. The shared `../assets/` directory contains the frozen three-axis
-native bundle and matching URDF that the Python and C++ examples will consume
-together when cross-language parity is implemented.
+The colocated `axis0_model.pt` and `test_robot.urdf` preserve the Phase 1
+legacy Python-backend baseline. The frozen native C++ bundle is owned by the
+sibling `../cpp/assets/` directory; the Python and C++ examples will consume
+their respective generated/public bundles together when cross-language parity
+is implemented.

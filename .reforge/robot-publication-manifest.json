@@ -1,0 +1,417 @@
+{
+  "branch": "main",
+  "integration_id": "template",
+  "license_text": "Proprietary",
+  "managed_files": {
+    ".github/workflows/validate.yml": {
+      "mode": 420,
+      "sha256": "d1ce8d644e1c9d96f88be628e9c8e21b8e7c5fa3c42895416e596ca78c3a9699",
+      "sources": [
+        {
+          "sha256": "73902bcbb55a2b9dd6ef078b86c25ea706a4f8b0bb5fa0cb69d3ccb09e9c3e1e"
+        }
+      ]
+    },
+    "README.md": {
+      "mode": 420,
+      "sha256": "258d0a85564e51500ec35e932c8798d44aada1ce7e7907f5a21f873f1a7acf18",
+      "sources": [
+        {
+          "sha256": "8f13aa4b6962a15d9fa67d2a842a51e308c04efc7a018bb7f3016d1c856fe984"
+        }
+      ]
+    },
+    "docker_scripts/run_calibrate.sh": {
+      "mode": 493,
+      "sha256": "1b97fe88b6159c01e93e0cf045244c5d223a4a9a0cd2fba6b368ea98d2776e6b",
+      "sources": [
+        {
+          "sha256": "1b97fe88b6159c01e93e0cf045244c5d223a4a9a0cd2fba6b368ea98d2776e6b"
+        }
+      ]
+    },
+    "docker_scripts/run_connect_test.sh": {
+      "mode": 493,
+      "sha256": "a81d355683aef7a94335f29d8c3627f2c6008021e96bbc0e09154f874da249e2",
+      "sources": [
+        {
+          "sha256": "a81d355683aef7a94335f29d8c3627f2c6008021e96bbc0e09154f874da249e2"
+        }
+      ]
+    },
+    "docker_scripts/run_fine_tune.sh": {
+      "mode": 493,
+      "sha256": "5aff36f1df998ae3ed7c55896a9b86eef7ebeb30ca816645931a4f8d05fca823",
+      "sources": [
+        {
+          "sha256": "5aff36f1df998ae3ed7c55896a9b86eef7ebeb30ca816645931a4f8d05fca823"
+        }
+      ]
+    },
+    "docker_scripts/run_identify.sh": {
+      "mode": 493,
+      "sha256": "fa94d25900c87458a04eadf0f6c8e49076ed6350fcb6077bbaf8a3604a731d4d",
+      "sources": [
+        {
+          "sha256": "fa94d25900c87458a04eadf0f6c8e49076ed6350fcb6077bbaf8a3604a731d4d"
+        }
+      ]
+    },
+    "docker_scripts/run_vibration_test.sh": {
+      "mode": 493,
+      "sha256": "8b875f7287254dbf47fd51f6785863522ae65da2881c5cb2f2c24248a9cf5270",
+      "sources": [
+        {
+          "sha256": "8b875f7287254dbf47fd51f6785863522ae65da2881c5cb2f2c24248a9cf5270"
+        }
+      ]
+    },
+    "src/robot/.dockerignore": {
+      "mode": 420,
+      "sha256": "29d29587f69abed9771bf83455df8bbf767ecebf1ee836e67f702ff5a27e2628",
+      "sources": [
+        {
+          "sha256": "29d29587f69abed9771bf83455df8bbf767ecebf1ee836e67f702ff5a27e2628"
+        }
+      ]
+    },
+    "src/robot/Dockerfile": {
+      "mode": 420,
+      "sha256": "5b5fd5b527dfd99cd1a7b6f73f1c229b81ea8262cf2ee77166e6e4708e5bb439",
+      "sources": [
+        {
+          "sha256": "e837e87f6bcfb1058451e13166c8cfdad9af6eb76f7bda33a26f973bfb91f603"
+        }
+      ]
+    },
+    "src/robot/MANIFEST.in": {
+      "mode": 420,
+      "sha256": "9f366f04c9d55f2529caf12765a7169940c37739e852991e2e657842705f8043",
+      "sources": [
+        {
+          "sha256": "9f366f04c9d55f2529caf12765a7169940c37739e852991e2e657842705f8043"
+        }
+      ]
+    },
+    "src/robot/README.md": {
+      "mode": 420,
+      "sha256": "313583e83bf3bfd27feda605198409654735c54faca874a64521f16d7765460c",
+      "sources": [
+        {
+          "sha256": "313583e83bf3bfd27feda605198409654735c54faca874a64521f16d7765460c"
+        }
+      ]
+    },
+    "src/robot/__init__.py": {
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sources": [
+        {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    "src/robot/config/kinecal_config.toml": {
+      "mode": 420,
+      "sha256": "9bbbd2d281f992c825cdd5cdfb21763ba1ba726d864df8734c095e45566e2d90",
+      "sources": [
+        {
+          "sha256": "9bbbd2d281f992c825cdd5cdfb21763ba1ba726d864df8734c095e45566e2d90"
+        }
+      ]
+    },
+    "src/robot/config/kinecal_config_default.toml": {
+      "mode": 420,
+      "sha256": "2dd71267cc6d78116654a919eaf3de8a3f15bc3e75cfdd05b1115fc423bf995b",
+      "sources": [
+        {
+          "sha256": "2dd71267cc6d78116654a919eaf3de8a3f15bc3e75cfdd05b1115fc423bf995b"
+        }
+      ]
+    },
+    "src/robot/data/README.md": {
+      "mode": 420,
+      "sha256": "6c9b2e964a7f3fdccf0f3879bdab7687a7ab338c733babb2223d6101daa104d9",
+      "sources": [
+        {
+          "sha256": "6c9b2e964a7f3fdccf0f3879bdab7687a7ab338c733babb2223d6101daa104d9"
+        }
+      ]
+    },
+    "src/robot/example_usage/joint_tracker/cpp/CMakeLists.txt": {
+      "mode": 420,
+      "sha256": "504d6e94eedb3cb344c4ae81afcf0865071ec9a8ecc172c880a33fdec635c710",
+      "sources": [
+        {
+          "sha256": "504d6e94eedb3cb344c4ae81afcf0865071ec9a8ecc172c880a33fdec635c710"
+        }
+      ]
+    },
+    "src/robot/example_usage/joint_tracker/cpp/README.md": {
+      "mode": 420,
+      "sha256": "40c32ce8dbdfda6370af8dd069285683bdbd833fda64d71c9a68b845f54375c2",
+      "sources": [
+        {
+          "sha256": "40c32ce8dbdfda6370af8dd069285683bdbd833fda64d71c9a68b845f54375c2"
+        }
+      ]
+    },
+    "src/robot/example_usage/joint_tracker/cpp/THIRD_PARTY_NOTICES.md": {
+      "mode": 420,
+      "sha256": "1230145d31f6abb36abcf2ed2f89b6dd33959c08b128295d744117df46adb566",
+      "sources": [
+        {
+          "sha256": "1230145d31f6abb36abcf2ed2f89b6dd33959c08b128295d744117df46adb566"
+        }
+      ]
+    },
+    "src/robot/example_usage/joint_tracker/cpp/main.cpp": {
+      "mode": 420,
+      "sha256": "05568ecacfd14ee9da6efa28766a7df33ede59c9c12ba59f931ae2d2504764e0",
+      "sources": [
+        {
+          "sha256": "05568ecacfd14ee9da6efa28766a7df33ede59c9c12ba59f931ae2d2504764e0"
+        }
+      ]
+    },
+    "src/robot/example_usage/joint_tracker/cpp/plotting/matplotlib_process_plotter.hpp": {
+      "mode": 420,
+      "sha256": "9344b1de2a4879c25eba4b29163b8ca17aeca6440ee9fc0fef8be7ac54dbf17b",
+      "sources": [
+        {
+          "sha256": "9344b1de2a4879c25eba4b29163b8ca17aeca6440ee9fc0fef8be7ac54dbf17b"
+        }
+      ]
+    },
+    "src/robot/example_usage/joint_tracker/example_models/joint_controller_models.json": {
+      "mode": 420,
+      "sha256": "9728e483662cf225e9418a6ca5ab29d2ece2c684bae70ae82ab70ac5f4b54852",
+      "sources": [
+        {
+          "sha256": "9728e483662cf225e9418a6ca5ab29d2ece2c684bae70ae82ab70ac5f4b54852"
+        }
+      ]
+    },
+    "src/robot/example_usage/joint_tracker/example_models/model_bundle.json": {
+      "mode": 420,
+      "sha256": "d2f6fa02364a12c08438e220d9db0f553eaf933003781b602333f30da2bee328",
+      "sources": [
+        {
+          "sha256": "d2f6fa02364a12c08438e220d9db0f553eaf933003781b602333f30da2bee328"
+        }
+      ]
+    },
+    "src/robot/example_usage/joint_tracker/python/example_utility.py": {
+      "mode": 420,
+      "sha256": "493e98692a5c031ed2238bcca4f4f22294197489126a75a62a2ccb0c5923748a",
+      "sources": [
+        {
+          "sha256": "493e98692a5c031ed2238bcca4f4f22294197489126a75a62a2ccb0c5923748a"
+        }
+      ]
+    },
+    "src/robot/example_usage/joint_tracker/python/joint_tracker_example_usage.py": {
+      "mode": 420,
+      "sha256": "a9d2e28518caddada36234e7fb54627e33cb33c8aab495df407b7c358b687025",
+      "sources": [
+        {
+          "sha256": "a9d2e28518caddada36234e7fb54627e33cb33c8aab495df407b7c358b687025"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/cpp/CMakeLists.txt": {
+      "mode": 420,
+      "sha256": "7ef7a15e69d001a0d5bcf480315374241386709122fbbb64690444d46e5b269a",
+      "sources": [
+        {
+          "sha256": "7ef7a15e69d001a0d5bcf480315374241386709122fbbb64690444d46e5b269a"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/cpp/README.md": {
+      "mode": 420,
+      "sha256": "82cf26a2718d7668810582a595d978c7927f1f0035022d7ae9ed97a0be382d70",
+      "sources": [
+        {
+          "sha256": "82cf26a2718d7668810582a595d978c7927f1f0035022d7ae9ed97a0be382d70"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/cpp/assets/expected_metrics.json": {
+      "mode": 420,
+      "sha256": "15f1bbe31958523d6ea7037201f7f47351eeecb0ee23c86400cfd2e34ca2b2e1",
+      "sources": [
+        {
+          "sha256": "15f1bbe31958523d6ea7037201f7f47351eeecb0ee23c86400cfd2e34ca2b2e1"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/cpp/assets/model_bundle.json": {
+      "mode": 420,
+      "sha256": "6ae2c06bd47c3dd13c01f73aa2b389b3676e86b1617e2b456ed0277c400fdccb",
+      "sources": [
+        {
+          "sha256": "6ae2c06bd47c3dd13c01f73aa2b389b3676e86b1617e2b456ed0277c400fdccb"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/cpp/assets/shaper_models.native.json": {
+      "mode": 420,
+      "sha256": "179d04d41558cd378600b3a99aaf2d1d6945ef7bde52c15fb1a1d25be12c50f5",
+      "sources": [
+        {
+          "sha256": "179d04d41558cd378600b3a99aaf2d1d6945ef7bde52c15fb1a1d25be12c50f5"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/cpp/assets/test_robot.urdf": {
+      "mode": 420,
+      "sha256": "dc1503a274a2ce59becbfa1b5521c4dd6af987a14ec9469d53feb716e22e9fd9",
+      "sources": [
+        {
+          "sha256": "dc1503a274a2ce59becbfa1b5521c4dd6af987a14ec9469d53feb716e22e9fd9"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/cpp/main.cpp": {
+      "mode": 420,
+      "sha256": "2dc0ff9c70a512fcbed7830929d4b8e2fc2c59a7f5703fd43b1ed87aff5fe2d7",
+      "sources": [
+        {
+          "sha256": "2dc0ff9c70a512fcbed7830929d4b8e2fc2c59a7f5703fd43b1ed87aff5fe2d7"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/cpp/plotting/matplotlib_process_plotter.hpp": {
+      "mode": 420,
+      "sha256": "24f4c4d804a387c6f86157330b2020dd4cf645dc9e868bf17fb83523300db80f",
+      "sources": [
+        {
+          "sha256": "24f4c4d804a387c6f86157330b2020dd4cf645dc9e868bf17fb83523300db80f"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/cpp/plotting/matplotlib_renderer.py": {
+      "mode": 420,
+      "sha256": "e28bf049125cfb070fbf85b074a651fcdc11a799b41507cc4acd30693182be05",
+      "sources": [
+        {
+          "sha256": "e28bf049125cfb070fbf85b074a651fcdc11a799b41507cc4acd30693182be05"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/python/README.md": {
+      "mode": 420,
+      "sha256": "43fd3239fdc112d6d77ad40a36da790ecf0651b6c351d95d3563b8fa17a1c819",
+      "sources": [
+        {
+          "sha256": "43fd3239fdc112d6d77ad40a36da790ecf0651b6c351d95d3563b8fa17a1c819"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/python/axis0_model.pt": {
+      "mode": 420,
+      "sha256": "9af89983d0912accc7d77023e6b9a3a6264f79dd51168f73da743ce0a7bb4f3c",
+      "sources": [
+        {
+          "sha256": "9af89983d0912accc7d77023e6b9a3a6264f79dd51168f73da743ce0a7bb4f3c"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/python/example_utility.py": {
+      "mode": 420,
+      "sha256": "f240721382532dfff2c067c4d7b9fd021bec429456cbce7387e7eba3a6a86b1e",
+      "sources": [
+        {
+          "sha256": "f240721382532dfff2c067c4d7b9fd021bec429456cbce7387e7eba3a6a86b1e"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/python/shaper_example_usage.py": {
+      "mode": 420,
+      "sha256": "12aea088a85a6cab37a532e6915b7035dc59e9350ee6f7db6d8080653000471d",
+      "sources": [
+        {
+          "sha256": "12aea088a85a6cab37a532e6915b7035dc59e9350ee6f7db6d8080653000471d"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/python/test_robot.urdf": {
+      "mode": 420,
+      "sha256": "dc1503a274a2ce59becbfa1b5521c4dd6af987a14ec9469d53feb716e22e9fd9",
+      "sources": [
+        {
+          "sha256": "dc1503a274a2ce59becbfa1b5521c4dd6af987a14ec9469d53feb716e22e9fd9"
+        }
+      ]
+    },
+    "src/robot/pyproject.toml": {
+      "mode": 420,
+      "sha256": "e2fd19783a08d7d0a0b69da841a1a60a6898f9189f2dc88ca352f0bb26ee5a09",
+      "sources": [
+        {
+          "sha256": "1be34906ad73f873f1ea155857b2fa612210a2955a54d29ab51e1e2486a956f4"
+        }
+      ]
+    },
+    "src/robot/requirements.txt": {
+      "mode": 420,
+      "sha256": "1f9092aa70f396d97c57d1801a33d336cb907c30cae8d668a9e9edaa7c065e1c",
+      "sources": [
+        {
+          "sha256": "5ccb034f7cef10b2ece9f57fa1e222b86bdd092df37156f37d269c9804e2ddeb"
+        },
+        {
+          "sha256": "ec47656f383402278ff58a748366a311d3e1dc7ff039a267bbc9dd4775d1aef1"
+        }
+      ]
+    },
+    "src/robot/robot_interface.py": {
+      "mode": 420,
+      "sha256": "c11fd6816cd5d0a8a1ace673ac5d6a79635506b822b2881aa42a345d2f36912d",
+      "sources": [
+        {
+          "sha256": "c11fd6816cd5d0a8a1ace673ac5d6a79635506b822b2881aa42a345d2f36912d"
+        }
+      ]
+    },
+    "src/robot/run.py": {
+      "mode": 420,
+      "sha256": "5b027875e0e642ac95d5fbd561e337b009988856907f3d18fdfab4fc5968517e",
+      "sources": [
+        {
+          "sha256": "5b027875e0e642ac95d5fbd561e337b009988856907f3d18fdfab4fc5968517e"
+        }
+      ]
+    },
+    "src/robot/urdf/test_robot.urdf": {
+      "mode": 420,
+      "sha256": "dc1503a274a2ce59becbfa1b5521c4dd6af987a14ec9469d53feb716e22e9fd9",
+      "sources": [
+        {
+          "sha256": "dc1503a274a2ce59becbfa1b5521c4dd6af987a14ec9469d53feb716e22e9fd9"
+        }
+      ]
+    }
+  },
+  "mapping_revision": {
+    "sha256": "b4a05e90addf817e096490eb07311bad14695c2b683fe266a325df2338cadbe0"
+  },
+  "ownership_origin": {
+    "revision": "07d59ecab730d3214f65d2fe5d26f4229ca7b418",
+    "tree_sha256": "86e6b4bcff3de04e1e979994c0e13c70e77b6bab1e7e6955a453484c5c272b50"
+  },
+  "public_limitations": "This target is a contributor scaffold. Its placeholder hardware methods and sample model/configuration are not an operational robot integration.",
+  "publication_enabled": false,
+  "readiness": "phase_5_qualification_required",
+  "repository": "reforge-robotics/reforge-interface",
+  "schema_version": 1,
+  "sdk_candidate": {
+    "filename": "PHASE5_REQUIRED",
+    "sha256": "PHASE5_REQUIRED",
+    "url": "PHASE5_REQUIRED"
+  },
+  "source_input_basis": "working_tree",
+  "source_revision": "c6e5adabfdf8410fa7754fef18a66f98d0eb7359",
+  "target": "template"
+}

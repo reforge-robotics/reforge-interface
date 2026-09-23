@@ -7,7 +7,7 @@ fi
 
 usage() {
   echo "Usage: $0 <reforge_api_token> <reforge_robot_id> <data_folder>"
-  echo "Example: $0 <token> <reforge_robot_id> ./src/robot/data/2026-2-25"
+  echo "Example: $0 <token> <reforge_robot_id> src/robot/data/2026-2-25"
 }
 
 if [[ $# -lt 3 ]]; then
@@ -30,12 +30,19 @@ if [[ ! -d "$host_data_folder" ]]; then
   echo "Data folder does not exist: $host_data_folder"
   exit 1
 fi
+host_data_folder="$(cd -- "$host_data_folder" && pwd -P)"
 
 IMAGE_NAME="${IMAGE_NAME:-reforge-interface}"
 CONTAINER_NAME="${CONTAINER_NAME:-reforge-fine-tune}"
-CONTAINER_DATA_DIR="${CONTAINER_DATA_DIR:-/control-box-bot/reforge-interface/src/robot/data}"
+MODELS_DIR="${MODELS_DIR:-$(pwd)/src/robot/models}"
+CONTAINER_DATA_DIR="${CONTAINER_DATA_DIR:-/opt/reforge-interface/src/robot/data}"
+CONTAINER_MODELS_DIR="/opt/reforge-interface/src/robot/models"
+
+mkdir -p -- "$MODELS_DIR"
+MODELS_DIR="$(cd -- "$MODELS_DIR" && pwd -P)"
 
 docker run --net=host --rm --name "$CONTAINER_NAME" \
   -v "$host_data_folder:$CONTAINER_DATA_DIR" \
+  -v "$MODELS_DIR:$CONTAINER_MODELS_DIR" \
   "$IMAGE_NAME" \
   python3 -m robot.run fine_tune "$reforge_api_token" "$reforge_robot_id" "$CONTAINER_DATA_DIR"

@@ -39,6 +39,21 @@ if(NOT TARGET ReforgeShaper::backend)
     message(FATAL_ERROR "ReforgeShaper::backend is required by the C++ example")
 endif()
 
+set(
+    REFORGE_SHAPER_EXAMPLE_URDF
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/test_robot.urdf"
+    CACHE FILEPATH
+    "URDF fixture copied beside the public Shaper example"
+)
+if(NOT EXISTS "${REFORGE_SHAPER_EXAMPLE_URDF}" OR
+   IS_DIRECTORY "${REFORGE_SHAPER_EXAMPLE_URDF}")
+    message(
+        FATAL_ERROR
+        "REFORGE_SHAPER_EXAMPLE_URDF must name an existing URDF file. "
+        "Pass -DREFORGE_SHAPER_EXAMPLE_URDF=/path/to/test_robot.urdf."
+    )
+endif()
+
 set(_reforge_shaper_example_package_version "unknown")
 if(DEFINED ReforgeShaper_VERSION)
     set(_reforge_shaper_example_package_version "${ReforgeShaper_VERSION}")
@@ -82,11 +97,11 @@ add_custom_command(
         "$<TARGET_FILE_DIR:shaper_example_usage>/assets"
     COMMAND
         "${CMAKE_COMMAND}" -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/../../../urdf/test_robot.urdf"
+        "${REFORGE_SHAPER_EXAMPLE_URDF}"
         "$<TARGET_FILE_DIR:shaper_example_usage>/assets/test_robot.urdf"
     COMMAND
         "${CMAKE_COMMAND}" -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/plotting/matplotlib_renderer.py"
         "$<TARGET_FILE_DIR:shaper_example_usage>/matplotlib_renderer.py"
-    COMMENT "Copying the synthetic model fixture and test_robot.urdf"
+    COMMENT "Copying the synthetic model fixture and configured URDF"
 )

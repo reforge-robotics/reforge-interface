@@ -1,4 +1,4 @@
-eef_link = "centered_fixture"
+eef_link = "ee_link"
 # probe_link = "smr_ball_link"
 probe_link = "prod_ball_link"
 

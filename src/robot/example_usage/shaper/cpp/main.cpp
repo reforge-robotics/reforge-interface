@@ -811,7 +811,7 @@ struct ExampleMetrics final {
         !std::filesystem::is_regular_file(urdf_filepath)) {
         throw std::invalid_argument(
             "assets directory must contain the synthetic native model "
-            "fixture and repository test_robot.urdf: " +
+            "fixture and configured test_robot.urdf: " +
             assets_directory.string());
     }
 
@@ -1176,7 +1176,7 @@ void PrintResults(
     std::cout << "Package: reforge-core-shaper "
               << REFORGE_SHAPER_EXAMPLE_PACKAGE_VERSION << '\n';
     std::cout << "Model: synthetic native example fixture (2 axes)\n";
-    std::cout << "URDF: repository test_robot.urdf\n";
+    std::cout << "URDF: configured test_robot.urdf\n";
     std::cout << "Joint order: joint0, joint1, joint2, joint3, joint4, joint5\n";
     std::cout << "Units: time [s], position [rad], velocity [rad/s], "
                  "acceleration [rad/s^2]\n";
