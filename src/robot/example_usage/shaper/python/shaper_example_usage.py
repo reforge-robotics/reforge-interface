@@ -2,26 +2,26 @@
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 import numpy as np
 
-from robot.example_usage.shaper.example_utility import (
+from robot.example_usage.shaper.python.example_utility import (
     concatenate_windowed_outputs,
     estimate_derivatives,
     generate_point_to_point_sample,
     generate_point_to_point_trajectory,
+    make_speed_first_switch_limits,
     plot_shaper_example_results,
 )
 from reforge_core.control.shaper import (
     ResidualShapingStrategy,
-    ResidualSwitchLimits,
+    ShaperBackendKind,
     ShaperInterface,
 )
 
-
 THIS_DIR = Path(__file__).resolve().parent
-REPO_ROOT = THIS_DIR.parents[3]
 
 SAMPLE_TIME_S = 0.004
 NUM_AXES = 1
@@ -34,21 +34,41 @@ WINDOW_DURATION_S = 0.20
 SHAPER_ENABLED_WEIGHT = 1.0
 
 MODEL_DIRECTORY = THIS_DIR
-URDF_FILEPATH = REPO_ROOT / "src/robot/urdf/test_robot.urdf"
+DEFAULT_URDF_FILEPATH = THIS_DIR / "test_robot.urdf"
 
 SWITCH_MAX_VELOCITY_RAD_S = 3.0
 SWITCH_MAX_ACCELERATION_RAD_S2 = 45.0
 SWITCH_MAX_SEARCH_S = 0.75
 SWITCH_WINDOW_TARGET_MARGIN_S = 0.0
+SWITCH_MAX_QP_ATTEMPTS = 10
+
+# This example ships a Torch model for deterministic Python-backend metrics.
+EXAMPLE_BACKEND_KIND = ShaperBackendKind.PYTHON
 
 
-def main() -> None:
+def _parse_urdf_filepath() -> Path:
+    """Parse the consumer-supplied URDF path for this public example.
+
+    Returns:
+        `Path`: URDF path selected by the consumer or the co-located public
+        example default.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--urdf-filepath",
+        type=Path,
+        default=DEFAULT_URDF_FILEPATH,
+        help="URDF file used by the Shaper dynamics model.",
+    )
+    return parser.parse_args().urdf_filepath
+
+
+def main(urdf_filepath: Path) -> None:
     """Run offline and streaming Covalent Shaper examples.
 
     Args:
-        None.
-    Returns:
-        `None`.
+        urdf_filepath: URDF file used by the Shaper dynamics model.
+
     Raises:
         RuntimeError: If Shaper initialization or simulation fails.
     """
@@ -76,9 +96,10 @@ def main() -> None:
     always_on_shaper = ShaperInterface(
         sample_time=SAMPLE_TIME_S,
         model_directory=str(MODEL_DIRECTORY),
-        urdf_filepath=str(URDF_FILEPATH),
+        urdf_filepath=str(urdf_filepath),
         num_axes=NUM_AXES,
         num_joints=NUM_JOINTS,
+        backend_kind=EXAMPLE_BACKEND_KIND,
     )
     always_on_shaped = always_on_shaper.process_trajectory(
         command=desired_trajectory_rad,
@@ -89,6 +110,7 @@ def main() -> None:
         residual_shaping_strategy=None,
         finalize_tail=False,
     )
+    # In a robot application, send the shaped trajectory through the robot SDK.
     # =========================================================================
     # End Example 1.
     # =========================================================================
@@ -96,18 +118,26 @@ def main() -> None:
     # =========================================================================
     # Start Example 2: Shape only the residual tail of a planned trajectory.
     # =========================================================================
-    residual_switch_limits = ResidualSwitchLimits(
-        max_velocity=SWITCH_MAX_VELOCITY_RAD_S,
-        max_acceleration=SWITCH_MAX_ACCELERATION_RAD_S2,
+    speed_first_switch_limits = make_speed_first_switch_limits(
+        max_velocity_rad_s=SWITCH_MAX_VELOCITY_RAD_S,
+        max_acceleration_rad_s2=SWITCH_MAX_ACCELERATION_RAD_S2,
         max_search_s=SWITCH_MAX_SEARCH_S,
+        max_qp_attempts=SWITCH_MAX_QP_ATTEMPTS,
         window_target_margin_s=SWITCH_WINDOW_TARGET_MARGIN_S,
     )
+    # To prioritize smoothness, call `make_smoothness_first_switch_limits(...)`
+    # with weights selected by a representative application-level sweep. To
+    # enforce a hard jerk bound, call `make_jerk_limited_switch_limits(...)`
+    # with a max_jerk_rad_s3 value qualified for the target robot and payload.
+    # Keep one selected profile here so batch and windowed results are directly
+    # comparable without running several expensive variants in this example.
     residual_offline_shaper = ShaperInterface(
         sample_time=SAMPLE_TIME_S,
         model_directory=str(MODEL_DIRECTORY),
-        urdf_filepath=str(URDF_FILEPATH),
+        urdf_filepath=str(urdf_filepath),
         num_axes=NUM_AXES,
         num_joints=NUM_JOINTS,
+        backend_kind=EXAMPLE_BACKEND_KIND,
     )
     residual_offline_shaped = residual_offline_shaper.process_trajectory(
         command=desired_trajectory_rad,
@@ -116,22 +146,70 @@ def main() -> None:
         time_vector=list(time_s),
         vibration_shaping_weight=SHAPER_ENABLED_WEIGHT,
         residual_shaping_strategy=ResidualShapingStrategy.ALIGNED_TAIL,
-        residual_switch_limits=residual_switch_limits,
+        residual_switch_limits=speed_first_switch_limits,
         finalize_tail=False,
     )
+    # In a robot application, send the shaped trajectory through the robot SDK.
     # =========================================================================
     # End Example 2.
     # =========================================================================
 
     # =========================================================================
-    # Start Example 3: Shape one command sample at a time in an online loop.
+    # Start Example 3: Shape a complete trajectory in fixed-size windows.
+    # =========================================================================
+    windowed_shaper = ShaperInterface(
+        sample_time=SAMPLE_TIME_S,
+        model_directory=str(MODEL_DIRECTORY),
+        urdf_filepath=str(urdf_filepath),
+        num_axes=NUM_AXES,
+        num_joints=NUM_JOINTS,
+        backend_kind=EXAMPLE_BACKEND_KIND,
+    )
+    windowed_buffer = windowed_shaper.create_windowed_buffer(
+        command=desired_trajectory_rad,
+        command_dot=desired_velocity_rad_s,
+        command_ddot=desired_acceleration_rad_s2,
+        time_vector=list(time_s),
+        vibration_shaping_weight=SHAPER_ENABLED_WEIGHT,
+        residual_shaping_strategy=None,
+        window_s=WINDOW_DURATION_S,
+        auto_qualify_window=False,
+        finalize_tail=False,
+    )
+
+    # Windowed Shaper usage:
+    #
+    # `create_windowed_buffer(...)` returns a FIFO-style buffer. In an offline
+    # script, drain it to reconstruct the full shaped trajectory. In an online
+    # robot loop, call `fill_available(...)` from the producer side and stream
+    # each `pop_window()` output to the robot SDK in timestamp order.
+    windowed_buffer.fill_available()
+    shaped_windows = []
+    while windowed_buffer.has_next():
+        shaped_window = windowed_buffer.pop_window()
+        if shaped_window is not None:
+            shaped_windows.append(shaped_window)
+            continue
+        windowed_buffer.fill_available(max_windows=1)
+
+    windowed_time_s, windowed_positions_rad = concatenate_windowed_outputs(
+        shaped_windows
+    )
+    # Each popped window would be sent to the robot SDK in timestamp order.
+    # =========================================================================
+    # End Example 3.
+    # =========================================================================
+
+    # =========================================================================
+    # Start Example 4: Shape one command sample at a time in an online loop.
     # =========================================================================
     streaming_shaper = ShaperInterface(
         sample_time=SAMPLE_TIME_S,
         model_directory=str(MODEL_DIRECTORY),
-        urdf_filepath=str(URDF_FILEPATH),
+        urdf_filepath=str(urdf_filepath),
         num_axes=NUM_AXES,
         num_joints=NUM_JOINTS,
+        backend_kind=EXAMPLE_BACKEND_KIND,
         shared_impulse_policy="per_axis",
         shared_impulse_shapes_all_joints=False,
     )
@@ -191,50 +269,8 @@ def main() -> None:
         streamed_times_s.append(sample_time_s)
         streamed_positions_rad.append(shaped_sample.positions)
     # =========================================================================
-    # End Example 3.
+    # End Example 4.
     # =========================================================================
-
-    # =========================================================================
-    # Start Example 4: Shape a complete trajectory in fixed-size windows.
-    # =========================================================================
-    windowed_shaper = ShaperInterface(
-        sample_time=SAMPLE_TIME_S,
-        model_directory=str(MODEL_DIRECTORY),
-        urdf_filepath=str(URDF_FILEPATH),
-        num_axes=NUM_AXES,
-        num_joints=NUM_JOINTS,
-    )
-    windowed_buffer = windowed_shaper.create_windowed_buffer(
-        command=desired_trajectory_rad,
-        command_dot=desired_velocity_rad_s,
-        command_ddot=desired_acceleration_rad_s2,
-        time_vector=list(time_s),
-        vibration_shaping_weight=SHAPER_ENABLED_WEIGHT,
-        residual_shaping_strategy=ResidualShapingStrategy.ALIGNED_TAIL,
-        residual_switch_limits=residual_switch_limits,
-        window_s=WINDOW_DURATION_S,
-        auto_qualify_window=False,
-        finalize_tail=False,
-    )
-
-    # Windowed Shaper usage:
-    #
-    # `create_windowed_buffer(...)` returns a FIFO-style buffer. In an offline
-    # script, drain it to reconstruct the full shaped trajectory. In an online
-    # robot loop, call `fill_available(...)` from the producer side and stream
-    # each `pop_window()` output to the robot SDK in timestamp order.
-    windowed_buffer.fill_available()
-    shaped_windows = []
-    while windowed_buffer.has_next():
-        shaped_window = windowed_buffer.pop_window()
-        if shaped_window is not None:
-            shaped_windows.append(shaped_window)
-            continue
-        windowed_buffer.fill_available(max_windows=1)
-
-    windowed_time_s, windowed_positions_rad = concatenate_windowed_outputs(
-        shaped_windows
-    )
 
     plot_shaper_example_results(
         shaper=always_on_shaper,
@@ -257,4 +293,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(urdf_filepath=_parse_urdf_filepath())

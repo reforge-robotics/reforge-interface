@@ -1,0 +1,5 @@
+[trossen_calibration_link]
+joint_name = "ball_joint"
+offset_x_m = 0.063
+offset_y_m = 0.0
+offset_z_m = 0.0

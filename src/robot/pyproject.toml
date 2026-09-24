@@ -8,46 +8,84 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "reforge-interface"
 version = "0.1.0"
-description = "Robot adapter layer for Reforge calibration and identification workflows."
+description = "Public robot adapter package for Reforge calibration workflows."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
 authors = [{ name = "Reforge Robotics", email = "info@reforgerobotics.com" }]
-dependencies = [
-    "numpy>=2,<3",
-    "reforge-core[all]",
-    "scipy",
-    "trossen-arm==1.10.0",
-]
-
-[project.optional-dependencies]
-ros = [
-    "pydantic",
-]
-dev = [
-    "pytest",
-    "ruff",
-    "black==24.1.1",
-]
+dynamic = ["dependencies"]
 
 [project.scripts]
 reforge-robot = "robot.run:main"
 
 [tool.setuptools]
+# The public export contains one ``robot`` namespace and any explicitly
+# selected subpackages (for example the Denso vendor transport). The exporter
+# places this file next to the package sources, so the package directory is
+# the project directory.
 packages = ["robot"]
 package-dir = { "robot" = "." }
 include-package-data = false
 
+[tool.setuptools.dynamic]
+# The exporter writes the selected, standalone requirements file beside this
+# manifest.  Keeping this relationship structural prevents metadata drift.
+dependencies = { file = ["requirements.txt"] }
+
 [tool.setuptools.package-data]
+# The exporter renders the exact selected public file list here. Wildcards are
+# deliberately not allowed: unmanaged files must never enter a public wheel.
 robot = [
-    "config/*.toml",
-    "models/joint_tracker/*.csv",
-    "models/joint_tracker/*.json",
-    "urdf/*.urdf",
-    "urdf/**/*.urdf",
-    "urdf/**/*.xacro",
-    "urdf/**/*.stl",
-    "urdf/**/*.dae",
-    "urdf/**/LICENSE",
-    "urdf/**/*.png",
+    "README.md",
+    "config/kinecal_config.toml",
+    "config/kinecal_config_default.toml",
+    "config/probe_params.toml",
+    "data/README.md",
+    "example_usage/joint_tracker/cpp/CMakeLists.txt",
+    "example_usage/joint_tracker/cpp/README.md",
+    "example_usage/joint_tracker/cpp/THIRD_PARTY_NOTICES.md",
+    "example_usage/joint_tracker/cpp/main.cpp",
+    "example_usage/joint_tracker/cpp/plotting/matplotlib_process_plotter.hpp",
+    "example_usage/joint_tracker/example_models/joint_controller_models.json",
+    "example_usage/joint_tracker/example_models/model_bundle.json",
+    "example_usage/joint_tracker/python/example_utility.py",
+    "example_usage/joint_tracker/python/joint_tracker_example_usage.py",
+    "example_usage/shaper/cpp/CMakeLists.txt",
+    "example_usage/shaper/cpp/README.md",
+    "example_usage/shaper/cpp/assets/expected_metrics.json",
+    "example_usage/shaper/cpp/assets/model_bundle.json",
+    "example_usage/shaper/cpp/assets/shaper_models.native.json",
+    "example_usage/shaper/cpp/assets/test_robot.urdf",
+    "example_usage/shaper/cpp/main.cpp",
+    "example_usage/shaper/cpp/plotting/matplotlib_process_plotter.hpp",
+    "example_usage/shaper/cpp/plotting/matplotlib_renderer.py",
+    "example_usage/shaper/python/README.md",
+    "example_usage/shaper/python/axis0_model.pt",
+    "example_usage/shaper/python/example_utility.py",
+    "example_usage/shaper/python/shaper_example_usage.py",
+    "example_usage/shaper/python/test_robot.urdf",
+    "requirements.txt",
+    "urdf/trossen/LICENSE",
+    "urdf/trossen/PROVENANCE.md",
+    "urdf/trossen/meshes/peripherals/d405.stl",
+    "urdf/trossen/meshes/trossen_black.png",
+    "urdf/trossen/meshes/wxai/base_link.stl",
+    "urdf/trossen/meshes/wxai/camera_mount_d405.stl",
+    "urdf/trossen/meshes/wxai/carriage_left.stl",
+    "urdf/trossen/meshes/wxai/carriage_right.stl",
+    "urdf/trossen/meshes/wxai/gripper_left.stl",
+    "urdf/trossen/meshes/wxai/gripper_right.stl",
+    "urdf/trossen/meshes/wxai/handle_left.stl",
+    "urdf/trossen/meshes/wxai/handle_right.stl",
+    "urdf/trossen/meshes/wxai/leader_finger_left_index.stl",
+    "urdf/trossen/meshes/wxai/leader_finger_left_thumb.stl",
+    "urdf/trossen/meshes/wxai/leader_finger_right_index.stl",
+    "urdf/trossen/meshes/wxai/leader_finger_right_thumb.stl",
+    "urdf/trossen/meshes/wxai/link_1.stl",
+    "urdf/trossen/meshes/wxai/link_2.stl",
+    "urdf/trossen/meshes/wxai/link_3.stl",
+    "urdf/trossen/meshes/wxai/link_4.stl",
+    "urdf/trossen/meshes/wxai/link_5.stl",
+    "urdf/trossen/meshes/wxai/link_6.stl",
+    "urdf/trossen/wxai_follower.urdf",
 ]

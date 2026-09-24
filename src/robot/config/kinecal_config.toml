@@ -1,11 +1,10 @@
-eef_link = "centered_fixture" # the existing link in the robot URDF where KineCal attaches the calibration probe
+eef_link = "centered_fixture"
 # probe_link = "smr_ball_link"
-# probe_link = "prod_ball_link"
-probe_link = "trossen_calibration_link"
-
+probe_link = "prod_ball_link"
 
 recording_method = "keyboard"
-#recording_method = "flange_button"
+# keyboard_capture_key = "b"  # Omit to use the default, Enter.
+# recording_method = "flange_button"
 
 [tcp_config]
 policy = "cones"

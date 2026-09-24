@@ -1,12 +1,17 @@
-# Calibration Data
+# Runtime data and model locations
 
-This directory is intentionally empty in version control. Place raw sweep logs and processed `.pkl` files here when running calibration routines. The data are git-ignored so robot-specific measurements remain local to each machine.
-
-Kinecal data-collection runs write timestamped artifact folders under:
+Run commands from the repository root. Calibration and identification outputs
+belong in the repository-relative, writable directory:
 
 ```text
-src/robot/data/kinecal/datacol/
+src/robot/data/
 ```
 
-Each run folder may include `run.log`, `terminal.txt`, `metadata.json`,
-`hole_0.csv`, and `hole_1.csv`.
+Generated model artifacts are persisted in:
+
+```text
+src/robot/models/
+```
+
+Container helpers mount both directories at these same paths inside the
+container.
