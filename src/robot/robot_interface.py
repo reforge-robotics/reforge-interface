@@ -1,7 +1,7 @@
 # src/robot/robot_interface.py
 # Author: Reforge Robotics (Nosa Edoimioya)
 # Description: Specific code to create calibration interface for any Python Robot.
-# Version: 2.0 
+# Version: 2.0
 
 from collections.abc import Mapping
 from importlib.resources import as_file, files
