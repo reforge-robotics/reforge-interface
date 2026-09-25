@@ -377,10 +377,10 @@
     },
     "src/robot/robot_interface.py": {
       "mode": 420,
-      "sha256": "d16bd1178b130ba8f2a22478acdc7722109ba499121af6fe43d27ba07fed2795",
+      "sha256": "756361ce22f6e60d8fc7bebf0c31cfa4baebead6156375f64e29bcb4891120b5",
       "sources": [
         {
-          "sha256": "d16bd1178b130ba8f2a22478acdc7722109ba499121af6fe43d27ba07fed2795"
+          "sha256": "756361ce22f6e60d8fc7bebf0c31cfa4baebead6156375f64e29bcb4891120b5"
         }
       ]
     },
@@ -618,6 +618,6 @@
     "url": "https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"
   },
   "source_input_basis": "working_tree",
-  "source_revision": "fe1c3976207df69757c59ad7f31243268d92cebc",
+  "source_revision": "1f9aae2521b3018ee4aa94a7d2a79173e5b9db74",
   "target": "trossen_arm"
 }
