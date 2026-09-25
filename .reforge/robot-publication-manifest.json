@@ -350,10 +350,10 @@
     },
     "src/robot/robot_interface.py": {
       "mode": 420,
-      "sha256": "56128fe7c0d64155687eb61bc7b8420ea2e57c323b0dd7b15aa50e3d6a42c0ef",
+      "sha256": "44eb015d18f9506e7ccfb362c5b6dbf6af90672f82cb5b8f70818493b41cc43d",
       "sources": [
         {
-          "sha256": "56128fe7c0d64155687eb61bc7b8420ea2e57c323b0dd7b15aa50e3d6a42c0ef"
+          "sha256": "44eb015d18f9506e7ccfb362c5b6dbf6af90672f82cb5b8f70818493b41cc43d"
         }
       ]
     },
@@ -555,6 +555,6 @@
     "url": "https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"
   },
   "source_input_basis": "working_tree",
-  "source_revision": "6d3c72289da24834a9b011653f861133a54bc25f",
+  "source_revision": "2ca51025fb4bd57e108bcbd0ffcfe5e04e372e12",
   "target": "standard_bots_sdk"
 }
