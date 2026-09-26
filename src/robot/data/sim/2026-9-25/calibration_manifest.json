@@ -1,0 +1,1869 @@
+{
+  "base_joint_angle_count": 1,
+  "base_joint_count": 1,
+  "base_joint_grid_margin_source": [
+    "max_displacement"
+  ],
+  "base_joint_grid_rad": [
+    [
+      -2.967067074800567
+    ]
+  ],
+  "base_joint_indices": [
+    0
+  ],
+  "base_joint_limits_rad": [
+    [
+      -3.1416,
+      1.5708
+    ]
+  ],
+  "calibration_type": "shaper",
+  "command_sample_frequency_hz": 200.0,
+  "downsampled_for_storage": false,
+  "feature_names": [
+    "j0_rad",
+    "v_deg",
+    "r_mm",
+    "inertia"
+  ],
+  "feature_units": [
+    "rad",
+    "deg",
+    "mm",
+    "kg_m2"
+  ],
+  "observed_sample_frequency_hz": 200.0,
+  "reference_base_angles_rad": [
+    -1.5707963267948966
+  ],
+  "runs": [
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 0,
+      "motion_filename": "robotData_motion_pose0_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 0,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0000-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose0_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 0.0,
+      "v_rad": 0.0
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 0,
+      "motion_filename": "robotData_motion_pose0_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 0,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0000-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose0_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 0.0,
+      "v_rad": 0.0
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 0,
+      "motion_filename": "robotData_motion_pose0_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 0,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0000-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose0_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 0.0,
+      "v_rad": 0.0
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 1,
+      "motion_filename": "robotData_motion_pose1_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 1,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0001-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose1_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 0.0,
+      "v_rad": 0.0
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 1,
+      "motion_filename": "robotData_motion_pose1_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 1,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0001-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose1_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 0.0,
+      "v_rad": 0.0
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 1,
+      "motion_filename": "robotData_motion_pose1_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 1,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0001-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose1_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 0.0,
+      "v_rad": 0.0
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 2,
+      "motion_filename": "robotData_motion_pose2_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 2,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0002-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose2_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 0.0,
+      "v_rad": 0.0
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 2,
+      "motion_filename": "robotData_motion_pose2_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 2,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0002-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose2_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 0.0,
+      "v_rad": 0.0
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 2,
+      "motion_filename": "robotData_motion_pose2_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 2,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0002-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose2_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 0.0,
+      "v_rad": 0.0
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 3,
+      "motion_filename": "robotData_motion_pose3_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 3,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0003-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose3_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 0.0,
+      "v_rad": 0.0
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 3,
+      "motion_filename": "robotData_motion_pose3_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 3,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0003-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose3_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 0.0,
+      "v_rad": 0.0
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 3,
+      "motion_filename": "robotData_motion_pose3_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 3,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0003-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose3_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 0.0,
+      "v_rad": 0.0
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 4,
+      "motion_filename": "robotData_motion_pose4_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 4,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0004-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose4_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 8.571428571428571,
+      "v_rad": 0.1495996501709425
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 4,
+      "motion_filename": "robotData_motion_pose4_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 4,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0004-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose4_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 8.571428571428571,
+      "v_rad": 0.1495996501709425
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 4,
+      "motion_filename": "robotData_motion_pose4_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 4,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0004-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose4_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 8.571428571428571,
+      "v_rad": 0.1495996501709425
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 5,
+      "motion_filename": "robotData_motion_pose5_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 5,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0005-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose5_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 8.571428571428571,
+      "v_rad": 0.1495996501709425
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 5,
+      "motion_filename": "robotData_motion_pose5_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 5,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0005-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose5_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 8.571428571428571,
+      "v_rad": 0.1495996501709425
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 5,
+      "motion_filename": "robotData_motion_pose5_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 5,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0005-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose5_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 8.571428571428571,
+      "v_rad": 0.1495996501709425
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 6,
+      "motion_filename": "robotData_motion_pose6_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 6,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0006-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose6_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 8.571428571428571,
+      "v_rad": 0.1495996501709425
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 6,
+      "motion_filename": "robotData_motion_pose6_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 6,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0006-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose6_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 8.571428571428571,
+      "v_rad": 0.1495996501709425
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 6,
+      "motion_filename": "robotData_motion_pose6_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 6,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0006-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose6_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 8.571428571428571,
+      "v_rad": 0.1495996501709425
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 7,
+      "motion_filename": "robotData_motion_pose7_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 7,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0007-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose7_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 8.571428571428571,
+      "v_rad": 0.1495996501709425
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 7,
+      "motion_filename": "robotData_motion_pose7_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 7,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0007-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose7_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 8.571428571428571,
+      "v_rad": 0.1495996501709425
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 7,
+      "motion_filename": "robotData_motion_pose7_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 7,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0007-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose7_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 8.571428571428571,
+      "v_rad": 0.1495996501709425
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 8,
+      "motion_filename": "robotData_motion_pose8_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 8,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0008-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose8_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 17.142857142857142,
+      "v_rad": 0.299199300341885
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 8,
+      "motion_filename": "robotData_motion_pose8_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 8,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0008-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose8_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 17.142857142857142,
+      "v_rad": 0.299199300341885
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 8,
+      "motion_filename": "robotData_motion_pose8_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 8,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0008-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose8_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 17.142857142857142,
+      "v_rad": 0.299199300341885
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 9,
+      "motion_filename": "robotData_motion_pose9_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 9,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0009-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose9_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 17.142857142857142,
+      "v_rad": 0.299199300341885
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 9,
+      "motion_filename": "robotData_motion_pose9_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 9,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0009-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose9_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 17.142857142857142,
+      "v_rad": 0.299199300341885
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 9,
+      "motion_filename": "robotData_motion_pose9_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 9,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0009-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose9_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 17.142857142857142,
+      "v_rad": 0.299199300341885
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 10,
+      "motion_filename": "robotData_motion_pose10_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 10,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0010-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose10_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 17.142857142857142,
+      "v_rad": 0.299199300341885
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 10,
+      "motion_filename": "robotData_motion_pose10_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 10,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0010-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose10_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 17.142857142857142,
+      "v_rad": 0.299199300341885
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 10,
+      "motion_filename": "robotData_motion_pose10_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 10,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0010-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose10_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 17.142857142857142,
+      "v_rad": 0.299199300341885
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 11,
+      "motion_filename": "robotData_motion_pose11_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 11,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0011-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose11_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 17.142857142857142,
+      "v_rad": 0.299199300341885
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 11,
+      "motion_filename": "robotData_motion_pose11_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 11,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0011-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose11_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 17.142857142857142,
+      "v_rad": 0.299199300341885
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 11,
+      "motion_filename": "robotData_motion_pose11_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 11,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0011-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose11_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 17.142857142857142,
+      "v_rad": 0.299199300341885
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 12,
+      "motion_filename": "robotData_motion_pose12_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 12,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0012-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose12_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 25.71428571428571,
+      "v_rad": 0.44879895051282753
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 12,
+      "motion_filename": "robotData_motion_pose12_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 12,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0012-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose12_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 25.71428571428571,
+      "v_rad": 0.44879895051282753
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 12,
+      "motion_filename": "robotData_motion_pose12_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 12,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0012-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose12_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 25.71428571428571,
+      "v_rad": 0.44879895051282753
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 13,
+      "motion_filename": "robotData_motion_pose13_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 13,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0013-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose13_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 25.71428571428571,
+      "v_rad": 0.44879895051282753
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 13,
+      "motion_filename": "robotData_motion_pose13_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 13,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0013-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose13_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 25.71428571428571,
+      "v_rad": 0.44879895051282753
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 13,
+      "motion_filename": "robotData_motion_pose13_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 13,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0013-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose13_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 25.71428571428571,
+      "v_rad": 0.44879895051282753
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 14,
+      "motion_filename": "robotData_motion_pose14_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 14,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0014-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose14_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 25.71428571428571,
+      "v_rad": 0.44879895051282753
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 14,
+      "motion_filename": "robotData_motion_pose14_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 14,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0014-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose14_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 25.71428571428571,
+      "v_rad": 0.44879895051282753
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 14,
+      "motion_filename": "robotData_motion_pose14_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 14,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0014-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose14_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 25.71428571428571,
+      "v_rad": 0.44879895051282753
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 15,
+      "motion_filename": "robotData_motion_pose15_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 15,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0015-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose15_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 25.71428571428571,
+      "v_rad": 0.44879895051282753
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 15,
+      "motion_filename": "robotData_motion_pose15_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 15,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0015-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose15_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 25.71428571428571,
+      "v_rad": 0.44879895051282753
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 15,
+      "motion_filename": "robotData_motion_pose15_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 15,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0015-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose15_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 25.71428571428571,
+      "v_rad": 0.44879895051282753
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 16,
+      "motion_filename": "robotData_motion_pose16_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 16,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0016-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose16_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 34.285714285714285,
+      "v_rad": 0.59839860068377
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 16,
+      "motion_filename": "robotData_motion_pose16_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 16,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0016-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose16_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 34.285714285714285,
+      "v_rad": 0.59839860068377
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 16,
+      "motion_filename": "robotData_motion_pose16_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 16,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0016-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose16_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 34.285714285714285,
+      "v_rad": 0.59839860068377
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 17,
+      "motion_filename": "robotData_motion_pose17_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 17,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0017-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose17_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 34.285714285714285,
+      "v_rad": 0.59839860068377
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 17,
+      "motion_filename": "robotData_motion_pose17_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 17,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0017-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose17_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 34.285714285714285,
+      "v_rad": 0.59839860068377
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 17,
+      "motion_filename": "robotData_motion_pose17_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 17,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0017-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose17_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 34.285714285714285,
+      "v_rad": 0.59839860068377
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 18,
+      "motion_filename": "robotData_motion_pose18_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 18,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0018-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose18_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 34.285714285714285,
+      "v_rad": 0.59839860068377
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 18,
+      "motion_filename": "robotData_motion_pose18_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 18,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0018-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose18_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 34.285714285714285,
+      "v_rad": 0.59839860068377
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 18,
+      "motion_filename": "robotData_motion_pose18_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 18,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0018-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose18_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 34.285714285714285,
+      "v_rad": 0.59839860068377
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 19,
+      "motion_filename": "robotData_motion_pose19_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 19,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0019-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose19_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 34.285714285714285,
+      "v_rad": 0.59839860068377
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 19,
+      "motion_filename": "robotData_motion_pose19_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 19,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0019-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose19_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 34.285714285714285,
+      "v_rad": 0.59839860068377
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 19,
+      "motion_filename": "robotData_motion_pose19_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 19,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0019-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose19_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 34.285714285714285,
+      "v_rad": 0.59839860068377
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 20,
+      "motion_filename": "robotData_motion_pose20_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 20,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0020-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose20_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 42.85714285714285,
+      "v_rad": 0.7479982508547125
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 20,
+      "motion_filename": "robotData_motion_pose20_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 20,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0020-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose20_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 42.85714285714285,
+      "v_rad": 0.7479982508547125
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 20,
+      "motion_filename": "robotData_motion_pose20_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 20,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0020-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose20_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 42.85714285714285,
+      "v_rad": 0.7479982508547125
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 21,
+      "motion_filename": "robotData_motion_pose21_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 21,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0021-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose21_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 42.85714285714285,
+      "v_rad": 0.7479982508547125
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 21,
+      "motion_filename": "robotData_motion_pose21_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 21,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0021-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose21_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 42.85714285714285,
+      "v_rad": 0.7479982508547125
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 21,
+      "motion_filename": "robotData_motion_pose21_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 21,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0021-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose21_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 42.85714285714285,
+      "v_rad": 0.7479982508547125
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 22,
+      "motion_filename": "robotData_motion_pose22_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 22,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0022-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose22_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 42.85714285714285,
+      "v_rad": 0.7479982508547125
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 22,
+      "motion_filename": "robotData_motion_pose22_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 22,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0022-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose22_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 42.85714285714285,
+      "v_rad": 0.7479982508547125
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 22,
+      "motion_filename": "robotData_motion_pose22_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 22,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0022-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose22_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 42.85714285714285,
+      "v_rad": 0.7479982508547125
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 23,
+      "motion_filename": "robotData_motion_pose23_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 23,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0023-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose23_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 42.85714285714285,
+      "v_rad": 0.7479982508547125
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 23,
+      "motion_filename": "robotData_motion_pose23_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 23,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0023-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose23_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 42.85714285714285,
+      "v_rad": 0.7479982508547125
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 23,
+      "motion_filename": "robotData_motion_pose23_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 23,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0023-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose23_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 42.85714285714285,
+      "v_rad": 0.7479982508547125
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 24,
+      "motion_filename": "robotData_motion_pose24_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 24,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0024-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose24_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 51.42857142857142,
+      "v_rad": 0.8975979010256551
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 24,
+      "motion_filename": "robotData_motion_pose24_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 24,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0024-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose24_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 51.42857142857142,
+      "v_rad": 0.8975979010256551
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 24,
+      "motion_filename": "robotData_motion_pose24_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 24,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0024-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose24_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 51.42857142857142,
+      "v_rad": 0.8975979010256551
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 25,
+      "motion_filename": "robotData_motion_pose25_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 25,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0025-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose25_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 51.42857142857142,
+      "v_rad": 0.8975979010256551
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 25,
+      "motion_filename": "robotData_motion_pose25_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 25,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0025-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose25_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 51.42857142857142,
+      "v_rad": 0.8975979010256551
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 25,
+      "motion_filename": "robotData_motion_pose25_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 25,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0025-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose25_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 51.42857142857142,
+      "v_rad": 0.8975979010256551
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 26,
+      "motion_filename": "robotData_motion_pose26_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 26,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0026-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose26_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 51.42857142857142,
+      "v_rad": 0.8975979010256551
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 26,
+      "motion_filename": "robotData_motion_pose26_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 26,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0026-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose26_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 51.42857142857142,
+      "v_rad": 0.8975979010256551
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 26,
+      "motion_filename": "robotData_motion_pose26_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 26,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0026-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose26_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 51.42857142857142,
+      "v_rad": 0.8975979010256551
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 27,
+      "motion_filename": "robotData_motion_pose27_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 27,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0027-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose27_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 51.42857142857142,
+      "v_rad": 0.8975979010256551
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 27,
+      "motion_filename": "robotData_motion_pose27_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 27,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0027-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose27_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 51.42857142857142,
+      "v_rad": 0.8975979010256551
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 27,
+      "motion_filename": "robotData_motion_pose27_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 27,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0027-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose27_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 51.42857142857142,
+      "v_rad": 0.8975979010256551
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 28,
+      "motion_filename": "robotData_motion_pose28_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 28,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0028-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose28_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 59.99999999999999,
+      "v_rad": 1.0471975511965976
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 28,
+      "motion_filename": "robotData_motion_pose28_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 28,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0028-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose28_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 59.99999999999999,
+      "v_rad": 1.0471975511965976
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 28,
+      "motion_filename": "robotData_motion_pose28_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 28,
+      "r_m": 0.27171955452583135,
+      "r_mm": 271.71955452583137,
+      "run_id": "normal-p0028-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose28_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 59.99999999999999,
+      "v_rad": 1.0471975511965976
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 29,
+      "motion_filename": "robotData_motion_pose29_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 29,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0029-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose29_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 59.99999999999999,
+      "v_rad": 1.0471975511965976
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 29,
+      "motion_filename": "robotData_motion_pose29_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 29,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0029-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose29_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 59.99999999999999,
+      "v_rad": 1.0471975511965976
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 29,
+      "motion_filename": "robotData_motion_pose29_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 29,
+      "r_m": 0.3622927393677751,
+      "r_mm": 362.29273936777514,
+      "run_id": "normal-p0029-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose29_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 59.99999999999999,
+      "v_rad": 1.0471975511965976
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 30,
+      "motion_filename": "robotData_motion_pose30_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 30,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0030-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose30_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 59.99999999999999,
+      "v_rad": 1.0471975511965976
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 30,
+      "motion_filename": "robotData_motion_pose30_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 30,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0030-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose30_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 59.99999999999999,
+      "v_rad": 1.0471975511965976
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 30,
+      "motion_filename": "robotData_motion_pose30_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 30,
+      "r_m": 0.45286592420971894,
+      "r_mm": 452.8659242097189,
+      "run_id": "normal-p0030-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose30_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 59.99999999999999,
+      "v_rad": 1.0471975511965976
+    },
+    {
+      "axis_index": 0,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 31,
+      "motion_filename": "robotData_motion_pose31_axis0.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 31,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0031-a00",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose31_axis0.csv",
+      "status": "planned",
+      "swept_axis": 0,
+      "v_deg": 59.99999999999999,
+      "v_rad": 1.0471975511965976
+    },
+    {
+      "axis_index": 1,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 31,
+      "motion_filename": "robotData_motion_pose31_axis1.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 31,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0031-a01",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose31_axis1.csv",
+      "status": "planned",
+      "swept_axis": 1,
+      "v_deg": 59.99999999999999,
+      "v_rad": 1.0471975511965976
+    },
+    {
+      "axis_index": 2,
+      "base_joint_angles_rad": [
+        -1.5707963267948966
+      ],
+      "logical_pose_index": 31,
+      "motion_filename": "robotData_motion_pose31_axis2.csv",
+      "motion_mode": "sine_sweep",
+      "pose_index": 31,
+      "r_m": 0.5434391090516627,
+      "r_mm": 543.4391090516627,
+      "run_id": "normal-p0031-a02",
+      "run_role": "normal_full_axis",
+      "static_filename": "robotData_static_pose31_axis2.csv",
+      "status": "planned",
+      "swept_axis": 2,
+      "v_deg": 59.99999999999999,
+      "v_rad": 1.0471975511965976
+    }
+  ],
+  "sample_frequency_hz": 200.0,
+  "saved_sample_frequency_hz": 200.0,
+  "schema_version": 3
+}

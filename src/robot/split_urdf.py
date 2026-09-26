@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Split a bimanual URDF into left- and right-arm models and write their poses.
+"""Split a bimanual URDF into left- and right-arm models.
 
 This splitter deliberately does not infer arm membership from joint or link names.
 The operator identifies the first actuator joint for each arm.  Descendant
@@ -38,9 +38,8 @@ Existing generated URDFs can be viewed without splitting them again::
 For compatibility, the original command form without the explicit ``split``
 subcommand remains supported.
 
-Full-stretch poses are computed from four cardinal configurations with Reforge
-core forward kinematics.  The optional viewer requires ``viser[urdf]``.  The
-script expects a URDF, not a xacro file, and assumes the URDF describes one
+The optional viewer requires ``viser[urdf]``.  The script expects a URDF,
+not a xacro file, and assumes the URDF describes one
 connected tree.
 """
 
@@ -48,20 +47,16 @@ from __future__ import annotations
 
 import argparse
 import copy
-import json
 import math
 import re
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TypeAlias, cast
+from typing import TypeAlias
 from xml.etree import ElementTree as ET
 
 Matrix4: TypeAlias = list[list[float]]
-ManifestEntry: TypeAlias = dict[str, str | list[str] | list[float]]
-SplitManifest: TypeAlias = dict[str, ManifestEntry]
-
 _MOVABLE_JOINT_TYPES = {"continuous", "floating", "planar", "prismatic", "revolute"}
 _FIXED_JOINT_FIELDS = {
     "axis",
@@ -71,23 +66,6 @@ _FIXED_JOINT_FIELDS = {
     "mimic",
     "safety_controller",
 }
-_MANIFEST_ENTRY_FIELDS = {
-    "urdf_path",
-    "tcp_link",
-    "active_joint_order",
-    "full_stretch_joints",
-    "full_stretch_xyz",
-    "full_stretch_quat",
-}
-_CARDINAL_DIRECTIONS = (
-    (0, 1.0, 0.0),
-    (0, -1.0, math.pi),
-    (1, 1.0, math.pi / 2.0),
-    (1, -1.0, -math.pi / 2.0),
-)
-_DIRECTION_TIE_TOLERANCE_M = 1e-9
-_CARDINAL_ALIGNMENT_TOLERANCE_M = 1e-6
-_JOINT_LIMIT_TOLERANCE_RAD = 1e-9
 
 
 class SplitError(ValueError):
@@ -552,90 +530,6 @@ def _rotation_aligning_axis_with_world_z(axis: list[float]) -> Matrix4:
     return [[*rotation[row], 0.0] for row in range(3)] + [[0.0, 0.0, 0.0, 1.0]]
 
 
-def _rotation_about_axis(axis: list[float], angle_rad: float) -> Matrix4:
-    """Return a homogeneous rotation about a normalized axis.
-
-    Args:
-        axis: Normalized local rotation axis.
-        angle_rad: Joint angle in radians.
-
-    Returns:
-        Homogeneous rotation transform.
-    """
-
-    x, y, z = axis
-    cosine = math.cos(angle_rad)
-    sine = math.sin(angle_rad)
-    one_minus_cosine = 1.0 - cosine
-    rotation = [
-        [
-            cosine + x * x * one_minus_cosine,
-            x * y * one_minus_cosine - z * sine,
-            x * z * one_minus_cosine + y * sine,
-        ],
-        [
-            y * x * one_minus_cosine + z * sine,
-            cosine + y * y * one_minus_cosine,
-            y * z * one_minus_cosine - x * sine,
-        ],
-        [
-            z * x * one_minus_cosine - y * sine,
-            z * y * one_minus_cosine + x * sine,
-            cosine + z * z * one_minus_cosine,
-        ],
-    ]
-    return [[*rotation[row], 0.0] for row in range(3)] + [[0.0, 0.0, 0.0, 1.0]]
-
-
-def _link_transform(
-    graph: UrdfGraph,
-    link_name: str,
-    joint_positions_rad: dict[str, float],
-) -> Matrix4:
-    """Compute root-to-link FK from URDF joint origins and positions.
-
-    Args:
-        graph: Generated URDF topology.
-        link_name: Link whose transform is requested.
-        joint_positions_rad: Movable revolute-joint positions in radians.
-
-    Returns:
-        Homogeneous root-to-link transform.
-
-    Raises:
-        SplitError: If the link is missing or a movable joint has no position.
-    """
-
-    if link_name not in graph.links:
-        raise SplitError(f"Unknown FK link {link_name!r}.")
-
-    path: list[ET.Element] = []
-    current_link = link_name
-    while current_link != graph.root_link:
-        joint = graph.incoming.get(current_link)
-        if joint is None:
-            raise SplitError(
-                f"Link {link_name!r} is disconnected from root {graph.root_link!r}."
-            )
-        path.append(joint)
-        current_link = _joint_parent(joint)
-
-    transform = _identity()
-    for joint in reversed(path):
-        transform = _multiply(transform, _origin_transform(joint))
-        if joint.get("type") == "revolute":
-            joint_name = joint.get("name", "")
-            if joint_name not in joint_positions_rad:
-                raise SplitError(f"Missing FK position for joint {joint_name!r}.")
-            transform = _multiply(
-                transform,
-                _rotation_about_axis(
-                    _joint_axis(joint), joint_positions_rad[joint_name]
-                ),
-            )
-    return transform
-
-
 def _matrix_to_xyz_rpy(transform: Matrix4) -> tuple[list[float], list[float]]:
     xyz = [transform[row][3] for row in range(3)]
     r20 = max(-1.0, min(1.0, transform[2][0]))
@@ -891,323 +785,18 @@ def _write_tree(tree: ET.ElementTree, destination: Path, *, force: bool) -> None
     )
 
 
-def _equivalent_angle_within_limits(
-    angle_rad: float, lower_rad: float, upper_rad: float
-) -> float | None:
-    """Return the equivalent bounded angle closest to zero.
-
-    Args:
-        angle_rad: Desired revolute-joint angle in radians.
-        lower_rad: Inclusive lower joint limit in radians.
-        upper_rad: Inclusive upper joint limit in radians.
-
-    Returns:
-        Equivalent angle within the limits, or ``None`` when unreachable.
-    """
-
-    minimum_turn = math.ceil(
-        (lower_rad - angle_rad - _JOINT_LIMIT_TOLERANCE_RAD) / math.tau
-    )
-    maximum_turn = math.floor(
-        (upper_rad - angle_rad + _JOINT_LIMIT_TOLERANCE_RAD) / math.tau
-    )
-    if minimum_turn > maximum_turn:
-        return None
-
-    nearest_turn = round(-angle_rad / math.tau)
-    turn = min(max(nearest_turn, minimum_turn), maximum_turn)
-    bounded_angle = angle_rad + turn * math.tau
-    bounded_angle = min(max(bounded_angle, lower_rad), upper_rad)
-    return 0.0 if abs(bounded_angle) <= _JOINT_LIMIT_TOLERANCE_RAD else bounded_angle
-
-
-def _canonical_xyzw_quaternion(transform: Matrix4) -> list[float]:
-    """Convert a homogeneous transform to a deterministic XYZW quaternion.
-
-    Args:
-        transform: Homogeneous TCP transform.
-
-    Returns:
-        Unit quaternion ordered as X, Y, Z, W with a canonical sign.
-    """
-
-    trace = sum(transform[index][index] for index in range(3))
-    if trace > 0.0:
-        scale = math.sqrt(trace + 1.0) * 2.0
-        quaternion = [
-            (transform[2][1] - transform[1][2]) / scale,
-            (transform[0][2] - transform[2][0]) / scale,
-            (transform[1][0] - transform[0][1]) / scale,
-            0.25 * scale,
-        ]
-    else:
-        diagonal_index = max(range(3), key=lambda index: transform[index][index])
-        next_index = (diagonal_index + 1) % 3
-        final_index = (diagonal_index + 2) % 3
-        scale = (
-            math.sqrt(
-                1.0
-                + transform[diagonal_index][diagonal_index]
-                - transform[next_index][next_index]
-                - transform[final_index][final_index]
-            )
-            * 2.0
-        )
-        quaternion = [0.0, 0.0, 0.0, 0.0]
-        quaternion[diagonal_index] = 0.25 * scale
-        quaternion[3] = (
-            transform[final_index][next_index] - transform[next_index][final_index]
-        ) / scale
-        quaternion[next_index] = (
-            transform[next_index][diagonal_index]
-            + transform[diagonal_index][next_index]
-        ) / scale
-        quaternion[final_index] = (
-            transform[final_index][diagonal_index]
-            + transform[diagonal_index][final_index]
-        ) / scale
-
-    norm = math.sqrt(sum(value * value for value in quaternion))
-    quaternion = [value / norm for value in quaternion]
-    first_vector_component = next(
-        (float(value) for value in quaternion[:3] if value != 0.0), 1.0
-    )
-    if quaternion[3] < 0.0 or (quaternion[3] == 0.0 and first_vector_component < 0.0):
-        quaternion = [-value for value in quaternion]
-    return quaternion
-
-
-def _compute_full_stretch(
-    urdf_path: Path,
-    selection: ArmSelection,
-    source_graph: UrdfGraph,
-) -> ManifestEntry:
-    """Compute one arm's farthest reachable cardinal-axis rest pose.
-
-    The generated root places the first actuator at the origin with its
-    positive axis along world ``-Z``. Keeping every downstream joint at its
-    URDF rest value of zero therefore leaves only four possible first-joint
-    rotations: align the rest TCP projection with ``+X``, ``-X``, ``+Y``, or
-    ``-Y``. FK evaluates the reachable candidates, and the greatest signed
-    distance wins with that same fixed tie order.
-
-    Args:
-        urdf_path: Generated split-arm URDF.
-        selection: Arm selection used to generate the URDF.
-        source_graph: Source graph used to identify the terminal TCP link.
-
-    Returns:
-        Minimal manifest entry containing model and full-stretch pose data.
-
-    Raises:
-        SplitError: If joint bounds are invalid or no cardinal pose is reachable.
-    """
-
-    generated_tree = _load_urdf(urdf_path)
-    generated_graph = _build_graph(generated_tree.getroot())
-    active_joint_order = list(selection.active_joints)
-    if not active_joint_order:
-        raise SplitError(f"Arm {selection.label!r} has no active revolute joints.")
-
-    bounds: list[tuple[float, float]] = []
-    for joint_name in active_joint_order:
-        joint = generated_graph.joints.get(joint_name)
-        limit = joint.find("limit") if joint is not None else None
-        if joint is None or joint.get("type") != "revolute" or limit is None:
-            raise SplitError(
-                f"Generated {selection.label} model has no bounded revolute joint "
-                f"{joint_name!r}."
-            )
-        try:
-            lower = float(limit.get("lower", ""))
-            upper = float(limit.get("upper", ""))
-        except ValueError as exc:
-            raise SplitError(
-                f"Joint {joint_name!r} must have numeric lower and upper limits."
-            ) from exc
-        if not math.isfinite(lower) or not math.isfinite(upper):
-            raise SplitError(f"Joint {joint_name!r} must have finite limits.")
-        if lower > upper:
-            raise SplitError(f"Joint {joint_name!r} has reversed limits.")
-        bounds.append((lower, upper))
-
-    tcp_link = _joint_child(source_graph.joints[selection.path[-1]])
-    try:
-        first_joint_index = active_joint_order.index(selection.first_joint)
-    except ValueError as exc:
-        raise SplitError(
-            f"Generated {selection.label} model does not contain first joint "
-            f"{selection.first_joint!r}."
-        ) from exc
-
-    rest_joint_values = [0.0] * len(active_joint_order)
-    if any(
-        rest_value < lower - _JOINT_LIMIT_TOLERANCE_RAD
-        or rest_value > upper + _JOINT_LIMIT_TOLERANCE_RAD
-        for rest_value, (lower, upper) in zip(rest_joint_values, bounds)
-    ):
-        raise SplitError(
-            f"Arm {selection.label!r} cannot use the URDF zero configuration "
-            "as its full-stretch rest pose because it violates a joint limit."
-        )
-
-    rest_transform = _link_transform(
-        generated_graph,
-        tcp_link,
-        dict(zip(active_joint_order, rest_joint_values)),
-    )
-    rest_x = rest_transform[0][3]
-    rest_y = rest_transform[1][3]
-    if math.hypot(rest_x, rest_y) <= _CARDINAL_ALIGNMENT_TOLERANCE_M:
-        raise SplitError(
-            f"Arm {selection.label!r} has no horizontal TCP extension in its "
-            "URDF zero configuration."
-        )
-
-    rest_angle_rad = math.atan2(rest_y, rest_x)
-    first_lower, first_upper = bounds[first_joint_index]
-    best_distance = -math.inf
-    best_joint_values: list[float] | None = None
-    for axis_index, direction_sign, target_angle_rad in _CARDINAL_DIRECTIONS:
-        # Positive first-joint rotation is about world -Z, so it subtracts
-        # from the TCP projection angle.
-        first_joint_angle = _equivalent_angle_within_limits(
-            rest_angle_rad - target_angle_rad,
-            first_lower,
-            first_upper,
-        )
-        if first_joint_angle is None:
-            continue
-
-        joint_values = rest_joint_values.copy()
-        joint_values[first_joint_index] = first_joint_angle
-        transform = _link_transform(
-            generated_graph,
-            tcp_link,
-            dict(zip(active_joint_order, joint_values)),
-        )
-        transverse_axis = 1 - axis_index
-        if abs(transform[transverse_axis][3]) > _CARDINAL_ALIGNMENT_TOLERANCE_M:
-            continue
-        signed_distance = direction_sign * transform[axis_index][3]
-        if signed_distance < 0.0:
-            continue
-        if signed_distance > best_distance + _DIRECTION_TIE_TOLERANCE_M:
-            best_distance = signed_distance
-            best_joint_values = joint_values
-
-    if best_joint_values is None:
-        raise SplitError(f"Could not compute the {selection.label} full-stretch pose.")
-
-    transform = _link_transform(
-        generated_graph,
-        tcp_link,
-        dict(zip(active_joint_order, best_joint_values)),
-    )
-    return {
-        "urdf_path": str(urdf_path.resolve()),
-        "tcp_link": tcp_link,
-        "active_joint_order": active_joint_order,
-        "full_stretch_joints": best_joint_values,
-        "full_stretch_xyz": [transform[index][3] for index in range(3)],
-        "full_stretch_quat": _canonical_xyzw_quaternion(transform),
-    }
-
-
-def _write_manifest(manifest: SplitManifest, destination: Path, *, force: bool) -> None:
-    """Write the per-arm sidecar manifest.
-
-    Args:
-        manifest: Left and right generated-model metadata.
-        destination: JSON sidecar path.
-        force: Whether an existing sidecar may be replaced.
-
-    Raises:
-        SplitError: If the destination exists without ``force``.
-        OSError: If the manifest cannot be written.
-    """
-
-    if destination.exists() and not force:
-        raise SplitError(
-            f"Refusing to overwrite {destination}; pass --force to replace it."
-        )
-    destination.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-
-
-def load_manifest(manifest_path: str | Path) -> SplitManifest:
-    """Load and minimally validate a generated split-URDF manifest.
-
-    Args:
-        manifest_path: JSON sidecar written by this module.
-
-    Returns:
-        Manifest with unchanged stored path strings and pose values.
-
-    Raises:
-        SplitError: If JSON structure, field shapes, or referenced URDF files
-            are invalid.
-    """
-
-    path = Path(manifest_path).expanduser().resolve()
-    try:
-        raw_manifest = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise SplitError(f"Could not read split-URDF manifest {path}: {exc}") from exc
-
-    if not isinstance(raw_manifest, dict) or set(raw_manifest) != {"left", "right"}:
-        raise SplitError("Split-URDF manifest must contain exactly left and right.")
-
-    for side in ("left", "right"):
-        entry = raw_manifest[side]
-        if not isinstance(entry, dict) or set(entry) != _MANIFEST_ENTRY_FIELDS:
-            raise SplitError(
-                f"Manifest entry {side!r} must contain exactly "
-                f"{sorted(_MANIFEST_ENTRY_FIELDS)}."
-            )
-        if not isinstance(entry["urdf_path"], str) or not isinstance(
-            entry["tcp_link"], str
-        ):
-            raise SplitError(f"Manifest entry {side!r} has invalid path or TCP link.")
-        joint_order = entry["active_joint_order"]
-        joint_values = entry["full_stretch_joints"]
-        xyz = entry["full_stretch_xyz"]
-        quaternion = entry["full_stretch_quat"]
-        if not isinstance(joint_order, list) or not all(
-            isinstance(name, str) for name in joint_order
-        ):
-            raise SplitError(f"Manifest entry {side!r} has invalid joint order.")
-        numeric_vectors = (joint_values, xyz, quaternion)
-        if not all(
-            isinstance(vector, list)
-            and all(
-                isinstance(value, (int, float)) and not isinstance(value, bool)
-                for value in vector
-            )
-            for vector in numeric_vectors
-        ):
-            raise SplitError(f"Manifest entry {side!r} has invalid pose values.")
-        if (
-            len(joint_values) != len(joint_order)
-            or len(xyz) != 3
-            or len(quaternion) != 4
-        ):
-            raise SplitError(f"Manifest entry {side!r} has invalid pose dimensions.")
-        urdf_path = Path(entry["urdf_path"]).expanduser()
-        if not urdf_path.is_absolute():
-            urdf_path = path.parent / urdf_path
-        if not urdf_path.is_file():
-            raise SplitError(
-                f"Manifest entry {side!r} references missing URDF {urdf_path}."
-            )
-
-    return cast(SplitManifest, raw_manifest)
-
-
-def _prompt_joint(value: str | None, prompt: str) -> str:
+def _prompt_joint(value: str | None, prompt: str, graph: UrdfGraph) -> str:
     if value:
         return value
     if not sys.stdin.isatty():
         raise SplitError(f"Missing required input: {prompt.rstrip(': ')}.")
+    print("Available revolute joints (parent -> child):", file=sys.stderr)
+    for name, joint in graph.joints.items():
+        if joint.get("type") == "revolute":
+            print(
+                f"  - {name}: {_joint_parent(joint)} -> {_joint_child(joint)}",
+                file=sys.stderr,
+            )
     entered = input(prompt).strip()
     if not entered:
         raise SplitError("A joint name is required.")
@@ -1460,7 +1049,7 @@ def _add_split_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Overwrite existing output URDFs and sidecar manifest.",
+        help="Overwrite existing output URDFs.",
     )
     parser.add_argument(
         "--visualize",
@@ -1522,7 +1111,7 @@ def main(argv: list[str] | None = None) -> int:
         Zero after the requested command completes.
 
     Raises:
-        SplitError: If validation, splitting, pose generation, or output fails.
+        SplitError: If validation, splitting, or output fails.
     """
 
     args = _parse_args(argv)
@@ -1533,24 +1122,19 @@ def main(argv: list[str] | None = None) -> int:
     source = args.urdf.resolve()
     left_output = (args.left_output or _default_output(source, "left")).resolve()
     right_output = (args.right_output or _default_output(source, "right")).resolve()
-    manifest_path = source.with_suffix(".json")
     if left_output == right_output:
         raise SplitError("Left and right output paths must be different.")
     if source in {left_output, right_output}:
         raise SplitError("An output path must not overwrite the source URDF.")
-    if manifest_path.exists() and not args.force:
-        raise SplitError(
-            f"Refusing to overwrite {manifest_path}; pass --force to replace it."
-        )
 
     tree = _load_urdf(source)
     graph = _build_graph(tree.getroot())
     _validate_source_meshes(tree.getroot(), graph.root_link, source.parent)
     left_first = _prompt_joint(
-        args.left_first_joint, "First actuator joint of the left arm: "
+        args.left_first_joint, "First actuator joint of the left arm: ", graph
     )
     right_first = _prompt_joint(
-        args.right_first_joint, "First actuator joint of the right arm: "
+        args.right_first_joint, "First actuator joint of the right arm: ", graph
     )
     if left_first == right_first:
         raise SplitError("Left and right first actuator joints must be different.")
@@ -1575,14 +1159,6 @@ def main(argv: list[str] | None = None) -> int:
         tree, graph, right_selection, source.parent
     )
 
-    if args.force and manifest_path.exists():
-        try:
-            manifest_path.unlink()
-        except OSError as exc:
-            raise SplitError(
-                f"Could not remove stale manifest {manifest_path}: {exc}"
-            ) from exc
-
     _write_tree(left_tree, left_output, force=args.force)
     try:
         _write_tree(right_tree, right_output, force=args.force)
@@ -1596,17 +1172,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         raise
 
-    manifest: SplitManifest = {
-        "left": _compute_full_stretch(left_output, left_selection, graph),
-        "right": _compute_full_stretch(right_output, right_selection, graph),
-    }
-    _write_manifest(manifest, manifest_path, force=args.force)
-
     _print_summary(left_selection, left_frozen, left_transmissions, left_output, graph)
     _print_summary(
         right_selection, right_frozen, right_transmissions, right_output, graph
     )
-    print(f"\nManifest: {manifest_path}")
     if args.visualize:
         simulate(left_output, right_output, port=args.viser_port)
     return 0

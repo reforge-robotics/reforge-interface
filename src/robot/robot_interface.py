@@ -48,6 +48,8 @@ AXOL_JOINT_NAMES = tuple(joint.value for joint in ARM_JOINTS)
 AXOL_URDF_JOINT_NAMES = tuple(urdf_arm_joint_names(is_left=USE_LEFT))
 
 BOT_ID = "" if USE_LEFT else ""
+# Source bimanual model used to generate both per-arm URDFs during calibration.
+BASE_URDF_PATH = "urdf/axol.urdf"
 URDF_PATH = f"urdf/axol-{AXOL_SIDE}.urdf"
 # Arm straight out in front at shoulder height. The split URDF's base +z is
 # the shoulder_1 axis (horizontal in the world), so the TCP must be stretched

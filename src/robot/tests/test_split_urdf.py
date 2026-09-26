@@ -2,25 +2,13 @@
 
 from __future__ import annotations
 
-import json
-import math
 from pathlib import Path
-from unittest.mock import Mock
 from xml.etree import ElementTree as ET
 
-import pinocchio as pin
 import pytest
 
 from robot import split_urdf
 
-_MANIFEST_FIELDS = {
-    "urdf_path",
-    "tcp_link",
-    "active_joint_order",
-    "full_stretch_joints",
-    "full_stretch_xyz",
-    "full_stretch_quat",
-}
 _TEST_LINKS = {
     "base",
     "left_arm_link",
@@ -312,140 +300,3 @@ def test_split_converts_mesh_paths_preserves_source_and_keeps_split_behavior(
             and joint.find("child").get("link") == "base"
             for joint in generated.findall("joint")
         )
-
-
-def test_full_stretch_is_cardinal_deterministic_limited_and_matches_fk(
-    tmp_path: Path,
-) -> None:
-    """Choose the farthest cardinal TCP position and store matching Pinocchio FK.
-
-    Args:
-        tmp_path: Isolated fixture directory.
-    """
-    source = _create_bimanual_urdf(tmp_path)
-    _split(source)
-    manifest_path = source.with_suffix(".json")
-    first_run = json.loads(manifest_path.read_text(encoding="utf-8"))
-
-    _split(source, force=True)
-    second_run = json.loads(manifest_path.read_text(encoding="utf-8"))
-
-    for side in ("left", "right"):
-        entry = second_run[side]
-        assert entry["full_stretch_joints"] == first_run[side]["full_stretch_joints"]
-        assert entry["full_stretch_xyz"] == first_run[side]["full_stretch_xyz"]
-        assert entry["full_stretch_quat"] == first_run[side]["full_stretch_quat"]
-        assert entry["active_joint_order"] == [f"{side}_shoulder"]
-        assert len(entry["full_stretch_joints"]) == len(entry["active_joint_order"])
-
-        urdf_path = Path(entry["urdf_path"])
-        urdf = ET.parse(urdf_path).getroot()
-        joint_values = entry["full_stretch_joints"]
-        assert all(math.isfinite(float(value)) for value in joint_values)
-        for joint_name, value in zip(entry["active_joint_order"], joint_values):
-            joint = urdf.find(f"./joint[@name='{joint_name}']")
-            assert joint is not None
-            limit = joint.find("limit")
-            assert limit is not None
-            lower = float(limit.get("lower", "nan"))
-            upper = float(limit.get("upper", "nan"))
-            assert math.isfinite(lower) and math.isfinite(upper)
-            assert lower <= float(value) <= upper
-
-        xyz = [float(value) for value in entry["full_stretch_xyz"]]
-        assert xyz[0] == pytest.approx(1.0, abs=1e-7)
-        assert abs(xyz[1]) < 1e-7
-        assert abs(xyz[2]) < 1e-7
-        assert abs(float(joint_values[0])) == pytest.approx(math.pi, abs=1e-7)
-
-        model = pin.buildModelFromUrdf(str(urdf_path))
-        configuration = pin.neutral(model)
-        for joint_name, value in zip(entry["active_joint_order"], joint_values):
-            joint_id = model.getJointId(joint_name)
-            assert joint_id > 0
-            joint_model = model.joints[joint_id]
-            assert joint_model.nq == 1
-            configuration[joint_model.idx_q] = float(value)
-
-        data = model.createData()
-        pin.forwardKinematics(model, data, configuration)
-        pin.updateFramePlacements(model, data)
-        tcp_frame_id = model.getFrameId(entry["tcp_link"])
-        assert tcp_frame_id < len(model.frames)
-        tcp_pose = data.oMf[tcp_frame_id]
-
-        expected_xyz = [float(value) for value in entry["full_stretch_xyz"]]
-        assert list(tcp_pose.translation) == pytest.approx(expected_xyz, abs=1e-7)
-        actual_quaternion = list(pin.Quaternion(tcp_pose.rotation).coeffs())
-        expected_quaternion = [float(value) for value in entry["full_stretch_quat"]]
-        assert len(expected_quaternion) == 4
-        direct_error = math.dist(actual_quaternion, expected_quaternion)
-        sign_flipped_error = math.dist(
-            actual_quaternion, [-value for value in expected_quaternion]
-        )
-        assert min(direct_error, sign_flipped_error) < 1e-7
-
-
-def test_forced_failure_removes_stale_manifest(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Fail closed when a forced rerun cannot load a generated model.
-
-    Args:
-        tmp_path: Isolated fixture directory.
-        monkeypatch: Pytest fixture used to force generated-model load failure.
-    """
-
-    source = _create_bimanual_urdf(tmp_path)
-    _split(source)
-    manifest_path = source.with_suffix(".json")
-    assert manifest_path.is_file()
-
-    monkeypatch.setattr(
-        split_urdf,
-        "_compute_full_stretch",
-        Mock(side_effect=split_urdf.SplitError("generated model failure")),
-    )
-    with pytest.raises(split_urdf.SplitError, match="generated model failure"):
-        _split(source, force=True)
-
-    assert not manifest_path.exists()
-
-
-def test_manifest_has_only_approved_fields_and_loader_checks_output_files(
-    tmp_path: Path,
-) -> None:
-    """Load the minimal sidecar and reject missing fields or generated URDFs.
-
-    Args:
-        tmp_path: Isolated fixture directory.
-    """
-    source = _create_bimanual_urdf(tmp_path)
-    _split(source)
-    manifest_path = source.with_suffix(".json")
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-
-    assert set(manifest) == {"left", "right"}
-    for side, entry in manifest.items():
-        assert set(entry) == _MANIFEST_FIELDS
-        assert entry["tcp_link"] == f"{side}_tcp"
-        assert entry["active_joint_order"] == [f"{side}_shoulder"]
-        assert Path(entry["urdf_path"]).is_file()
-        assert len(entry["full_stretch_xyz"]) == 3
-        assert len(entry["full_stretch_quat"]) == 4
-
-    assert split_urdf.load_manifest(manifest_path) == manifest
-
-    malformed_manifest = json.loads(json.dumps(manifest))
-    del malformed_manifest["left"]["tcp_link"]
-    manifest_path.write_text(
-        json.dumps(malformed_manifest),
-        encoding="utf-8",
-    )
-    with pytest.raises(split_urdf.SplitError):
-        split_urdf.load_manifest(manifest_path)
-
-    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-    Path(manifest["left"]["urdf_path"]).unlink()
-    with pytest.raises(split_urdf.SplitError):
-        split_urdf.load_manifest(manifest_path)

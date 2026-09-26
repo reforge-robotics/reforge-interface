@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from contextlib import ExitStack
 from importlib.resources import as_file, files
 from importlib.resources.abc import Traversable
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from reforge_core.calibration import run_helpers
 import robot.robot_interface as robot_interface
+from robot import split_urdf
 
 
 def _materialize_optional_resource(
@@ -40,6 +43,59 @@ def _materialize_optional_resource(
     return resource_stack.enter_context(as_file(resource))
 
 
+def _ensure_bimanual_urdfs(
+    source: Path, selected_output: Path, *, use_left: bool
+) -> None:
+    """Generate missing per-arm URDFs before calibration opens the selected arm.
+
+    The selected output comes from ``robot_interface.URDF_PATH``. Passing it to
+    the splitter explicitly keeps the generated model and calibration model in
+    sync even when an integration uses a nonstandard output filename.
+    """
+    source = source.resolve()
+    selected_output = selected_output.resolve()
+    other_side = "right" if use_left else "left"
+    other_output = source.with_name(f"{source.stem}-{other_side}{source.suffix}")
+    left_output, right_output = (
+        (selected_output, other_output)
+        if use_left
+        else (other_output, selected_output)
+    )
+    if left_output == right_output or source in {left_output, right_output}:
+        raise ValueError("Bimanual source, left output, and right output must differ.")
+
+    left_exists = left_output.is_file()
+    right_exists = right_output.is_file()
+    if left_exists and right_exists:
+        return
+    if not source.is_file():
+        raise FileNotFoundError(f"Bimanual source URDF not found: {source}")
+
+    # The splitter writes both arms. Redirect an existing arm to a disposable
+    # path so a partial split can be completed without replacing that file.
+    with TemporaryDirectory(prefix="robot-split-") as temp_dir:
+        temporary = Path(temp_dir)
+        split_left = temporary / left_output.name if left_exists else left_output
+        split_right = temporary / right_output.name if right_exists else right_output
+        try:
+            status = split_urdf.main(
+                [
+                    "split",
+                    str(source),
+                    "--left-output",
+                    str(split_left),
+                    "--right-output",
+                    str(split_right),
+                ]
+            )
+        except split_urdf.SplitError as exc:
+            raise SystemExit(f"error: {exc}") from exc
+        if status != 0:
+            raise RuntimeError(f"Bimanual URDF split failed with status {status}.")
+    if not left_output.is_file() or not right_output.is_file():
+        raise RuntimeError("Bimanual URDF split did not create both arm models.")
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     """Parse robot CLI arguments and dispatch to the SDK-owned implementation.
 
@@ -54,19 +110,36 @@ def main(argv: Sequence[str] | None = None) -> None:
     # The calibration routes never close the interface they open, so track
     # every live robot and close it on the way out (normal return, error, or
     # Ctrl-C). Closing returns the arm to rest before disabling it.
-    opened: list[RobotInterface] = []
+    opened: list[robot_interface.RobotInterface] = []
 
-    def open_robot_interface(**kwargs) -> RobotInterface:
-        robot_interface = RobotInterface(**kwargs)
-        opened.append(robot_interface)
-        return robot_interface
-      
+    def open_robot_interface(**kwargs) -> robot_interface.RobotInterface:
+        opened_interface = robot_interface.RobotInterface(**kwargs)
+        opened.append(opened_interface)
+        return opened_interface
+
+    cli_args = list(sys.argv[1:] if argv is None else argv)
+    bimanual = bool(cli_args and cli_args[0] == "calibrate" and "--bimanual" in cli_args)
+    if bimanual:
+        cli_args = [argument for argument in cli_args if argument != "--bimanual"]
+        # Validate the SDK options before asking the operator to split a URDF.
+        # argparse exits here for --help, so help needs no generated URDF.
+        run_helpers.build_parser(
+            default_robot_id=robot_interface.BOT_ID
+        ).parse_args(cli_args)
+
     packaged_resources = files("robot")
     urdf_path = robot_interface.URDF_PATH
+    if bimanual:
+        package_dir = Path(__file__).resolve().parent
+        _ensure_bimanual_urdfs(
+            package_dir / robot_interface.BASE_URDF_PATH,
+            package_dir / urdf_path,
+            use_left=robot_interface.USE_LEFT,
+        )
     packaged_urdf = packaged_resources.joinpath(urdf_path)
     if not packaged_urdf.is_file():
         raise FileNotFoundError(f"Robot URDF resource not found: {urdf_path}")
-        
+
     try:
         with as_file(packaged_urdf) as default_sim_urdf:
             return run_helpers.main(
@@ -74,22 +147,22 @@ def main(argv: Sequence[str] | None = None) -> None:
                 simulator_configuration=run_helpers.SimulatorConfiguration(
                     urdf_path=default_sim_urdf,
                     name="My Robot",
-                    sample_frequency_hz=ROBOT_MAX_FREQ,
-                    imu_record_frequency_hz=DEFAULT_IMU_RECORD_FREQUENCY_HZ,
-                    data_folder_prefix=SIM_DATA_LOCATION_PREFIX,
-                    servo_bandwidth_hz=MAX_ROBOT_JOINTS_BANDWIDTH,
-                    calibration_start_joints=FULL_STRETCH_JOINTS,
-                    calibration_start_quat=FULL_STRETCH_QUAT,
-                    calibration_start_xyz=FULL_STRETCH_XYZ,
-                    full_stretch_pose_override=FULL_STRETCH_POSE_OVERRIDE,
+                    sample_frequency_hz=robot_interface.ROBOT_MAX_FREQ,
+                    imu_record_frequency_hz=robot_interface.DEFAULT_IMU_RECORD_FREQUENCY_HZ,
+                    data_folder_prefix=robot_interface.SIM_DATA_LOCATION_PREFIX,
+                    servo_bandwidth_hz=robot_interface.MAX_ROBOT_JOINTS_BANDWIDTH,
+                    calibration_start_joints=robot_interface.FULL_STRETCH_JOINTS,
+                    calibration_start_quat=robot_interface.FULL_STRETCH_QUAT,
+                    calibration_start_xyz=robot_interface.FULL_STRETCH_XYZ,
+                    full_stretch_pose_override=robot_interface.FULL_STRETCH_POSE_OVERRIDE,
                 ),
-                default_robot_id=BOT_ID,
-                argv=argv,
+                default_robot_id=robot_interface.BOT_ID,
+                argv=cli_args,
                 script_path=Path(__file__).resolve(),
             )
     finally:
-        for robot_interface in reversed(opened):
-            robot_interface.close()
+        for opened_interface in reversed(opened):
+            opened_interface.close()
 
     data_location_prefix = robot_interface.DATA_LOCATION_PREFIX
     robot_max_frequency_hz = robot_interface.ROBOT_MAX_FREQ
