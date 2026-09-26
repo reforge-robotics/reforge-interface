@@ -207,6 +207,7 @@ class RobotInterface(ArmClient):
                 urdf_path=self.urdf_path,
                 tcp_payload=tcp_payload,
                 tcp_payload_com=tcp_payload_com,
+                tcp_link_name=AXOL_TCP_LINK,
             )
             # Use the model joint count as the ground truth for downstream
             # dynamics calls (the hardware may report extra fixed joints/grippers).
