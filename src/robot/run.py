@@ -51,11 +51,45 @@ def main(argv: Sequence[str] | None = None) -> None:
     Raises:
         SystemExit: If argument parsing fails.
     """
+    # The calibration routes never close the interface they open, so track
+    # every live robot and close it on the way out (normal return, error, or
+    # Ctrl-C). Closing returns the arm to rest before disabling it.
+    opened: list[RobotInterface] = []
+
+    def open_robot_interface(**kwargs) -> RobotInterface:
+        robot_interface = RobotInterface(**kwargs)
+        opened.append(robot_interface)
+        return robot_interface
+      
     packaged_resources = files("robot")
     urdf_path = robot_interface.URDF_PATH
     packaged_urdf = packaged_resources.joinpath(urdf_path)
     if not packaged_urdf.is_file():
         raise FileNotFoundError(f"Robot URDF resource not found: {urdf_path}")
+        
+    try:
+        with as_file(packaged_urdf) as default_sim_urdf:
+            return run_helpers.main(
+                robot_interface_class=open_robot_interface,
+                simulator_configuration=run_helpers.SimulatorConfiguration(
+                    urdf_path=default_sim_urdf,
+                    name="My Robot",
+                    sample_frequency_hz=ROBOT_MAX_FREQ,
+                    imu_record_frequency_hz=DEFAULT_IMU_RECORD_FREQUENCY_HZ,
+                    data_folder_prefix=SIM_DATA_LOCATION_PREFIX,
+                    servo_bandwidth_hz=MAX_ROBOT_JOINTS_BANDWIDTH,
+                    calibration_start_joints=FULL_STRETCH_JOINTS,
+                    calibration_start_quat=FULL_STRETCH_QUAT,
+                    calibration_start_xyz=FULL_STRETCH_XYZ,
+                    full_stretch_pose_override=FULL_STRETCH_POSE_OVERRIDE,
+                ),
+                default_robot_id=BOT_ID,
+                argv=argv,
+                script_path=Path(__file__).resolve(),
+            )
+    finally:
+        for robot_interface in reversed(opened):
+            robot_interface.close()
 
     data_location_prefix = robot_interface.DATA_LOCATION_PREFIX
     robot_max_frequency_hz = robot_interface.ROBOT_MAX_FREQ

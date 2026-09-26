@@ -4,6 +4,7 @@
 # Version: 2.0
 
 
+import sys
 from collections.abc import Mapping
 from importlib.resources import as_file, files
 from pathlib import Path
@@ -11,10 +12,20 @@ from typing import Literal, Optional, Sequence
 
 import numpy as np
 
+# almond-axol requires Python 3.12+. On 3.11, asyncio.wait_for can swallow a
+# task cancellation, so the SDK's motor telemetry loops never stop and
+# disconnect()/enable() hang.
+if sys.version_info < (3, 12):
+    raise RuntimeError(
+        "The Axol interface requires Python 3.12+ (almond-axol's minimum); "
+        f"this is Python {sys.version.split()[0]}."
+    )
+
 # Almond SDK imports including async libraries
 from almond_axol.constants import ARM_JOINTS, CAN_LEFT, CAN_RIGHT, urdf_arm_joint_names
-from almond_axol.kinematics import KinematicsSolver, plan_linear_segment
+from almond_axol.kinematics import KinematicsSolver
 from almond_axol.robot import Axol
+from almond_axol.teleop.config import VRTeleopConfig
 from almond_axol.teleop.trajectory import plan_collision_aware_trajectory
 import asyncio
 from concurrent.futures import Future
@@ -38,9 +49,27 @@ AXOL_URDF_JOINT_NAMES = tuple(urdf_arm_joint_names(is_left=USE_LEFT))
 
 BOT_ID = "" if USE_LEFT else ""
 URDF_PATH = f"urdf/axol-{AXOL_SIDE}.urdf"
-FULL_STRETCH_XYZ = [0.0, 0.0, 0.781526]
-FULL_STRETCH_QUAT = [0.0, 1.0, 0.0, 0.0]
-FULL_STRETCH_JOINTS = [np.pi / 2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+# Arm straight out in front at shoulder height. The split URDF's base +z is
+# the shoulder_1 axis (horizontal in the world), so the TCP must be stretched
+# perpendicular to it for the calibration geometry to find a reach, height and
+# depth axis. The elbow is bent 3 deg off its straight-arm URDF limit (0 rad) so
+# encoder noise never reads past it.
+FULL_STRETCH_JOINTS = [
+    np.pi / 2 if USE_LEFT else -np.pi / 2,
+    0.0,
+    0.0,
+    0.05 if USE_LEFT else -0.05,
+    0.0,
+    0.0,
+    0.0,
+]
+# TCP pose of FULL_STRETCH_JOINTS in the split URDF frame ([x, y, z], [qx, qy, qz, qw]).
+FULL_STRETCH_XYZ = [-0.017453 if USE_LEFT else 0.017453, -0.71151, 0.06958]
+FULL_STRETCH_QUAT = (
+    [0.512342, 0.487345, 0.512342, -0.487345]
+    if USE_LEFT
+    else [0.512344, -0.487344, -0.512341, -0.487346]
+)
 DEFAULT_TCP_PAYLOAD = 0.0
 
 # ========== COMMON PARAMETERS ==============
@@ -48,12 +77,17 @@ ROBOT_MAX_FREQ = 240  # {~.~} [CHANGE TO ROBOT'S MAX SAMPLING FREQUENCY] in [Hz]
 FULL_STRETCH_POSE_OVERRIDE = None  # {~.~} list of home pose (xyz and quaternion) to override additional height not in base height
 AXOL_MAX_JOINT_SPEED = 2.0 * np.pi
 AXOL_MAX_JOINT_ACCELERATION = 3.5 * 2.0 * np.pi
-AXOL_MAX_CARTESIAN_SPEED = 0.5  # {~.~} 50% waypoint speed is 0.25 m/s.
-AXOL_MAX_ANGULAR_SPEED = 2.4  # {~.~} 50% waypoint speed is 1.2 rad/s.
+# Rest pose and return speed match `axol teleop`'s reset (0.63 rad/s average).
+AXOL_REST_JOINTS = (
+    VRTeleopConfig().rest_pose_left if USE_LEFT else VRTeleopConfig().rest_pose_right
+).tolist()
+AXOL_REST_SPEED_PERCENT = 15.0
+AXOL_REST_TOLERANCE = 0.02  # [rad]
 
 # General constants
 IS_DEGREES = False  # {~.~} [CHANGE TO TRUE IF ROBOT USES DEGREES]
-DATA_LOCATION_PREFIX = "src/robot/data"  # {~.~} [CHANGE TO LOCATION DESIRED - will be robot/DATA_LOCATION_PREFIX/*]
+# Anchored to this package so data lands in src/robot/data/<date> from any working directory.
+DATA_LOCATION_PREFIX = str(Path(__file__).resolve().parent / "data")
 SIM_DATA_LOCATION_PREFIX = str(Path(__file__).resolve().parent / "data" / "sim")
 
 MAX_ROBOT_JOINTS_BANDWIDTH = (
@@ -352,22 +386,61 @@ class RobotInterface(ArmClient):
             raise RuntimeError(f"No {AXOL_SIDE} Axol arm is available.")
         return np.asarray(arm.positions, dtype=float)[: self.num_joints].tolist()
 
+    def _return_to_rest(self) -> bool:
+        """Move the active arm to its rest pose; return whether it got there."""
+        robot = self.robot
+        if robot is None or robot.fault is not None or robot.limp is not None:
+            return False
+        rest = np.asarray(AXOL_REST_JOINTS, dtype=float)
+        current = np.asarray(self._get_joint_positions(), dtype=float)
+        if np.max(np.abs(current - rest)) > AXOL_REST_TOLERANCE:
+            print("Returning the Axol arm to rest before disabling ...")
+            self.command_move_j(rest, speed=AXOL_REST_SPEED_PERCENT, wait=True)
+            current = np.asarray(self._get_joint_positions(), dtype=float)
+        return bool(np.max(np.abs(current - rest)) <= 2.0 * AXOL_REST_TOLERANCE)
+
     def close(self) -> None:
-        """Stop recording and cleanly close the Axol async loop."""
+        """Return the arm to rest, then disable it and close the Axol async loop.
+
+        Disabling cuts torque, so it only happens once the arm is at rest. If
+        the arm cannot get there the buses are released with the motors still
+        holding (the realtime core's own behavior when a session ends), and the
+        operator must support the arm before using the e-stop. A session that
+        never enabled motion is released without touching motor torque.
+        """
         if self.robot is None:
             return
         try:
             self._wait_for_axol_move()
         except Exception:
-            pass  # Disable must still run if a move failed.
+            pass  # Teardown must still run if a move failed.
 
         try:
             self._stop_axol_teaching()
         except Exception:
-            pass  # Disable must still run if the teaching stream failed.
+            pass  # Teardown must still run if the teaching stream failed.
 
         self.stop_recording()
-        self._run_axol(self.robot.disable())
+        if not self._axol_motion_enabled:
+            self._run_axol(self.robot.disconnect())
+        elif self.robot.fault is not None or self.robot.limp is not None:
+            # The core keeps a faulted arm holding and a limp arm limp.
+            self._run_axol(self.robot.disable())
+        else:
+            try:
+                at_rest = self._return_to_rest()
+            except Exception as error:
+                print(f"Axol return to rest failed: {error}")
+                at_rest = False
+            if at_rest:
+                self._run_axol(self.robot.disable())
+            else:
+                print(
+                    "WARNING: the Axol arm is not at rest, so it was left holding "
+                    "its pose instead of being disabled. Support the arm before "
+                    "using the e-stop."
+                )
+                self._run_axol(self.robot.disconnect())
         self._axol_motion_enabled = False
 
         if self._axol_loop is not None:
@@ -500,7 +573,7 @@ class RobotInterface(ArmClient):
         """
         if locked_joints is not None:
             raise RuntimeError("locked_joints is only supported in simulator mode.")
-        speed_scale = self._validate_move_speed(speed)
+        self._validate_move_speed(speed)
         try:
             xyz = np.asarray(target_xyz, dtype=float)
             quat = np.asarray(target_quat, dtype=float)
@@ -516,7 +589,6 @@ class RobotInterface(ArmClient):
             raise ValueError("Axol target quaternion must have a finite, nonzero norm.")
         
         self.enter_position_mode()
-        robot = self._require_connected_arm()
         start = np.asarray(self._get_joint_positions(), dtype=np.float32)
         target_pose = np.concatenate((xyz, quat / quat_norm))
         target, report = self.model.get_inverse_kinematics(
@@ -536,33 +608,10 @@ class RobotInterface(ArmClient):
         lower_limits, upper_limits = self.model.joint_limits
         if np.any(target < lower_limits) or np.any(target > upper_limits):
             raise ValueError("Axol pose IK target exceeds the URDF joint limits.")
-        solver = self._get_axol_kinematics_solver()
-        indices = solver.left_indices if USE_LEFT else solver.right_indices
-        q_from = np.zeros(solver.num_joints, dtype=np.float32)
-        q_from[indices] = start
-        q_to = q_from.copy()
-        q_to[indices] = target
-        full_trajectory = plan_linear_segment(
-            solver,
-            q_from,
-            q_to,
-            speed=AXOL_MAX_CARTESIAN_SPEED * speed_scale,
-            ang_speed=AXOL_MAX_ANGULAR_SPEED * speed_scale,
-            rate=ROBOT_MAX_FREQ,
-            tool_offset=(0.0, 0.0, 0.0),
-            min_travel=1e-6,
-            min_rotation=1e-6,
-            label=f"{AXOL_SIDE} arm point-to-point move",
-        )
-        arm_trajectory = np.asarray(
-            [q[indices] for q in full_trajectory], dtype=np.float32
-        )
-        step_limit = AXOL_MAX_JOINT_SPEED * speed_scale / ROBOT_MAX_FREQ
-        steps = np.diff(np.vstack((start, arm_trajectory)), axis=0)
-        if np.max(np.abs(steps)) > step_limit:
-            raise RuntimeError("Axol linear planner exceeded the joint-speed limit.")
-        self._submit_axol_trajectory(robot, arm_trajectory, wait)
-        return 0
+        # Point-to-point, not a straight line: a Cartesian path out of the
+        # near-singular stretched pose cannot be tracked, so move in joint
+        # space (collision-aware) to the IK solution.
+        return self.command_move_j(target, speed=speed, wait=wait)
 
     @staticmethod
     def _validate_joint_target(
