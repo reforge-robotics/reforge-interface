@@ -41,16 +41,16 @@ from .read_only import YaskawaReadOnlyClient
 # -----------------------------------------------------------------------
 
 
-# Phase 1 contract defaults. This template-derived ArmClient remains inert
-# until the private bridge and validated NEX07C00 model are reviewed.
+# Phase 1 contract defaults. Live motion remains gated on controller discovery,
+# preflight, and an approved trajectory even though the supplied model is present.
 BOT_ID = "yaskawa-nex7"
-URDF_PATH = "urdf/test_robot.urdf"  # Candidate NEX07C00 asset is not tracked yet.
+URDF_PATH = "urdf/NEX07C00/NEX07C00.urdf"
 ROBOT_MAX_FREQ = 250  # ACU monitor request ceiling [Hz], not a proven stable rate.
 DEFAULT_FEEDBACK_RATE_HZ = 25.0
 SERVO_CONFIRMATION_TEXT = "I_CONFIRM_SERVOS_ARE_ON"
 
 # Fully stretched position of the robot for calibration.
-FULL_STRETCH_XYZ = [0.0, 0.0, 0.0]  # Unverified until the NEX7 model is approved [m].
+FULL_STRETCH_XYZ = [0.0, 0.0, 0.0]  # Unverified until the NEX7 pose is approved [m].
 FULL_STRETCH_QUAT = [0.0, 0.0, 0.0, 1.0]  # Identity diagnostic placeholder.
 FULL_STRETCH_JOINTS = [0.0] * 6  # Unverified diagnostic placeholder [rad].
 FULL_STRETCH_POSE_OVERRIDE = None

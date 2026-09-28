@@ -3,7 +3,7 @@
 This directory is an installable `robot` package containing one selected
 adapter and its public resources. Install it from this directory with:
 
-The Yaskawa NEX7 adapter and Reforge-owned ACU bridge client are an unqualified customer-review candidate. The bundled URDF is an inert test model, not an approved NEX7 description; production publication and hardware motion remain disabled.
+The Yaskawa NEX7 adapter, Reforge-owned ACU bridge client, and Yaskawa-supplied NEX07C00 model are an unqualified customer-review candidate. Public redistribution approval for the model was reported by the user on 2026-09-28. Production publication and hardware motion remain disabled pending controller/model and trajectory qualification.
 
 ```bash
 python -m pip install -r requirements.txt

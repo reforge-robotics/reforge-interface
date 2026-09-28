@@ -1,0 +1,239 @@
+<?xml version="1.0"?>
+<robot name="NEX07C00">
+  <link name="BASE">
+    <visual>
+      <geometry>
+        <mesh filename="visual/BASE.obj" scale="1.000000 1.000000 1.000000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.000000" />
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_0_1.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.000000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_0_2.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.000000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_0_3.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.000000" />
+    </collision>
+  </link>
+  <link name="S">
+    <visual>
+      <geometry>
+        <mesh filename="visual/S.obj" scale="1.000000 1.000000 1.000000" />
+      </geometry>
+      <origin rpy="1.570796 0.000000 0.000000" xyz="0.000000 0.000000 0.000000" />
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_1_1.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="1.570796 0.000000 0.000000" xyz="0.000000 0.000000 0.000000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_1_2.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="1.570796 0.000000 0.000000" xyz="0.000000 0.000000 0.000000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_1_3.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="1.570796 0.000000 0.000000" xyz="0.000000 0.000000 0.000000" />
+    </collision>
+  </link>
+  <link name="L">
+    <visual>
+      <geometry>
+        <mesh filename="visual/L.obj" scale="1.000000 1.000000 1.000000" />
+      </geometry>
+      <origin rpy="0.000000 0.000000 3.141593" xyz="0.040000 0.000000 -0.330000" />
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_2_1.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="0.000000 0.000000 3.141593" xyz="0.040000 0.000000 -0.330000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_2_2.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="0.000000 0.000000 3.141593" xyz="0.040000 0.000000 -0.330000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_2_3.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="0.000000 0.000000 3.141593" xyz="0.040000 0.000000 -0.330000" />
+    </collision>
+  </link>
+  <link name="U">
+    <visual>
+      <geometry>
+        <mesh filename="visual/U.obj" scale="1.000000 1.000000 1.000000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 0.000000" xyz="-0.040000 -0.000000 -0.775000" />
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_3_1.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 0.000000" xyz="-0.040000 -0.000000 -0.775000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_3_2.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 0.000000" xyz="-0.040000 -0.000000 -0.775000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_3_3.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 0.000000" xyz="-0.040000 -0.000000 -0.775000" />
+    </collision>
+  </link>
+  <link name="R">
+    <visual>
+      <geometry>
+        <mesh filename="visual/R.obj" scale="1.000000 1.000000 1.000000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 1.570797" xyz="0.000000 0.000000 -0.815000" />
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_4_1.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 1.570797" xyz="0.000000 0.000000 -0.815000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_4_2.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 1.570797" xyz="0.000000 0.000000 -0.815000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_4_3.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 1.570797" xyz="0.000000 0.000000 -0.815000" />
+    </collision>
+  </link>
+  <link name="B">
+    <visual>
+      <geometry>
+        <mesh filename="visual/B.obj" scale="1.000000 1.000000 1.000000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 0.000000" xyz="-0.480000 -0.000000 -0.815000" />
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_5_1.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 0.000000" xyz="-0.480000 -0.000000 -0.815000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_5_2.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 0.000000" xyz="-0.480000 -0.000000 -0.815000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_5_3.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="-0.000000 0.000000 0.000000" xyz="-0.480000 -0.000000 -0.815000" />
+    </collision>
+  </link>
+  <link name="T">
+    <visual>
+      <geometry>
+        <mesh filename="visual/T.obj" scale="1.000000 1.000000 1.000000" />
+      </geometry>
+      <origin rpy="1.570796 0.000000 0.000000" xyz="-0.480000 0.000000 -0.000000" />
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_6_1.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="1.570796 0.000000 0.000000" xyz="-0.480000 0.000000 -0.000000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_6_2.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="1.570796 0.000000 0.000000" xyz="-0.480000 0.000000 -0.000000" />
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="collision/Collision_6_3.obj" scale="0.001000 0.001000 0.001000" />
+      </geometry>
+      <origin rpy="1.570796 0.000000 0.000000" xyz="-0.480000 0.000000 -0.000000" />
+    </collision>
+  </link>
+  <joint name="S" type="revolute">
+    <parent link="BASE" />
+    <child link="S" />
+    <axis xyz="0.000000 -1.000000 0.000000" />
+    <origin rpy="-1.570796 0.000000 0.000000" xyz="0.000000 0.000000 0.000000" />
+    <limit effort="0.000000" lower="-3.141593" upper="3.141593" velocity="6.544985" />
+  </joint>
+  <joint name="L" type="revolute">
+    <parent link="S" />
+    <child link="L" />
+    <axis xyz="0.000000 -1.000000 0.000000" />
+    <origin rpy="1.570796 3.141593 0.000000" xyz="0.040000 -0.330000 -0.000000" />
+    <limit effort="0.000000" lower="-1.745329" upper="2.530727" velocity="5.497787" />
+  </joint>
+  <joint name="U" type="revolute">
+    <parent link="L" />
+    <child link="U" />
+    <axis xyz="0.000000 -1.000000 0.000000" />
+    <origin rpy="0.000000 0.000000 3.141593" xyz="0.000000 0.000000 0.445001" />
+    <limit effort="0.000000" lower="-1.221730" upper="3.316126" velocity="7.155850" />
+  </joint>
+  <joint name="R" type="revolute">
+    <parent link="U" />
+    <child link="R" />
+    <axis xyz="0.000000 -1.000000 0.000000" />
+    <origin rpy="0.000000 0.000000 -1.570796" xyz="-0.040000 -0.000000 0.040000" />
+    <limit effort="0.000000" lower="-3.316126" upper="3.316126" velocity="9.599311" />
+  </joint>
+  <joint name="B" type="revolute">
+    <parent link="R" />
+    <child link="B" />
+    <axis xyz="0.000000 -1.000000 0.000000" />
+    <origin rpy="-0.000000 0.000000 1.570797" xyz="-0.000000 0.480000 0.000000" />
+    <limit effort="0.000000" lower="-0.785398" upper="3.926991" velocity="9.599311" />
+  </joint>
+  <joint name="T" type="revolute">
+    <parent link="B" />
+    <child link="T" />
+    <axis xyz="0.000000 -1.000000 0.000000" />
+    <origin rpy="-1.570796 0.000000 0.000000" xyz="0.000000 0.000000 -0.815000" />
+    <limit effort="0.000000" lower="-6.283185" upper="6.283185" velocity="17.453293" />
+  </joint>
+  <link name="base" />
+  <joint name="BASE-base" type="fixed">
+    <origin rpy="-0.000000 -0.000000 -0.000000" xyz="0.000000 0.000000 0.330000" />
+    <parent link="BASE" />
+    <child link="base" />
+  </joint>
+  <link name="flange" />
+  <joint name="T-flange" type="fixed">
+    <origin rpy="0.012341 0.000000 -0.000000" xyz="0.000000 -0.735001 -0.000000" />
+    <parent link="T" />
+    <child link="flange" />
+  </joint>
+</robot>
