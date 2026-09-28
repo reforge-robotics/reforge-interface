@@ -51,20 +51,21 @@ BOT_ID = "" if USE_LEFT else ""
 # Source bimanual model used to generate both per-arm URDFs during calibration.
 BASE_URDF_PATH = "urdf/axol.urdf"
 URDF_PATH = f"urdf/axol-{AXOL_SIDE}.urdf"
+LEFT_FIRST_JOINT = "left_s1_0"
+RIGHT_FIRST_JOINT = "right_s1_0"
 # Arm straight out in front at shoulder height. The split URDF's base +z is
 # the shoulder_1 axis (horizontal in the world), so the TCP must be stretched
 # perpendicular to it for the calibration geometry to find a reach, height and
 # depth axis. The elbow is bent 3 deg off its straight-arm URDF limit (0 rad) so
 # encoder noise never reads past it.
-FULL_STRETCH_JOINTS = [
-    np.pi / 2 if USE_LEFT else -np.pi / 2,
-    0.0,
-    0.0,
-    0.05 if USE_LEFT else -0.05,
-    0.0,
-    0.0,
-    0.0,
-]
+RIGHT_FULL_STRETCH_JOINTS = [-np.pi / 2, 0.0, 0.0, -0.05, 0.0, 0.0, 0.0]
+LEFT_FULL_STRETCH_JOINTS = [np.pi / 2, 0.0, 0.0, 0.05, 0.0, 0.0, 0.0]
+FULL_STRETCH_JOINTS = (
+    LEFT_FULL_STRETCH_JOINTS if USE_LEFT else RIGHT_FULL_STRETCH_JOINTS
+)
+# The unsplit Axol model orders its seven left joints before its seven right
+# joints. Its default TCP is on the right arm.
+BASE_CALIBRATION_START_JOINTS = [0.0] * len(ARM_JOINTS) + RIGHT_FULL_STRETCH_JOINTS
 # TCP pose of FULL_STRETCH_JOINTS in the split URDF frame ([x, y, z], [qx, qy, qz, qw]).
 FULL_STRETCH_XYZ = [-0.017453 if USE_LEFT else 0.017453, -0.71151, 0.06958]
 FULL_STRETCH_QUAT = (
@@ -144,6 +145,7 @@ class RobotInterface(ArmClient):
         imu_recorder: ImuRecorder | None = None,
         tcp_payload: float = DEFAULT_TCP_PAYLOAD,
         tcp_payload_com: Sequence[float] | None = None,
+        urdf_path: str | None = None,
     ) -> None:
         """Initialize the robot interface and load the URDF model.
 
@@ -165,6 +167,7 @@ class RobotInterface(ArmClient):
                 by an application or integration test.
             tcp_payload: Payload mass attached at the TCP [kg].
             tcp_payload_com: Optional payload center of mass in TCP coordinates [m].
+            urdf_path: Optional package-relative URDF path selected by the CLI.
 
         Side Effects:
             Loads the URDF model and connects to robot hardware.
@@ -189,14 +192,20 @@ class RobotInterface(ArmClient):
         self.max_sampling_frequency_hz = ROBOT_MAX_FREQ
         self.data_folder_prefix = DATA_LOCATION_PREFIX
         self.servo_bandwidth_hz = MAX_ROBOT_JOINTS_BANDWIDTH
-        self.calibration_start_joints = FULL_STRETCH_JOINTS
-        self.calibration_start_quat = FULL_STRETCH_QUAT
-        self.calibration_start_xyz = FULL_STRETCH_XYZ
+        selected_urdf_path = urdf_path or URDF_PATH
+        base_urdf_selected = selected_urdf_path == BASE_URDF_PATH
+        self.calibration_start_joints = (
+            BASE_CALIBRATION_START_JOINTS
+            if base_urdf_selected
+            else FULL_STRETCH_JOINTS
+        )
+        self.calibration_start_quat = None if base_urdf_selected else FULL_STRETCH_QUAT
+        self.calibration_start_xyz = None if base_urdf_selected else FULL_STRETCH_XYZ
         self.full_stretch_pose_override = FULL_STRETCH_POSE_OVERRIDE
 
         # Initialize URDF location
         self.module_dir = files("robot")
-        resource = self.module_dir.joinpath(URDF_PATH)
+        resource = self.module_dir.joinpath(selected_urdf_path)
         with as_file(resource) as p:
             self._urdf_path = str(p)
         print(f"URDF Path: {self._urdf_path}")

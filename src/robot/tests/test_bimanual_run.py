@@ -1,4 +1,4 @@
-"""Focused tests for automatic bimanual URDF preparation in the CLI."""
+"""Focused tests for explicit bimanual URDF preparation in the CLI."""
 
 from __future__ import annotations
 
@@ -65,22 +65,20 @@ def test_bimanual_calibrate_splits_and_dispatches_selected_arm(
     monkeypatch.setattr(run.split_urdf, "main", split)
     monkeypatch.setattr(run.run_helpers, "main", calibrate)
 
-    result = run.main(
-        ["calibrate", "127.0.0.1", "--bimanual", "--robot_id", "fixture"]
-    )
+    result = run.main(["calibrate", "127.0.0.1", "--bimanual", "--robot_id", "fixture"])
 
     assert result == "calibrated"
     assert len(split_calls) == 1
     assert Path(split_calls[0][1]) == _source
     assert len(calibration_calls) == 1
     dispatched = calibration_calls[0]
-    assert dispatched["argv"] == [
-        "calibrate", "127.0.0.1", "--robot_id", "fixture"
-    ]
+    assert dispatched["argv"] == ["calibrate", "127.0.0.1", "--robot_id", "fixture"]
     assert Path(dispatched["simulator_configuration"].urdf_path) == selected
 
 
-def test_existing_pair_skips_split(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_existing_pair_skips_split(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A complete pair is reused without prompting the splitter."""
     source = tmp_path / "fixture.urdf"
     left = tmp_path / "fixture-left.urdf"
@@ -172,3 +170,154 @@ def test_split_input_error_exits_cleanly_before_calibration(
         run.main(["calibrate", "127.0.0.1", "--bimanual"])
 
     assert calibration_calls == []
+
+
+@pytest.mark.parametrize("robot_ip", ["sim", "127.0.0.1"])
+def test_plain_calibration_uses_base_urdf_without_splitting(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    robot_ip: str,
+) -> None:
+    """Unflagged calibration selects the base model for both simulator and hardware."""
+    source, selected = _configure_cli(monkeypatch, tmp_path, use_left=False)
+    dispatches: list[dict[str, Any]] = []
+    hardware_kwargs: list[dict[str, Any]] = []
+
+    def unexpected_split(_arguments: list[str]) -> int:
+        pytest.fail("Unflagged calibration must not split the base URDF")
+
+    class DummyInterface:
+        """Capture the model selected for the hardware factory."""
+
+        def __init__(self, **kwargs: Any) -> None:
+            hardware_kwargs.append(kwargs)
+
+        def close(self) -> None:
+            """Allow the CLI resource stack to close the test interface."""
+
+    def dispatch(**kwargs: Any) -> None:
+        dispatches.append(kwargs)
+        if robot_ip != "sim":
+            kwargs["robot_interface_class"](robot_ip=robot_ip)
+
+    monkeypatch.setattr(run.split_urdf, "main", unexpected_split)
+    monkeypatch.setattr(run.robot_interface, "RobotInterface", DummyInterface)
+    monkeypatch.setattr(run.run_helpers, "main", dispatch)
+
+    run.main(["calibrate", robot_ip])
+
+    assert len(dispatches) == 1
+    dispatched = dispatches[0]
+    assert Path(dispatched["simulator_configuration"].urdf_path) == source
+    assert Path(dispatched["kinecal_source_urdf_path"]) == source
+    assert not selected.exists()
+    if robot_ip == "sim":
+        assert hardware_kwargs == []
+    else:
+        assert len(hardware_kwargs) == 1
+        assert hardware_kwargs[0]["urdf_path"] == run.robot_interface.BASE_URDF_PATH
+
+
+def test_bimanual_sim_calibration_splits_with_configured_joints(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The explicit flag splits the missing arm models for simulator calibration."""
+    source, selected = _configure_cli(monkeypatch, tmp_path, use_left=False)
+    split_calls: list[list[str]] = []
+    dispatches: list[dict[str, Any]] = []
+
+    def split(arguments: list[str]) -> int:
+        split_calls.append(arguments)
+        _argument_path(arguments, "--left-output").write_text("left", encoding="utf-8")
+        _argument_path(arguments, "--right-output").write_text(
+            "right", encoding="utf-8"
+        )
+        return 0
+
+    monkeypatch.setattr(run.split_urdf, "main", split)
+    monkeypatch.setattr(
+        run.run_helpers, "main", lambda **kwargs: dispatches.append(kwargs)
+    )
+
+    run.main(["calibrate", "sim", "--bimanual"])
+
+    assert len(split_calls) == 1
+    split_args = split_calls[0]
+    assert Path(split_args[1]) == source
+    assert _argument_path(split_args, "--left-output") == source.with_name(
+        "fixture-left.urdf"
+    )
+    assert _argument_path(split_args, "--right-output") == selected
+    assert split_args[split_args.index("--left-first-joint") + 1] == (
+        run.robot_interface.LEFT_FIRST_JOINT
+    )
+    assert split_args[split_args.index("--right-first-joint") + 1] == (
+        run.robot_interface.RIGHT_FIRST_JOINT
+    )
+    assert len(dispatches) == 1
+    assert Path(dispatches[0]["simulator_configuration"].urdf_path) == selected
+    assert "--bimanual" not in dispatches[0]["argv"]
+
+
+def test_validation_sim_does_not_split_missing_arm_models(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Validation requires an existing URDF and does not trigger splitting."""
+    source, selected = _configure_cli(monkeypatch, tmp_path, use_left=False)
+
+    def unexpected_split(_arguments: list[str]) -> int:
+        pytest.fail("Validation must not split arm URDFs")
+
+    monkeypatch.setattr(run.split_urdf, "main", unexpected_split)
+
+    with pytest.raises(FileNotFoundError, match="Robot URDF resource not found"):
+        run.main(
+            [
+                "joint_tracker_performance_validation",
+                "sim",
+                "--mode",
+                "single-speed",
+                "--urdf-path",
+                str(selected),
+            ]
+        )
+
+    assert source.exists()
+    assert not selected.exists()
+
+
+def test_sim_calibration_uses_bounded_defaults_without_overriding_options(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Keep the default simulator check finite and preserve user overrides."""
+    source, selected = _configure_cli(monkeypatch, tmp_path, use_left=False)
+    dispatched: list[dict[str, Any]] = []
+
+    def unexpected_split(_arguments: list[str]) -> int:
+        pytest.fail("Unflagged simulator calibration must not split the URDF")
+
+    monkeypatch.setattr(run.split_urdf, "main", unexpected_split)
+    monkeypatch.setattr(
+        run.run_helpers, "main", lambda **kwargs: dispatched.append(kwargs)
+    )
+
+    run.main(["calibrate", "sim", "--axes", "2", "--maxfreq=3"])
+
+    assert len(dispatched) == 1
+    args = dispatched[0]["argv"]
+    assert args[:5] == ["calibrate", "sim", "--axes", "2", "--maxfreq=3"]
+    assert args.count("--axes") == 1
+    assert not any(arg == "--maxfreq" for arg in args)
+    assert args[args.index("--nv") + 1] == "1"
+    assert args[args.index("--nr") + 1] == "1"
+    assert args[args.index("--first_axis") + 1] == str(
+        len(run.robot_interface.ARM_JOINTS)
+    )
+    assert args[args.index("--sine_cycles") + 1] == "13"
+    assert args[args.index("--freqspace") + 1] == "1"
+    assert args[args.index("--dwell") + 1] == "0.1"
+    assert Path(dispatched[0]["simulator_configuration"].urdf_path) == source
+    assert not selected.exists()

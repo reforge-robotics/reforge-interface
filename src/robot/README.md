@@ -30,10 +30,38 @@ Then run:
 python -m robot.run calibrate ROBOT_IP --bimanual
 ```
 
-When either arm output is missing, the command prompts for each arm's first
-actuator joint (and an end joint if the chain branches), then generates both
-arm URDFs before calibration starts. Existing arm outputs are reused. The
-calibration runner loads the arm selected by `USE_LEFT`.
+Only `calibrate ... --bimanual` generates per-arm URDFs. Without the flag,
+calibration loads `BASE_URDF_PATH` directly and does not split it. When a split
+output is missing, the flagged command generates both arms before calibration.
+Configure `LEFT_FIRST_JOINT` and `RIGHT_FIRST_JOINT` in `robot_interface.py`
+for unattended splitting; otherwise the splitter prompts for them. Existing
+arm outputs are reused. The flagged calibration runner loads the arm selected
+by `USE_LEFT`.
 
-The included URDF and configuration files are examples only. They do not
-claim compatibility with a particular robot or vendor SDK.
+The Axol configuration selects the right arm by default (`USE_LEFT = False`).
+Its generated arm URDFs are ignored by Git and are rebuilt from `axol.urdf`
+only when `--bimanual` is specified.
+
+## Simulator pipeline check
+
+Run the simulator pipeline with an explicit split request:
+
+```bash
+python -m robot.run calibrate sim --bimanual
+python -m robot.run joint_tracker_performance_validation sim --mode single-speed \
+  --urdf-path ./src/robot/urdf/axol-right.urdf
+```
+
+The flagged calibration uses `left_s1_0` and `right_s1_0` as the first joints
+when generating missing arm models. Its default scan uses one pose, one radius,
+the selected arm's first joint, 13 sine cycles, frequencies from 1 through 4 Hz,
+and a 0.1-second dwell. Pass scan options explicitly for a wider run.
+
+Unflagged `calibrate sim` loads the 14-joint `axol.urdf` without generating
+arm models. The current calibration planner assumes one TCP chain with a
+world-z base joint, so this full Axol model fails base-joint validation; use
+`--bimanual` for a complete simulator calibration.
+
+The validation command writes a tracking JSON and HTML report under `src/robot/performance_validation/joint_tracker/`. The current
+Joint Tracker model directory must include `identification_parameters.csv`
+alongside its model JSON files.

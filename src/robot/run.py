@@ -44,22 +44,25 @@ def _materialize_optional_resource(
 
 
 def _ensure_bimanual_urdfs(
-    source: Path, selected_output: Path, *, use_left: bool
+    source: Path,
+    selected_output: Path,
+    *,
+    use_left: bool,
+    left_first_joint: str | None = None,
+    right_first_joint: str | None = None,
 ) -> None:
-    """Generate missing per-arm URDFs before calibration opens the selected arm.
+    """Generate missing per-arm URDFs before opening the selected arm.
 
-    The selected output comes from ``robot_interface.URDF_PATH``. Passing it to
-    the splitter explicitly keeps the generated model and calibration model in
-    sync even when an integration uses a nonstandard output filename.
+    The selected output comes from ``robot_interface.URDF_PATH``. Configured
+    first joints let Axol's explicit ``--bimanual`` mode split unattended.
+    Other integrations can still use the split command's interactive prompts.
     """
     source = source.resolve()
     selected_output = selected_output.resolve()
     other_side = "right" if use_left else "left"
     other_output = source.with_name(f"{source.stem}-{other_side}{source.suffix}")
     left_output, right_output = (
-        (selected_output, other_output)
-        if use_left
-        else (other_output, selected_output)
+        (selected_output, other_output) if use_left else (other_output, selected_output)
     )
     if left_output == right_output or source in {left_output, right_output}:
         raise ValueError("Bimanual source, left output, and right output must differ.")
@@ -77,17 +80,20 @@ def _ensure_bimanual_urdfs(
         temporary = Path(temp_dir)
         split_left = temporary / left_output.name if left_exists else left_output
         split_right = temporary / right_output.name if right_exists else right_output
+        split_args = [
+            "split",
+            str(source),
+            "--left-output",
+            str(split_left),
+            "--right-output",
+            str(split_right),
+        ]
+        if left_first_joint is not None:
+            split_args.extend(("--left-first-joint", left_first_joint))
+        if right_first_joint is not None:
+            split_args.extend(("--right-first-joint", right_first_joint))
         try:
-            status = split_urdf.main(
-                [
-                    "split",
-                    str(source),
-                    "--left-output",
-                    str(split_left),
-                    "--right-output",
-                    str(split_right),
-                ]
-            )
+            status = split_urdf.main(split_args)
         except split_urdf.SplitError as exc:
             raise SystemExit(f"error: {exc}") from exc
         if status != 0:
@@ -113,56 +119,67 @@ def main(argv: Sequence[str] | None = None) -> None:
     opened: list[robot_interface.RobotInterface] = []
 
     def open_robot_interface(**kwargs) -> robot_interface.RobotInterface:
+        if calibrating:
+            kwargs.setdefault("urdf_path", urdf_path)
         opened_interface = robot_interface.RobotInterface(**kwargs)
         opened.append(opened_interface)
         return opened_interface
 
     cli_args = list(sys.argv[1:] if argv is None else argv)
-    bimanual = bool(cli_args and cli_args[0] == "calibrate" and "--bimanual" in cli_args)
+    bimanual = bool(
+        cli_args and cli_args[0] == "calibrate" and "--bimanual" in cli_args
+    )
+    calibrating = bool(cli_args and cli_args[0] == "calibrate")
     if bimanual:
         cli_args = [argument for argument in cli_args if argument != "--bimanual"]
-        # Validate the SDK options before asking the operator to split a URDF.
-        # argparse exits here for --help, so help needs no generated URDF.
-        run_helpers.build_parser(
-            default_robot_id=robot_interface.BOT_ID
-        ).parse_args(cli_args)
+
+    # A simulator calibration is a bounded smoke check by default. The
+    # full hardware defaults take hours in simulation. The selected arm's first
+    # joint has a feasible sweep in the default Axol pose. Explicit scan
+    # options still reach wider sweeps.
+    if len(cli_args) >= 2 and cli_args[0] == "calibrate" and cli_args[1] == "sim":
+        simulator_defaults = (
+            ("--nv", "4"),
+            ("--axes", "1"),
+            (
+                "--first_axis",
+                str(len(robot_interface.ARM_JOINTS)) if not bimanual else "0",
+            ),
+            ("--sine_cycles", "1"),
+            ("--maxfreq", "5"),
+            ("--freqspace", "1"),
+            ("--dwell", "0.1"),
+        )
+        for option, value in simulator_defaults:
+            if not any(
+                arg == option or arg.startswith(option + "=") for arg in cli_args
+            ):
+                cli_args.extend((option, value))
+
+    if bimanual:
+        # Reject invalid options and exit on --help before generating files.
+        run_helpers.build_parser(default_robot_id=robot_interface.BOT_ID).parse_args(
+            cli_args
+        )
 
     packaged_resources = files("robot")
-    urdf_path = robot_interface.URDF_PATH
+    urdf_path = (
+        robot_interface.BASE_URDF_PATH
+        if calibrating and not bimanual
+        else robot_interface.URDF_PATH
+    )
     if bimanual:
         package_dir = Path(__file__).resolve().parent
         _ensure_bimanual_urdfs(
             package_dir / robot_interface.BASE_URDF_PATH,
             package_dir / urdf_path,
             use_left=robot_interface.USE_LEFT,
+            left_first_joint=getattr(robot_interface, "LEFT_FIRST_JOINT", None),
+            right_first_joint=getattr(robot_interface, "RIGHT_FIRST_JOINT", None),
         )
     packaged_urdf = packaged_resources.joinpath(urdf_path)
     if not packaged_urdf.is_file():
         raise FileNotFoundError(f"Robot URDF resource not found: {urdf_path}")
-
-    try:
-        with as_file(packaged_urdf) as default_sim_urdf:
-            return run_helpers.main(
-                robot_interface_class=open_robot_interface,
-                simulator_configuration=run_helpers.SimulatorConfiguration(
-                    urdf_path=default_sim_urdf,
-                    name="My Robot",
-                    sample_frequency_hz=robot_interface.ROBOT_MAX_FREQ,
-                    imu_record_frequency_hz=robot_interface.DEFAULT_IMU_RECORD_FREQUENCY_HZ,
-                    data_folder_prefix=robot_interface.SIM_DATA_LOCATION_PREFIX,
-                    servo_bandwidth_hz=robot_interface.MAX_ROBOT_JOINTS_BANDWIDTH,
-                    calibration_start_joints=robot_interface.FULL_STRETCH_JOINTS,
-                    calibration_start_quat=robot_interface.FULL_STRETCH_QUAT,
-                    calibration_start_xyz=robot_interface.FULL_STRETCH_XYZ,
-                    full_stretch_pose_override=robot_interface.FULL_STRETCH_POSE_OVERRIDE,
-                ),
-                default_robot_id=robot_interface.BOT_ID,
-                argv=cli_args,
-                script_path=Path(__file__).resolve(),
-            )
-    finally:
-        for opened_interface in reversed(opened):
-            opened_interface.close()
 
     data_location_prefix = robot_interface.DATA_LOCATION_PREFIX
     robot_max_frequency_hz = robot_interface.ROBOT_MAX_FREQ
@@ -208,36 +225,54 @@ def main(argv: Sequence[str] | None = None) -> None:
         kinecal_probe_parameters_path = _materialize_optional_resource(
             resource_stack, packaged_resources, kinecal_probe_params_path
         )
-        return run_helpers.main(
-            robot_interface_class=robot_interface.RobotInterface,
-            simulator_configuration=run_helpers.SimulatorConfiguration(
-                urdf_path=default_sim_urdf,
-                name="My Robot",
-                sample_frequency_hz=robot_max_frequency_hz,
-                imu_record_frequency_hz=imu_record_frequency_hz,
-                data_folder_prefix=simulator_data_location_prefix,
-                servo_bandwidth_hz=robot_interface.MAX_ROBOT_JOINTS_BANDWIDTH,
-                calibration_start_joints=robot_interface.FULL_STRETCH_JOINTS,
-                calibration_start_quat=robot_interface.FULL_STRETCH_QUAT,
-                calibration_start_xyz=robot_interface.FULL_STRETCH_XYZ,
-                full_stretch_pose_override=(robot_interface.FULL_STRETCH_POSE_OVERRIDE),
-            ),
-            default_robot_id=robot_interface.BOT_ID,
-            argv=argv,
-            script_path=Path(__file__).resolve(),
-            default_kinecal_config_path=default_kinecal_config_path,
-            default_kinecal_restore_config_path=default_kinecal_restore_config_path,
-            kinecal_probe_parameters_path=kinecal_probe_parameters_path,
-            kinecal_output_root=(
-                Path(data_location_prefix).expanduser() / "kinecal" / "datacol"
-            ),
-            kinecal_taught_tcps_cache_path=(
-                Path(data_location_prefix).expanduser()
-                / "kinecal"
-                / "recent_taught_tcps.json"
-            ),
-            kinecal_source_urdf_path=default_sim_urdf,
-        )
+        try:
+            return run_helpers.main(
+                robot_interface_class=open_robot_interface,
+                simulator_configuration=run_helpers.SimulatorConfiguration(
+                    urdf_path=default_sim_urdf,
+                    name="My Robot",
+                    sample_frequency_hz=robot_max_frequency_hz,
+                    imu_record_frequency_hz=imu_record_frequency_hz,
+                    data_folder_prefix=simulator_data_location_prefix,
+                    servo_bandwidth_hz=robot_interface.MAX_ROBOT_JOINTS_BANDWIDTH,
+                    calibration_start_joints=(
+                        robot_interface.BASE_CALIBRATION_START_JOINTS
+                        if calibrating and not bimanual
+                        else robot_interface.FULL_STRETCH_JOINTS
+                    ),
+                    calibration_start_quat=(
+                        None
+                        if calibrating and not bimanual
+                        else robot_interface.FULL_STRETCH_QUAT
+                    ),
+                    calibration_start_xyz=(
+                        None
+                        if calibrating and not bimanual
+                        else robot_interface.FULL_STRETCH_XYZ
+                    ),
+                    full_stretch_pose_override=(
+                        robot_interface.FULL_STRETCH_POSE_OVERRIDE
+                    ),
+                ),
+                default_robot_id=robot_interface.BOT_ID,
+                argv=cli_args,
+                script_path=Path(__file__).resolve(),
+                default_kinecal_config_path=default_kinecal_config_path,
+                default_kinecal_restore_config_path=default_kinecal_restore_config_path,
+                kinecal_probe_parameters_path=kinecal_probe_parameters_path,
+                kinecal_output_root=(
+                    Path(data_location_prefix).expanduser() / "kinecal" / "datacol"
+                ),
+                kinecal_taught_tcps_cache_path=(
+                    Path(data_location_prefix).expanduser()
+                    / "kinecal"
+                    / "recent_taught_tcps.json"
+                ),
+                kinecal_source_urdf_path=default_sim_urdf,
+            )
+        finally:
+            for opened_interface in reversed(opened):
+                opened_interface.close()
 
 
 if __name__ == "__main__":
