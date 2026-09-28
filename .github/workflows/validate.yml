@@ -3,7 +3,7 @@ name: Validate public robot package
 on:
   pull_request:
   push:
-    branches: ["main"]
+    branches: ["yaskawa-sdk"]
   workflow_dispatch:
 
 permissions:
@@ -18,7 +18,7 @@ jobs:
     # artifact, filename, and compatibility have been reviewed. A public PR
     # must not pass while any value is still a sentinel.
     env:
-      REFORGE_ROBOT_INTEGRATION_ID: "template"
+      REFORGE_ROBOT_INTEGRATION_ID: "yaskawa_sdk"
       REFORGE_CORE_CANDIDATE_URL: "https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"
       REFORGE_CORE_CANDIDATE_SHA256: "8beda2097e728a7e3f11c7fd496d5534cc70494737bc6b408256e2c57973d0b2"
       REFORGE_CORE_CANDIDATE_FILENAME: "reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"

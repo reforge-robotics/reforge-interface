@@ -5,6 +5,7 @@
 
 from collections.abc import Mapping
 from importlib.resources import as_file, files
+import os
 from pathlib import Path
 from typing import Literal, Optional, Sequence
 
@@ -12,6 +13,10 @@ import numpy as np
 
 from reforge_core.hw_interfaces.arm_client import ArmClient
 from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
+
+from .grpc_transport import YaskawaGrpcTransport
+from .motion import YaskawaMotionClient
+from .read_only import YaskawaReadOnlyClient
 
 # ------NOTES-----
 # 1. Where you see the #{~.~} symbol, you need to make a change. Use Ctrl+F to find all instances.
@@ -36,19 +41,22 @@ from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
 # -----------------------------------------------------------------------
 
 
-# User constants - EDITS REQUIRED
-BOT_ID = ""  # {~.~} [CHANGE TO ROBOT's ID, IF NECESSARY] - can also enter as CLI argument (see run.py --help)
-URDF_PATH = "urdf/test_robot.urdf"  # {~.~} [CHANGE TO YOUR ROBOT'S URDF FILE PATH]
-ROBOT_MAX_FREQ = 250  # {~.~} [CHANGE TO ROBOT'S MAX SAMPLING FREQUENCY] in [Hz]
+# Phase 1 contract defaults. This template-derived ArmClient remains inert
+# until the private bridge and validated NEX07C00 model are reviewed.
+BOT_ID = "yaskawa-nex7"
+URDF_PATH = "urdf/test_robot.urdf"  # Candidate NEX07C00 asset is not tracked yet.
+ROBOT_MAX_FREQ = 250  # ACU monitor request ceiling [Hz], not a proven stable rate.
+DEFAULT_FEEDBACK_RATE_HZ = 25.0
+SERVO_CONFIRMATION_TEXT = "I_CONFIRM_SERVOS_ARE_ON"
 
 # Fully stretched position of the robot for calibration.
-FULL_STRETCH_XYZ = [1.28989, 0.36866, 0.171]  # {~.~} [m]
-FULL_STRETCH_QUAT = [0.499, 0.499, 0.499, 0.499]  # {~.~} [1]
-FULL_STRETCH_JOINTS = [0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0]  # {~.~} [rad]
-FULL_STRETCH_POSE_OVERRIDE = None  # {~.~} list of home pose (xyz and quaternion) to override additional height not in base height
+FULL_STRETCH_XYZ = [0.0, 0.0, 0.0]  # Unverified until the NEX7 model is approved [m].
+FULL_STRETCH_QUAT = [0.0, 0.0, 0.0, 1.0]  # Identity diagnostic placeholder.
+FULL_STRETCH_JOINTS = [0.0] * 6  # Unverified diagnostic placeholder [rad].
+FULL_STRETCH_POSE_OVERRIDE = None
 
 # General constants
-IS_DEGREES = False  # {~.~} [CHANGE TO TRUE IF ROBOT USES DEGREES]
+IS_DEGREES = False  # ArmClient-facing values are radians.
 DATA_LOCATION_PREFIX = "src/robot/data"  # {~.~} [CHANGE TO LOCATION DESIRED - will be robot/DATA_LOCATION_PREFIX/*]
 SIM_DATA_LOCATION_PREFIX = str(Path(__file__).resolve().parent / "data" / "sim")
 DEFAULT_TCP_PAYLOAD = 0.0  # {~.~} [CHANGE IF THE DEFAULT PAYLOAD IS NON_ZERO]
@@ -62,6 +70,52 @@ USE_REFORGE_IMU = True
 DEFAULT_IMU_COMM_MODE: Literal["ble", "usb", "virtual"] = "usb"
 DEFAULT_IMU_RECORD_MODE: Literal["streaming", "logging"] = "streaming"
 DEFAULT_IMU_RECORD_FREQUENCY_HZ = ROBOT_MAX_FREQ
+
+
+def _positive_environment_float(name: str, default: float) -> float:
+    """Read one finite positive floating-point deployment setting.
+
+    Args:
+        name: Environment variable name.
+        default: Value used when the variable is absent.
+
+    Returns:
+        Configured positive value.
+
+    Raises:
+        ValueError: If the configured value is not finite and positive.
+    """
+
+    raw_value = os.environ.get(name)
+    value = default if raw_value is None else float(raw_value)
+    if not np.isfinite(value) or value <= 0.0:
+        raise ValueError(f"{name} must be finite and positive.")
+    return value
+
+
+def _optional_positive_environment_float(name: str) -> float | None:
+    """Read an optional finite positive floating-point deployment setting.
+
+    Args:
+        name: Environment variable name.
+
+    Returns:
+        Configured positive value, or ``None`` when the variable is absent.
+
+    Raises:
+        ValueError: If the configured value is not finite and positive.
+    """
+
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return None
+    return _positive_environment_float(name, 1.0)
+
+
+def _operator_servo_confirmation() -> bool:
+    """Return whether the operator set the exact live-motion acknowledgement."""
+
+    return os.environ.get("YASKAWA_SERVO_POWER_CONFIRMED") == SERVO_CONFIRMATION_TEXT
 
 
 class RobotInterface(ArmClient):
@@ -105,6 +159,8 @@ class RobotInterface(ArmClient):
         imu_recorder: ImuRecorder | None = None,
         tcp_payload: float = DEFAULT_TCP_PAYLOAD,
         tcp_payload_com: Sequence[float] | None = None,
+        read_only_client: YaskawaReadOnlyClient | None = None,
+        motion_client: YaskawaMotionClient | None = None,
     ) -> None:
         """Initialize the robot interface and load the URDF model.
 
@@ -126,6 +182,11 @@ class RobotInterface(ArmClient):
                 by an application or integration test.
             tcp_payload: Payload mass attached at the TCP [kg].
             tcp_payload_com: Optional payload center of mass in TCP coordinates [m].
+            read_only_client: Configured validated state client. The caller
+                owns construction of the local ACU bridge transport.
+            motion_client: Optional Phase 4 motion client. Its state client
+                must be the same validated read-only client supplied through
+                ``read_only_client`` when both are provided.
 
         Side Effects:
             Loads the URDF model and connects to robot hardware.
@@ -179,9 +240,54 @@ class RobotInterface(ArmClient):
         # Reforge API and robot ID token is needed for "joint_tracker" product
         # Add it in the CLI with `--identify`
         self.reforge_api_token = api_token
+        self.robot: YaskawaReadOnlyClient | None = None
+        selected_read_only_client: YaskawaReadOnlyClient | None = None
         try:
-            # {~.~} Instantiate live robot mode
-            self.robot = None  # [CHANGE THIS LINE]
+            if read_only_client is None and motion_client is None:
+                feedback_rate_hz = _positive_environment_float(
+                    "YASKAWA_FEEDBACK_RATE_HZ", DEFAULT_FEEDBACK_RATE_HZ
+                )
+                command_rate_hz = _positive_environment_float(
+                    "YASKAWA_COMMAND_RATE_HZ", feedback_rate_hz
+                )
+                controller_tick_period_s = _optional_positive_environment_float(
+                    "YASKAWA_CONTROLLER_TICK_PERIOD_S"
+                )
+                transport = YaskawaGrpcTransport(robot_ip)
+                read_only_client = YaskawaReadOnlyClient(
+                    transport,
+                    rate_hz=feedback_rate_hz,
+                    controller_tick_period_s=controller_tick_period_s,
+                )
+                motion_client = YaskawaMotionClient(
+                    read_only_client,
+                    transport,
+                    cycle_period_s=1.0 / command_rate_hz,
+                    servo_power_confirmation=_operator_servo_confirmation,
+                )
+            selected_read_only_client = (
+                motion_client.state_client
+                if motion_client is not None
+                else read_only_client
+            )
+            if selected_read_only_client is None:
+                raise RuntimeError(
+                    "Yaskawa requires an injected read-only ACU bridge "
+                    "client; no default controller connection is enabled."
+                )
+            if (
+                read_only_client is not None
+                and motion_client is not None
+                and (motion_client.state_client is not read_only_client)
+            ):
+                raise ValueError(
+                    "motion_client.state_client must be the supplied read_only_client."
+                )
+            selected_read_only_client.connect()
+            selected_read_only_client.start()
+            selected_read_only_client.latest(timeout_s=2.0)
+            self.robot = selected_read_only_client
+            self._motion_client = motion_client
 
             # ------------------- EXAMPLE --------------------
             # self.robot = StandardBotsRobot(
@@ -230,6 +336,8 @@ class RobotInterface(ArmClient):
             self.pose_length = len(self.get_tcp_pose())
 
         except Exception as e:
+            if selected_read_only_client is not None:
+                selected_read_only_client.close()
             # Print exception error message
             raise RuntimeError(f"Error getting {robot_ip} operational: {str(e)}")
 
@@ -294,34 +402,27 @@ class RobotInterface(ArmClient):
         speed: float = 50.0,
         wait: bool = True,
     ) -> int:
-        """Send a blocking/non-blocking point-to-point joint command using the
-        robot's native position control interface.
+        """Queue point-to-point joint motion through an explicit motion client.
 
         Args:
             target_joints: Target joint positions [rad] as a list or array.
             speed: Speed percentage for the motion, if supported by the robot. Default is 50%.
             wait: If `True`, block until the motion is complete. If `False`, return immediately after sending the command.
 
-        Returns:
-            An integer status code from the robot's command interface, if applicable.
-            If the robot does not provide a status code, return 0 for success or raise an exception for failure.
+        Raises:
+            NotImplementedError: If no explicit motion client was injected.
         """
-        if IS_DEGREES:
-            target_joints = list(np.rad2deg(angle) for angle in target_joints)
-
-        arm = self._require_connected_arm()  # noqa: F841
-        # ------------------------------------ EXAMPLE -------------------------------------
-        # update_request = models.ArmPositionUpdateRequest(
-        #     kind=models.ArmPositionUpdateRequestKindEnum.JointRotation,
-        #     joint_rotation=models.ArmJointRotations(
-        #         joints=target_joint)
-        # )
-
-        # response = arm.movement.position.set_arm_position(body=update_request).ok()
-        # ----------------------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        motion_client = getattr(self, "_motion_client", None)
+        if isinstance(motion_client, YaskawaMotionClient):
+            return motion_client.move_j(
+                list(target_joints),
+                speed_percent=speed,
+                wait=wait,
+            )
+        raise NotImplementedError(
+            "Yaskawa motion is disabled unless an explicit Phase 4 motion client "
+            "is injected."
+        )
 
     def command_move_pose(
         self,
@@ -332,8 +433,7 @@ class RobotInterface(ArmClient):
         wait: bool = True,
         locked_joints: Mapping[int, float] | None = None,
     ) -> int:
-        """Send a blocking/non-blocking point-to-point pose command using the
-        robot's native position control interface.
+        """Reject Cartesian motion until Yaskawa frame semantics are confirmed.
 
         Args:
             target_quat: Target TCP orientation as a quaternion `[qx, qy, qz, qw]` [-] in the robot's base frame.
@@ -342,45 +442,14 @@ class RobotInterface(ArmClient):
             wait: If `True`, block until the motion is complete. If `False`, return immediately after sending the command.
             locked_joints: Simulator-only joint-index to fixed position map [rad].
 
-        Returns:
-            An integer status code from the robot's command interface, if applicable.
-            If the robot does not provide a status code, return 0 for success or raise an exception for failure.
+        Raises:
+            NotImplementedError: Cartesian motion remains blocked in Phase 4.
         """
-        if locked_joints is not None:
-            raise RuntimeError("locked_joints is only supported in simulator mode.")
-
-        arm = self._require_connected_arm()  # noqa: F841
-
-        # ---------------------------------- EXAMPLE ------------------------------------
-        # quatx, quaty, quatz, quatw = target_quat
-        # move_quat = models.Orientation(
-        #                 kind=models.OrientationKindEnum.Quaternion,
-        #                 quaternion=models.Quaternion(x=quatx,
-        #                                              y=quaty,
-        #                                              z=quatz,
-        #                                              w=quatw
-        #                                              ),
-        #             )
-        # x, y, z = target_xyz
-        # move_xyz = models.Position(
-        #                 unit_kind=models.LinearUnitKind.Meters,
-        #                 x=x,
-        #                 y=y,
-        #                 z=z
-        #             )
-
-        # update_request = models.ArmPositionUpdateRequest(
-        #     kind=models.ArmPositionUpdateRequestKindEnum.TooltipPosition,
-        #     tooltip_position=models.PositionAndOrientation(
-        #         position=move_xyz,
-        #         orientation=move_quat)
-        # )
-
-        # response = arm.movement.position.set_arm_position(body=update_request).ok()
-        # ----------------------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        del target_quat, target_xyz, speed, wait, locked_joints
+        raise NotImplementedError(
+            "Yaskawa motion is disabled: Cartesian motion is blocked until frame, tool, configuration, "
+            "and Euler semantics are confirmed by a known-pose sample."
+        )
 
     def command_servo_j(
         self,
@@ -388,72 +457,47 @@ class RobotInterface(ArmClient):
         *,
         wait: bool = False,
     ) -> int:
-        """Send one servo command in radians.
-
-        This function will be used to stream a sequence of positions in a for loop in the calibration routine.
+        """Publish one incremental servo target through an explicit motion client.
 
         Args:
             target_joints: Target joint position [rad] as a list or array.
             wait: If `True`, block until the motion is complete. If `False`, return immediately after sending the command.
 
-        Returns:
-            An integer status code from the robot's command interface, if applicable.
-            If the robot does not provide a status code, return 0 for success or raise an exception for failure.
+        Raises:
+            NotImplementedError: If no explicit motion client was injected.
         """
-        arm = self._require_connected_arm()  # noqa: F841
-
-        # {~.~} Publish joint positions to the robot
-        # [YOUR CODE HERE -- see example below]
-
-        # ------------------------------ EXAMPLE ------------------------------
-        # cmd_q = list(q)
-        # if IS_DEGREES:
-        #     cmd_q = [np.rad2deg(value) for value in cmd_q]
-
-        # code = arm.set_servo_angle_j(
-        #     angles=cmd_q,
-        #     wait=wait,
-        # )
-        # ---------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        motion_client = getattr(self, "_motion_client", None)
+        if isinstance(motion_client, YaskawaMotionClient):
+            return motion_client.command_servo_j(list(target_joints), wait=wait)
+        raise NotImplementedError(
+            "Yaskawa motion is disabled unless an explicit Phase 4 motion client "
+            "is injected."
+        )
 
     def enter_position_mode(self) -> Optional[int | None]:
+        """Reject controller-mode changes unsupported by the ACU SDK.
+
+        Raises:
+            NotImplementedError: Always; the vendor contract is read-only for mode.
         """
-        Ensure the controller is in point-to-point position mode before issuing queued P2P moves.
-
-        Returns:
-            the mode/state codes so they can be inspected when debugging.
-        """
-        arm = self._require_connected_arm()  # noqa: F841
-
-        # ------------------------------ EXAMPLE ------------------------------
-        # arm.clean_error()
-        # arm.clean_warn()
-        # code_mode = arm.set_mode(0) # 0 = position mode
-        # code_state = arm.set_state(0) # start
-        # ----------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        raise NotImplementedError(
+            "Yaskawa controller mode changes are unavailable in the vendor contract."
+        )
 
     def enter_servo_mode(self) -> Optional[int | None]:
-        """Ensure the controller is set to servo control mode.
+        """Start an incremental session after an operator enables the servos.
 
-        Returns:
-            the mode/state codes so they can be inspected when debugging.
+        Raises:
+            NotImplementedError: If no explicit motion client was injected.
         """
-        arm = self._require_connected_arm()  # noqa: F841
-
-        # ------------------------------ EXAMPLE ------------------------------
-        # code_en = arm.motion_enable(enable=True)
-        # code_mode = arm.set_mode(1)  # 1 = servo mode
-        # code_state = arm.set_state(0)  # start
-        # ----------------------------------------------------------------------
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        motion_client = getattr(self, "_motion_client", None)
+        if isinstance(motion_client, YaskawaMotionClient):
+            motion_client.start_servo_session()
+            return 0
+        raise NotImplementedError(
+            "Yaskawa motion is disabled unless an explicit Phase 4 motion client "
+            "is injected."
+        )
 
     def supports_teaching_mode(self) -> bool:
         """Return whether the robot supports manual teaching mode.
@@ -466,20 +510,14 @@ class RobotInterface(ArmClient):
         return False
 
     def enter_teaching_mode(self) -> Optional[int | None]:
-        """Ensure the controller is set to manual teaching mode.
+        """Reject Teach-mode changes unsupported by the ACU SDK.
 
-        Override this method with the robot SDK's teaching-mode command.
-
-        Returns:
-            Vendor-specific mode/state code when available.
+        Raises:
+            NotImplementedError: Always; only mode reads are documented.
         """
-        arm = self._require_connected_arm()  # noqa: F841
-
-        # {~.~} Enable manual teaching mode using the robot SDK.
-        # [YOUR CODE HERE]
-
-        # {~.~} Return 0 for success - edit after implementation and testing
-        return 1
+        raise NotImplementedError(
+            "The Yaskawa ACU SDK reports Teach/Play state but cannot change it."
+        )
 
     def supports_flange_button(self) -> bool:
         """Return whether the robot exposes a readable flange button.
@@ -493,19 +531,12 @@ class RobotInterface(ArmClient):
         return False
 
     def read_flange_button_pressed(self) -> bool:
-        """Return whether the flange button is currently pressed.
+        """Reject flange-button reads because NEX7 has no exposed button.
 
-        Override this method with the robot SDK's flange-button read.
-
-        Returns:
-            `bool` indicating the current flange-button state.
+        Raises:
+            NotImplementedError: Always; no flange input is available.
         """
-        arm = self._require_connected_arm()  # noqa: F841
-
-        # {~.~} Read the flange-button state using the robot SDK.
-        # [YOUR CODE HERE]
-
-        return False
+        raise NotImplementedError("Yaskawa NEX7 exposes no readable flange button.")
 
     def get_joint_state(self) -> tuple[list[float], list[float], list[float]]:
         """Return one joint state sample as ``(q, qd, tau)``.
@@ -514,26 +545,20 @@ class RobotInterface(ArmClient):
             Tuple of three lists: joint positions `q` [rad], velocities `qd` [rad/s],
             and efforts/currents `tau` [SDK units].
         """
-        arm = self._require_connected_arm()  # noqa: F841
-        q: list[float] = []
-        qd: list[float] = []
-        tau: list[float] = []
-
-        # ------------------------------ EXAMPLE ------------------------------
-        # code, payload = arm.get_joint_states()
-        # if code != 0:
-        #     raise RuntimeError(f"get_joint_states returned code {code}")
-        # q, qd, tau = payload
-        # q = list(q[: self.num_joints])
-        # qd = list(qd[: self.num_joints])
-        # tau = list(tau[: self.num_joints])
-        # ----------------------------------------------------------------------
-
-        if not IS_DEGREES:
-            q = [np.deg2rad(value) for value in q]
-            qd = [np.deg2rad(value) for value in qd]
-
-        return q, qd, tau
+        client = self._require_connected_arm()
+        if not isinstance(client, YaskawaReadOnlyClient):
+            raise RuntimeError("Connected Yaskawa client has an invalid type.")
+        state = client.latest()
+        if state.joint_velocities_rad_s is None:
+            raise RuntimeError(
+                "Yaskawa joint velocity is unavailable until the controller "
+                "timestamp tick period is measured and configured."
+            )
+        return (
+            list(state.joint_positions_rad),
+            list(state.joint_velocities_rad_s),
+            list(state.joint_torques_nm),
+        )
 
     def get_tcp_pose(self) -> list[float]:
         """Return TCP pose as ``[x, y, z, qx, qy, qz, qw]``.
@@ -542,34 +567,30 @@ class RobotInterface(ArmClient):
             List of 7 floats representing the TCP pose in meters for positions
             and unitless normalized for quaternions.
         """
-        position: list[float] = []
-        quat: list[float] = []
-        arm = self._require_connected_arm()  # noqa: F841
+        client = self._require_connected_arm()
+        if not isinstance(client, YaskawaReadOnlyClient):
+            raise RuntimeError("Connected Yaskawa client has an invalid type.")
+        return list(client.latest().tcp_pose)
 
-        # ------------------------------ EXAMPLE ------------------------------
-        # code, pose = arm.get_position_aa()
+    def close(self) -> None:
+        """Close read-only acquisition and the local bridge transport."""
 
-        # if code != 0:
-        #     raise Exception(f"Unreliable TCP pose! Return code {code}")
-
-        # # Additional operations may be needed depending on pose return style
-        # # Decompose pose if necessary
-        # position, axang = pose[:3], pose[3:]
-
-        # # Convert position coordinates to meters
-        # position = [coord / 1000.0 for coord in position]
-
-        # # Convert rotation coordinates to radians, if necessary
-        # if not IS_DEGREES:
-        #     axang = [np.deg2rad(coord) for coord in axang]
-
-        # # Convert axis-angle to quaternion
-        # from scipy.spatial.transform import Rotation as R
-        # quat = R.from_rotvec(axang).as_quat().tolist()
-        # ----------------------------------------------------------------------
-
-        # Return tooltip pose as a list
-        return [*position, *quat]
+        cleanup_error: BaseException | None = None
+        motion_client = getattr(self, "_motion_client", None)
+        if isinstance(motion_client, YaskawaMotionClient):
+            try:
+                motion_client.close()
+            except BaseException as exc:  # noqa: BLE001
+                cleanup_error = exc
+        client = getattr(self, "robot", None)
+        try:
+            if isinstance(client, YaskawaReadOnlyClient):
+                client.close()
+        finally:
+            self.robot = None
+            self._motion_client = None
+        if cleanup_error is not None:
+            raise cleanup_error
 
     # {~.~} END OF REQUIRED METHODS
 

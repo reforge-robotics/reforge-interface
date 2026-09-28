@@ -7,7 +7,7 @@ not claim that a particular robot, controller, or hardware setup is supported.
 
 ## Target status
 
-This target is a contributor scaffold. Its placeholder hardware methods and sample model/configuration are not an operational robot integration.
+The Yaskawa NEX7 adapter and Reforge-owned ACU bridge client are an unqualified customer-review candidate. The bundled URDF is an inert test model, not an approved NEX7 description; production publication and hardware motion remain disabled.
 
 ## Install
 

@@ -1,6 +1,6 @@
-eef_link = "ee_link"
-# probe_link = "smr_ball_link"
-probe_link = "prod_ball_link"
+# NEX07C00 candidate model uses `flange`; validate the exact variant before use.
+eef_link = "flange"
+# probe_link is intentionally unset until a reviewed end-effector asset exists.
 
 recording_method = "keyboard"
 # keyboard_capture_key = "b"  # Omit to use the default, Enter.

@@ -1,24 +1,26 @@
-# Robot Integration Template
+# Public robot package
 
-Use this package as a starting point for a robot integration. Keep the package
-import name `robot`, then adapt `robot_interface.py` to the vendor SDK.
+This directory is an installable `robot` package containing one selected
+adapter and its public resources. Install it from this directory with:
 
-Before opening a change:
+The Yaskawa NEX7 adapter and Reforge-owned ACU bridge client are an unqualified customer-review candidate. The bundled URDF is an inert test model, not an approved NEX7 description; production publication and hardware motion remain disabled.
 
-1. Add the robot URDF and meshes under the package's `urdf/` directory.
-2. Declare the vendor SDK in `requirements.txt`.
-3. Set the robot constants and implement the required SDK methods.
-4. Adjust the sample KineCal configuration for the robot's end-effector and
-   probe links.
-5. From the repository root, install the package with:
+```bash
+python -m pip install -r requirements.txt
+python -m pip install -e .
+```
 
-   ```bash
-   pip install -r src/robot/requirements.txt
-   pip install -e src/robot
-   ```
+Run commands from the repository root. The adapter writes calibration and
+identification data below `src/robot/data/` and generated model artifacts below
+`src/robot/models/`. Copy configuration files to another writable location
+when a run needs local changes; do not edit installed package resources.
 
-6. Run `python -m py_compile src/robot/robot_interface.py` and
-   `python -m robot.run --help` before testing with hardware.
+For offline command discovery, use:
 
-The included URDF and configuration files are examples only. They do not
-claim compatibility with a particular robot or vendor SDK.
+```bash
+python -m robot.run --help
+```
+
+This package and its example assets do not by themselves claim hardware or
+vendor compatibility. Hardware connection and motion qualification require the
+selected adapter's separately reviewed prerequisites.

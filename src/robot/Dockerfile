@@ -20,7 +20,7 @@ RUN apt-get update && \
       zlib1g-dev && \
     rm -rf /var/lib/apt/lists/*
 
-ARG ROBOT_INTEGRATION_ID=template
+ARG ROBOT_INTEGRATION_ID=yaskawa_sdk
 ARG SDK_CANDIDATE_URL=https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl
 ARG SDK_CANDIDATE_SHA256=8beda2097e728a7e3f11c7fd496d5534cc70494737bc6b408256e2c57973d0b2
 ARG SDK_CANDIDATE_FILENAME=reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl
