@@ -365,10 +365,10 @@
     },
     "src/robot/requirements.txt": {
       "mode": 420,
-      "sha256": "cc463dcc25322ed386bb3666deb60250c44b6529a16a89389470e5ed669f586e",
+      "sha256": "f2d04fd2a252dc12fd5f3a420bf51b0f53b9694e916c0903d2e3b0a93341e883",
       "sources": [
         {
-          "sha256": "6170c3c7da13af867647e2e91e2a1937a77617a71836d11652b2c272053a83ea"
+          "sha256": "bfa1474bfa0f0e1c300c018266b84e4e9a580e2b97eb75040eaa468dddbbd979"
         },
         {
           "sha256": "ec47656f383402278ff58a748366a311d3e1dc7ff039a267bbc9dd4775d1aef1"
@@ -420,6 +420,6 @@
     "url": "https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"
   },
   "source_input_basis": "working_tree",
-  "source_revision": "984900849c52ddfb4d1b897ebc00925d84ba2d73",
+  "source_revision": "b7ef11acbdebac1e8cac915884f1e13c407da705",
   "target": "template"
 }
