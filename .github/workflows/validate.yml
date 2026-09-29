@@ -64,21 +64,23 @@ jobs:
           private_markers+="|${catalog_path_marker}|${internal_source_marker}"
           private_markers+="|${internal_package_marker}|${internal_import_marker}"
           private_markers+="|${path_mutation_marker}"
-          if rg -n \
-            --glob '*.py' --glob '*.toml' --glob '*.yml' --glob '*.yaml' \
+          if grep -RInE \
+            --include='*.py' --include='*.toml' --include='*.yml' \
+            --include='*.yaml' \
             "$private_markers" \
             src/robot; then
             echo "private selector or catalog content found in public package" >&2
             exit 1
           fi
 
-          if rg -n '(^|[[:space:]])(-e[[:space:]]|--editable|/src/|\.\./)' \
+          if grep -nE '(^|[[:space:]])(-e[[:space:]]|--editable|/src/|\.\./)' \
             src/robot/requirements.txt; then
             echo "requirements.txt contains a private or editable source path" >&2
             exit 1
           fi
 
           python - <<'PY'
+          import json
           import os
           from pathlib import Path
           import tomllib
@@ -113,6 +115,17 @@ jobs:
           assert len(package_data) == len(set(package_data))
 
           package_root = Path("src/robot")
+          publication_manifest = json.loads(
+              Path(".reforge/robot-publication-manifest.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          managed_prefix = "src/robot/"
+          managed_files = {
+              Path(name[len(managed_prefix) :])
+              for name in publication_manifest["managed_files"]
+              if name.startswith(managed_prefix)
+          }
           package_files = []
           for relative_name in package_data:
               relative_path = Path(relative_name)
@@ -154,7 +167,11 @@ jobs:
           selected_meshes = [
               path
               for path in package_root.rglob("*")
-              if path.is_file() and path.suffix.lower() in mesh_suffixes
+              if (
+                  path.is_file()
+                  and path.relative_to(package_root) in managed_files
+                  and path.suffix.lower() in mesh_suffixes
+              )
           ]
           if selected_meshes:
               assert any(
