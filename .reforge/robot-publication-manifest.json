@@ -347,10 +347,10 @@
     },
     "src/robot/requirements.txt": {
       "mode": 420,
-      "sha256": "dc578cbf515bb63aee60dff2e2efe62da80ca0de5c8f566d2da321fb82b6231f",
+      "sha256": "0bc46cb160ad942d2ca054785742609cc72104ae209f25399957f910a19cce43",
       "sources": [
         {
-          "sha256": "bfa1474bfa0f0e1c300c018266b84e4e9a580e2b97eb75040eaa468dddbbd979"
+          "sha256": "5ccb034f7cef10b2ece9f57fa1e222b86bdd092df37156f37d269c9804e2ddeb"
         },
         {
           "sha256": "329118e35e5e8707b7f8894ab0abbf6e05a586ec598ff6d198a9f96a824d9bb7"
@@ -564,6 +564,6 @@
     "url": "https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"
   },
   "source_input_basis": "working_tree",
-  "source_revision": "b7ef11acbdebac1e8cac915884f1e13c407da705",
+  "source_revision": "4df13cada612c9301828d64fadf83460359f1e26",
   "target": "standard_bots_sdk"
 }
