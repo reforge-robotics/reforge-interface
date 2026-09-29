@@ -1,6 +1,7 @@
 # NEX07C00 candidate model uses `flange`; validate the exact variant before use.
 eef_link = "flange"
-# probe_link is intentionally unset until a reviewed end-effector asset exists.
+# Confirm probe geometry and offset for the installed tool before KineCal.
+probe_link = "prod_ball_link"
 
 recording_method = "keyboard"
 # keyboard_capture_key = "b"  # Omit to use the default, Enter.
