@@ -482,10 +482,10 @@
     },
     "src/robot/requirements.txt": {
       "mode": 420,
-      "sha256": "f2d04fd2a252dc12fd5f3a420bf51b0f53b9694e916c0903d2e3b0a93341e883",
+      "sha256": "1f9092aa70f396d97c57d1801a33d336cb907c30cae8d668a9e9edaa7c065e1c",
       "sources": [
         {
-          "sha256": "bfa1474bfa0f0e1c300c018266b84e4e9a580e2b97eb75040eaa468dddbbd979"
+          "sha256": "5ccb034f7cef10b2ece9f57fa1e222b86bdd092df37156f37d269c9804e2ddeb"
         },
         {
           "sha256": "647804ce35e3d57328fdec528038cec357488e4f399c81af5e83c3f97e22fad4"
@@ -600,6 +600,6 @@
     "url": "https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"
   },
   "source_input_basis": "working_tree",
-  "source_revision": "b7ef11acbdebac1e8cac915884f1e13c407da705",
+  "source_revision": "4df13cada612c9301828d64fadf83460359f1e26",
   "target": "denso_bcap"
 }
