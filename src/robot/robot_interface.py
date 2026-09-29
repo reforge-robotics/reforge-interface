@@ -52,7 +52,14 @@ SERVO_CONFIRMATION_TEXT = "I_CONFIRM_SERVOS_ARE_ON"
 # Fully stretched position of the robot for calibration.
 FULL_STRETCH_XYZ = [0.0, 0.0, 0.0]  # Unverified until the NEX7 pose is approved [m].
 FULL_STRETCH_QUAT = [0.0, 0.0, 0.0, 1.0]  # Identity diagnostic placeholder.
-FULL_STRETCH_JOINTS = [0.0] * 6  # Unverified diagnostic placeholder [rad].
+FULL_STRETCH_JOINTS = [
+    0.0,
+    1.5707963267948966,
+    1.5707963267948966,
+    0.0,
+    0.0,
+    0.0,
+]  # [rad].
 FULL_STRETCH_POSE_OVERRIDE = None
 
 # General constants
