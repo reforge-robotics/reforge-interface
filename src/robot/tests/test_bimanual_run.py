@@ -218,11 +218,11 @@ def test_plain_calibration_uses_base_urdf_without_splitting(
         assert hardware_kwargs[0]["urdf_path"] == run.robot_interface.BASE_URDF_PATH
 
 
-def test_bimanual_sim_calibration_splits_with_configured_joints(
+def test_bimanual_sim_calibration_leaves_first_joints_to_splitter(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The explicit flag splits the missing arm models for simulator calibration."""
+    """The flag invokes the splitter without preselecting arm joints."""
     source, selected = _configure_cli(monkeypatch, tmp_path, use_left=False)
     split_calls: list[list[str]] = []
     dispatches: list[dict[str, Any]] = []
@@ -240,7 +240,7 @@ def test_bimanual_sim_calibration_splits_with_configured_joints(
         run.run_helpers, "main", lambda **kwargs: dispatches.append(kwargs)
     )
 
-    run.main(["calibrate", "sim", "--bimanual"])
+    run.main(["calibrate", "sim", "--bimanual", "--nv", "1", "--nr", "1"])
 
     assert len(split_calls) == 1
     split_args = split_calls[0]
@@ -249,15 +249,11 @@ def test_bimanual_sim_calibration_splits_with_configured_joints(
         "fixture-left.urdf"
     )
     assert _argument_path(split_args, "--right-output") == selected
-    assert split_args[split_args.index("--left-first-joint") + 1] == (
-        run.robot_interface.LEFT_FIRST_JOINT
-    )
-    assert split_args[split_args.index("--right-first-joint") + 1] == (
-        run.robot_interface.RIGHT_FIRST_JOINT
-    )
+    assert "--left-first-joint" not in split_args
+    assert "--right-first-joint" not in split_args
     assert len(dispatches) == 1
     assert Path(dispatches[0]["simulator_configuration"].urdf_path) == selected
-    assert "--bimanual" not in dispatches[0]["argv"]
+    assert dispatches[0]["argv"] == ["calibrate", "sim", "--nv", "1", "--nr", "1"]
 
 
 def test_validation_sim_does_not_split_missing_arm_models(
@@ -288,11 +284,11 @@ def test_validation_sim_does_not_split_missing_arm_models(
     assert not selected.exists()
 
 
-def test_sim_calibration_uses_bounded_defaults_without_overriding_options(
+def test_sim_calibration_forwards_scan_options_without_injecting_defaults(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Keep the default simulator check finite and preserve user overrides."""
+    """Preserve explicit options and leave the SDK defaults to the SDK."""
     source, selected = _configure_cli(monkeypatch, tmp_path, use_left=False)
     dispatched: list[dict[str, Any]] = []
 
@@ -304,20 +300,15 @@ def test_sim_calibration_uses_bounded_defaults_without_overriding_options(
         run.run_helpers, "main", lambda **kwargs: dispatched.append(kwargs)
     )
 
-    run.main(["calibrate", "sim", "--axes", "2", "--maxfreq=3"])
+    scan_options = ["--axes", "2", "--maxfreq=3", "--nv", "1", "--nr", "1"]
+    run.main(["calibrate", "sim", *scan_options])
+    run.main(["calibrate", "sim"])
 
-    assert len(dispatched) == 1
-    args = dispatched[0]["argv"]
-    assert args[:5] == ["calibrate", "sim", "--axes", "2", "--maxfreq=3"]
-    assert args.count("--axes") == 1
-    assert not any(arg == "--maxfreq" for arg in args)
-    assert args[args.index("--nv") + 1] == "1"
-    assert args[args.index("--nr") + 1] == "1"
-    assert args[args.index("--first_axis") + 1] == str(
-        len(run.robot_interface.ARM_JOINTS)
+    assert len(dispatched) == 2
+    assert dispatched[0]["argv"] == ["calibrate", "sim", *scan_options]
+    assert dispatched[1]["argv"] == ["calibrate", "sim"]
+    assert all(
+        Path(call["simulator_configuration"].urdf_path) == source
+        for call in dispatched
     )
-    assert args[args.index("--sine_cycles") + 1] == "13"
-    assert args[args.index("--freqspace") + 1] == "1"
-    assert args[args.index("--dwell") + 1] == "0.1"
-    assert Path(dispatched[0]["simulator_configuration"].urdf_path) == source
     assert not selected.exists()

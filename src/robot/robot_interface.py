@@ -51,8 +51,6 @@ BOT_ID = "" if USE_LEFT else ""
 # Source bimanual model used to generate both per-arm URDFs during calibration.
 BASE_URDF_PATH = "urdf/axol.urdf"
 URDF_PATH = f"urdf/axol-{AXOL_SIDE}.urdf"
-LEFT_FIRST_JOINT = "left_s1_0"
-RIGHT_FIRST_JOINT = "right_s1_0"
 # Arm straight out in front at shoulder height. The split URDF's base +z is
 # the shoulder_1 axis (horizontal in the world), so the TCP must be stretched
 # perpendicular to it for the calibration geometry to find a reach, height and

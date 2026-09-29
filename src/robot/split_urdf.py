@@ -48,6 +48,7 @@ from __future__ import annotations
 import argparse
 import copy
 import math
+import os
 import re
 import sys
 from collections import defaultdict
@@ -264,15 +265,18 @@ def _validate_source_meshes(
                 )
 
 
-def _rewrite_mesh_paths(robot: ET.Element, source_directory: Path) -> None:
-    """Replace generated mesh filenames with resolved filesystem paths.
+def _rewrite_mesh_paths(
+    robot: ET.Element, source_directory: Path, output_directory: Path
+) -> None:
+    """Write mesh filenames relative to the generated URDF's directory.
 
     Args:
         robot: Generated URDF ``<robot>`` element to update.
         source_directory: Directory containing the unmodified source URDF.
+        output_directory: Directory where the generated URDF will be written.
 
     Raises:
-        SplitError: If a mesh filename cannot be resolved.
+        SplitError: If a source mesh filename cannot be resolved.
     """
 
     for link in robot.findall("link"):
@@ -284,7 +288,8 @@ def _rewrite_mesh_paths(robot: ET.Element, source_directory: Path) -> None:
                     source_directory,
                     context=f"Link {link_name!r} <{role}>",
                 )
-                mesh.set("filename", str(resolved))
+                relative = os.path.relpath(resolved, output_directory)
+                mesh.set("filename", Path(relative).as_posix())
 
 
 def _find_descendant_joint_path(
@@ -622,6 +627,7 @@ def _generate_arm_tree(
     source_graph: UrdfGraph,
     selection: ArmSelection,
     source_directory: Path,
+    output_directory: Path,
 ) -> tuple[ET.ElementTree, list[str], list[str]]:
     """Generate one split-arm tree while preserving the existing split rules.
 
@@ -630,6 +636,7 @@ def _generate_arm_tree(
         source_graph: Validated topology of the source URDF.
         selection: Arm path whose revolute joints remain movable.
         source_directory: Directory used to resolve source mesh filenames.
+        output_directory: Directory that will contain the generated arm URDF.
 
     Returns:
         Generated tree, names of frozen joints, and removed transmissions.
@@ -694,7 +701,7 @@ def _generate_arm_tree(
         source_root_to_actuator=root_to_actuator,
         new_root_joint=root_joint,
     )
-    _rewrite_mesh_paths(robot, source_directory)
+    _rewrite_mesh_paths(robot, source_directory, output_directory)
     return generated_tree, frozen, removed_transmissions
 
 
@@ -1153,10 +1160,10 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     left_tree, left_frozen, left_transmissions = _generate_arm_tree(
-        tree, graph, left_selection, source.parent
+        tree, graph, left_selection, source.parent, left_output.parent
     )
     right_tree, right_frozen, right_transmissions = _generate_arm_tree(
-        tree, graph, right_selection, source.parent
+        tree, graph, right_selection, source.parent, right_output.parent
     )
 
     _write_tree(left_tree, left_output, force=args.force)

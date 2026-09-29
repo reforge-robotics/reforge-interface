@@ -8,7 +8,7 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Base.stl" scale="1 1 1" />
+                <mesh filename="meshes/Base.stl" scale="1 1 1" />
             </geometry>
             <material name="0.647059_0.647059_0.647059_0.000000_0.000000">
                 <color rgba="0.647059 0.647059 0.647059 1" />
@@ -17,7 +17,7 @@
         <collision>
             <origin xyz="0 0 0" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Base.stl" scale="1 1 1" />
+                <mesh filename="meshes/Base.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -30,7 +30,7 @@
         <visual>
             <origin xyz="-0.19958 2.34488e-17 0.07335" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_E1.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_E1.stl" scale="1 1 1" />
             </geometry>
             <material name="0.917647_0.917647_0.917647_0.000000_0.000000">
                 <color rgba="0.917647 0.917647 0.917647 1" />
@@ -39,7 +39,7 @@
         <collision>
             <origin xyz="-0.19958 2.34488e-17 0.07335" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_E1.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_E1.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -52,7 +52,7 @@
         <visual>
             <origin xyz="-0.24187 0 0.362735" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_E2.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_E2.stl" scale="1 1 1" />
             </geometry>
             <material name="0.768627_0.886275_0.952941_0.000000_0.000000">
                 <color rgba="0.768627 0.886275 0.952941 1" />
@@ -61,7 +61,7 @@
         <collision>
             <origin xyz="-0.24187 0 0.362735" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_E2.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_E2.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -74,7 +74,7 @@
         <visual>
             <origin xyz="-0.19958 0 0.711946" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_Gripper.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_Gripper.stl" scale="1 1 1" />
             </geometry>
             <material name="0.615686_0.811765_0.929412_0.000000_0.000000">
                 <color rgba="0.615686 0.811765 0.929412 1" />
@@ -83,7 +83,7 @@
         <collision>
             <origin xyz="-0.19958 0 0.711946" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_Gripper.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_Gripper.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -96,7 +96,7 @@
         <visual>
             <origin xyz="-0.13 1.83545e-17 -4.58863e-18" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_S2.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_S2.stl" scale="1 1 1" />
             </geometry>
             <material name="0.647059_0.647059_0.647059_0.000000_0.000000">
                 <color rgba="0.647059 0.647059 0.647059 1" />
@@ -105,7 +105,7 @@
         <collision>
             <origin xyz="-0.13 1.83545e-17 -4.58863e-18" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_S2.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_S2.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -118,7 +118,7 @@
         <visual>
             <origin xyz="-0.19958 0.04475 -3.81639e-16" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_S3.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_S3.stl" scale="1 1 1" />
             </geometry>
             <material name="0.231373_0.380392_0.705882_0.000000_0.000000">
                 <color rgba="0.231373 0.380392 0.705882 1" />
@@ -127,7 +127,7 @@
         <collision>
             <origin xyz="-0.19958 0.04475 -3.81639e-16" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_S3.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_S3.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -140,7 +140,7 @@
         <visual>
             <origin xyz="-0.19958 0 0.487025" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_W0.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_W0.stl" scale="1 1 1" />
             </geometry>
             <material name="0.972549_0.529412_0.003922_0.000000_0.000000">
                 <color rgba="0.972549 0.529412 0.00392157 1" />
@@ -149,7 +149,7 @@
         <collision>
             <origin xyz="-0.19958 0 0.487025" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_W0.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_W0.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -162,7 +162,7 @@
         <visual>
             <origin xyz="-0.19958 0.0285 0.622695" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_W1.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_W1.stl" scale="1 1 1" />
             </geometry>
             <material name="0.498039_0.498039_0.498039_0.000000_0.000000">
                 <color rgba="0.498039 0.498039 0.498039 1" />
@@ -171,7 +171,7 @@
         <collision>
             <origin xyz="-0.19958 0.0285 0.622695" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_W1.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_W1.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -184,7 +184,7 @@
         <visual>
             <origin xyz="-0.22808 0 0.679695" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_W2.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_W2.stl" scale="1 1 1" />
             </geometry>
             <material name="0.980392_0.713725_0.003922_0.000000_0.000000">
                 <color rgba="0.980392 0.713726 0.00392157 1" />
@@ -193,7 +193,7 @@
         <collision>
             <origin xyz="-0.22808 0 0.679695" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Left_W2.stl" scale="1 1 1" />
+                <mesh filename="meshes/Left_W2.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -206,7 +206,7 @@
         <visual>
             <origin xyz="0.19958 2.34488e-17 0.07335" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_E1.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_E1.stl" scale="1 1 1" />
             </geometry>
             <material name="0.917647_0.917647_0.917647_0.000000_0.000000">
                 <color rgba="0.917647 0.917647 0.917647 1" />
@@ -215,7 +215,7 @@
         <collision>
             <origin xyz="0.19958 2.34488e-17 0.07335" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_E1.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_E1.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -228,7 +228,7 @@
         <visual>
             <origin xyz="0.24187 0 0.362735" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_E2.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_E2.stl" scale="1 1 1" />
             </geometry>
             <material name="0.768627_0.886275_0.952941_0.000000_0.000000">
                 <color rgba="0.768627 0.886275 0.952941 1" />
@@ -237,7 +237,7 @@
         <collision>
             <origin xyz="0.24187 0 0.362735" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_E2.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_E2.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -250,7 +250,7 @@
         <visual>
             <origin xyz="0.19958 0 0.711946" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_Gripper.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_Gripper.stl" scale="1 1 1" />
             </geometry>
             <material name="0.615686_0.811765_0.929412_0.000000_0.000000">
                 <color rgba="0.615686 0.811765 0.929412 1" />
@@ -259,7 +259,7 @@
         <collision>
             <origin xyz="0.19958 0 0.711946" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_Gripper.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_Gripper.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -272,7 +272,7 @@
         <visual>
             <origin xyz="0.13 1.83545e-17 -4.58863e-18" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_S2.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_S2.stl" scale="1 1 1" />
             </geometry>
             <material name="0.647059_0.647059_0.647059_0.000000_0.000000">
                 <color rgba="0.647059 0.647059 0.647059 1" />
@@ -281,7 +281,7 @@
         <collision>
             <origin xyz="0.13 1.83545e-17 -4.58863e-18" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_S2.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_S2.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -294,7 +294,7 @@
         <visual>
             <origin xyz="0.19958 0.04475 -3.81639e-16" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_S3.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_S3.stl" scale="1 1 1" />
             </geometry>
             <material name="0.231373_0.380392_0.705882_0.000000_0.000000">
                 <color rgba="0.231373 0.380392 0.705882 1" />
@@ -303,7 +303,7 @@
         <collision>
             <origin xyz="0.19958 0.04475 -3.81639e-16" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_S3.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_S3.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -316,7 +316,7 @@
         <visual>
             <origin xyz="-0.19958 0 0.487025" rpy="0 0 3.14159" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_W0.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_W0.stl" scale="1 1 1" />
             </geometry>
             <material name="0.972549_0.529412_0.003922_0.000000_0.000000">
                 <color rgba="0.972549 0.529412 0.00392157 1" />
@@ -325,7 +325,7 @@
         <collision>
             <origin xyz="-0.19958 0 0.487025" rpy="0 0 3.14159" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_W0.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_W0.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -338,7 +338,7 @@
         <visual>
             <origin xyz="-0.19958 -0.0285 0.622695" rpy="0 0 3.14159" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_W1.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_W1.stl" scale="1 1 1" />
             </geometry>
             <material name="0.498039_0.498039_0.498039_0.000000_0.000000">
                 <color rgba="0.498039 0.498039 0.498039 1" />
@@ -347,7 +347,7 @@
         <collision>
             <origin xyz="-0.19958 -0.0285 0.622695" rpy="0 0 3.14159" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_W1.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_W1.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -360,7 +360,7 @@
         <visual>
             <origin xyz="0.22808 0 0.679695" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_W2.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_W2.stl" scale="1 1 1" />
             </geometry>
             <material name="0.980392_0.713725_0.003922_0.000000_0.000000">
                 <color rgba="0.980392 0.713726 0.00392157 1" />
@@ -369,7 +369,7 @@
         <collision>
             <origin xyz="0.22808 0 0.679695" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/Right_W2.stl" scale="1 1 1" />
+                <mesh filename="meshes/Right_W2.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>
@@ -383,7 +383,7 @@
         <visual>
             <origin xyz="2.78001e-17 0 0.06" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/S1.stl" scale="1 1 1" />
+                <mesh filename="meshes/S1.stl" scale="1 1 1" />
             </geometry>
             <material name="0.615686_0.811765_0.929412_0.000000_0.000000">
                 <color rgba="0.615686 0.811765 0.929412 1" />
@@ -392,7 +392,7 @@
         <collision>
             <origin xyz="2.78001e-17 0 0.06" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="/home/reforge/Desktop/almond-integration/reforge-interface/src/robot/urdf/meshes/S1.stl" scale="1 1 1" />
+                <mesh filename="meshes/S1.stl" scale="1 1 1" />
             </geometry>
         </collision>
     </link>

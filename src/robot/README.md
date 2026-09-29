@@ -32,36 +32,41 @@ python -m robot.run calibrate ROBOT_IP --bimanual
 
 Only `calibrate ... --bimanual` generates per-arm URDFs. Without the flag,
 calibration loads `BASE_URDF_PATH` directly and does not split it. When a split
-output is missing, the flagged command generates both arms before calibration.
-Configure `LEFT_FIRST_JOINT` and `RIGHT_FIRST_JOINT` in `robot_interface.py`
-for unattended splitting; otherwise the splitter prompts for them. Existing
-arm outputs are reused. The flagged calibration runner loads the arm selected
-by `USE_LEFT`.
+output is missing, the flagged command prompts for each arm's first actuator
+joint before generating the models. For Axol, enter `left_s1_0` and
+`right_s1_0`. Run the command in an interactive terminal when splitting is
+needed. Existing outputs are reused, and calibration loads the arm selected by
+`USE_LEFT`.
 
 The Axol configuration selects the right arm by default (`USE_LEFT = False`).
-Its generated arm URDFs are ignored by Git and are rebuilt from `axol.urdf`
-only when `--bimanual` is specified.
+Both split URDFs are currently tracked by Git, so the flagged command reuses
+them while they exist, despite the `.gitignore` entries. Generated mesh paths
+are relative to each output URDF (for example, `meshes/Base.stl` when the
+outputs are in `src/robot/urdf/`). Keep the outputs with their `meshes/` folder.
 
 ## Simulator pipeline check
 
-Run the simulator pipeline with an explicit split request:
+For a short simulator scan, pass the scan options explicitly:
 
 ```bash
-python -m robot.run calibrate sim --bimanual
+python -m robot.run calibrate sim --bimanual \
+  --nv 1 --nr 1 --axes 1 --first_axis 0 \
+  --sine_cycles 13 --maxfreq 5 --freqspace 1 --dwell 0.1
 python -m robot.run joint_tracker_performance_validation sim --mode single-speed \
   --urdf-path ./src/robot/urdf/axol-right.urdf
 ```
 
-The flagged calibration uses `left_s1_0` and `right_s1_0` as the first joints
-when generating missing arm models. Its default scan uses one pose, one radius,
-the selected arm's first joint, 13 sine cycles, frequencies from 1 through 4 Hz,
-and a 0.1-second dwell. Pass scan options explicitly for a wider run.
+Omitting scan options uses the SDK calibration defaults, currently eight angle
+samples and four radii. `run.py` does not add simulator-specific scan defaults.
+If an arm URDF is missing, the flagged command prompts for the first joints
+before the scan begins.
 
 Unflagged `calibrate sim` loads the 14-joint `axol.urdf` without generating
 arm models. The current calibration planner assumes one TCP chain with a
 world-z base joint, so this full Axol model fails base-joint validation; use
 `--bimanual` for a complete simulator calibration.
 
-The validation command writes a tracking JSON and HTML report under `src/robot/performance_validation/joint_tracker/`. The current
-Joint Tracker model directory must include `identification_parameters.csv`
-alongside its model JSON files.
+The validation command writes a tracking JSON and HTML report under
+`src/robot/performance_validation/joint_tracker/`. The current Joint Tracker
+model directory must include `identification_parameters.csv` alongside its
+model JSON files.

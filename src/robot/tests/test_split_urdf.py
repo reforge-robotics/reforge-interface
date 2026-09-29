@@ -283,8 +283,12 @@ def test_split_converts_mesh_paths_preserves_source_and_keeps_split_behavior(
             mesh.get("filename") for mesh in generated.findall("./link/*/geometry/mesh")
         ]
         assert mesh_paths
-        assert set(mesh_paths) == {str(expected_mesh)}
-        assert all(Path(path).is_file() for path in mesh_paths if path is not None)
+        assert set(mesh_paths) == {"meshes/tiny.stl"}
+        assert all(
+            (output.parent / path).resolve() == expected_mesh
+            for path in mesh_paths
+            if path is not None
+        )
 
         joints = {
             joint.get("name"): joint.get("type") for joint in generated.findall("joint")
@@ -300,3 +304,38 @@ def test_split_converts_mesh_paths_preserves_source_and_keeps_split_behavior(
             and joint.find("child").get("link") == "base"
             for joint in generated.findall("joint")
         )
+
+
+def test_mesh_paths_follow_each_custom_output_directory(tmp_path: Path) -> None:
+    """Relative mesh links remain valid when outputs use different directories."""
+    source = _create_bimanual_urdf(tmp_path)
+    expected_mesh = (tmp_path / "meshes" / "tiny.stl").resolve()
+    left_output = tmp_path / "generated" / "left" / "left.urdf"
+    right_output = tmp_path / "generated" / "right" / "nested" / "right.urdf"
+
+    assert split_urdf.main(
+        [
+            "split",
+            str(source),
+            "--left-first-joint",
+            "left_shoulder",
+            "--right-first-joint",
+            "right_shoulder",
+            "--left-output",
+            str(left_output),
+            "--right-output",
+            str(right_output),
+        ]
+    ) == 0
+
+    for output in (left_output, right_output):
+        generated = ET.parse(output).getroot()
+        mesh_paths = {
+            mesh.get("filename")
+            for mesh in generated.findall("./link/*/geometry/mesh")
+        }
+        assert len(mesh_paths) == 1
+        relative_path = next(iter(mesh_paths))
+        assert relative_path is not None
+        assert not Path(relative_path).is_absolute()
+        assert (output.parent / relative_path).resolve() == expected_mesh

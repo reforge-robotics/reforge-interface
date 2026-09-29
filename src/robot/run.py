@@ -44,18 +44,12 @@ def _materialize_optional_resource(
 
 
 def _ensure_bimanual_urdfs(
-    source: Path,
-    selected_output: Path,
-    *,
-    use_left: bool,
-    left_first_joint: str | None = None,
-    right_first_joint: str | None = None,
+    source: Path, selected_output: Path, *, use_left: bool
 ) -> None:
     """Generate missing per-arm URDFs before opening the selected arm.
 
-    The selected output comes from ``robot_interface.URDF_PATH``. Configured
-    first joints let Axol's explicit ``--bimanual`` mode split unattended.
-    Other integrations can still use the split command's interactive prompts.
+    The selected output comes from ``robot_interface.URDF_PATH``. The splitter
+    prompts for each arm's first joint when an output is missing.
     """
     source = source.resolve()
     selected_output = selected_output.resolve()
@@ -88,10 +82,6 @@ def _ensure_bimanual_urdfs(
             "--right-output",
             str(split_right),
         ]
-        if left_first_joint is not None:
-            split_args.extend(("--left-first-joint", left_first_joint))
-        if right_first_joint is not None:
-            split_args.extend(("--right-first-joint", right_first_joint))
         try:
             status = split_urdf.main(split_args)
         except split_urdf.SplitError as exc:
@@ -133,29 +123,6 @@ def main(argv: Sequence[str] | None = None) -> None:
     if bimanual:
         cli_args = [argument for argument in cli_args if argument != "--bimanual"]
 
-    # A simulator calibration is a bounded smoke check by default. The
-    # full hardware defaults take hours in simulation. The selected arm's first
-    # joint has a feasible sweep in the default Axol pose. Explicit scan
-    # options still reach wider sweeps.
-    if len(cli_args) >= 2 and cli_args[0] == "calibrate" and cli_args[1] == "sim":
-        simulator_defaults = (
-            ("--nv", "4"),
-            ("--axes", "1"),
-            (
-                "--first_axis",
-                str(len(robot_interface.ARM_JOINTS)) if not bimanual else "0",
-            ),
-            ("--sine_cycles", "1"),
-            ("--maxfreq", "5"),
-            ("--freqspace", "1"),
-            ("--dwell", "0.1"),
-        )
-        for option, value in simulator_defaults:
-            if not any(
-                arg == option or arg.startswith(option + "=") for arg in cli_args
-            ):
-                cli_args.extend((option, value))
-
     if bimanual:
         # Reject invalid options and exit on --help before generating files.
         run_helpers.build_parser(default_robot_id=robot_interface.BOT_ID).parse_args(
@@ -174,8 +141,6 @@ def main(argv: Sequence[str] | None = None) -> None:
             package_dir / robot_interface.BASE_URDF_PATH,
             package_dir / urdf_path,
             use_left=robot_interface.USE_LEFT,
-            left_first_joint=getattr(robot_interface, "LEFT_FIRST_JOINT", None),
-            right_first_joint=getattr(robot_interface, "RIGHT_FIRST_JOINT", None),
         )
     packaged_urdf = packaged_resources.joinpath(urdf_path)
     if not packaged_urdf.is_file():
@@ -255,6 +220,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                     ),
                 ),
                 default_robot_id=robot_interface.BOT_ID,
+                # The SDK parser does not accept integration-only --bimanual.
                 argv=cli_args,
                 script_path=Path(__file__).resolve(),
                 default_kinecal_config_path=default_kinecal_config_path,
