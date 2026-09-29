@@ -311,10 +311,10 @@
     },
     "src/robot/example_usage/shaper/python/axis0_model.pt": {
       "mode": 420,
-      "sha256": "9af89983d0912accc7d77023e6b9a3a6264f79dd51168f73da743ce0a7bb4f3c",
+      "sha256": "65aa7f2563ecf5fb690a285e664c0a29b1d7cb9c579bc801f3833406b43408d0",
       "sources": [
         {
-          "sha256": "9af89983d0912accc7d77023e6b9a3a6264f79dd51168f73da743ce0a7bb4f3c"
+          "sha256": "65aa7f2563ecf5fb690a285e664c0a29b1d7cb9c579bc801f3833406b43408d0"
         }
       ]
     },
@@ -324,6 +324,15 @@
       "sources": [
         {
           "sha256": "f240721382532dfff2c067c4d7b9fd021bec429456cbce7387e7eba3a6a86b1e"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/python/model_bundle.json": {
+      "mode": 420,
+      "sha256": "4004af085f441c29ba7a79456fd0e8b38ef04003732cf7d3aec22de1c224839a",
+      "sources": [
+        {
+          "sha256": "4004af085f441c29ba7a79456fd0e8b38ef04003732cf7d3aec22de1c224839a"
         }
       ]
     },
@@ -347,7 +356,7 @@
     },
     "src/robot/pyproject.toml": {
       "mode": 420,
-      "sha256": "e2fd19783a08d7d0a0b69da841a1a60a6898f9189f2dc88ca352f0bb26ee5a09",
+      "sha256": "f96d49d042f5fe7b9fc340698d862d33fe7a67bb4a5811c04d92fff758a3f623",
       "sources": [
         {
           "sha256": "1be34906ad73f873f1ea155857b2fa612210a2955a54d29ab51e1e2486a956f4"
@@ -395,7 +404,7 @@
     }
   },
   "mapping_revision": {
-    "sha256": "f2996c238d94257f82be1be0df7a7f8cb2b4f81e770729b511c14e544b680ea5"
+    "sha256": "3665d45110a9da4fd90b5768bc6be653c84f74c16e9383d771860ab04caf84e7"
   },
   "ownership_origin": {
     "revision": "07d59ecab730d3214f65d2fe5d26f4229ca7b418",
@@ -411,6 +420,6 @@
     "url": "https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"
   },
   "source_input_basis": "working_tree",
-  "source_revision": "251696b5f600c8a7c126fd01bfca7f602783c5d3",
+  "source_revision": "d83b2f2c1e3792d66c27362a25d13d8954accafc",
   "target": "template"
 }
