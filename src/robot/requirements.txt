@@ -1,6 +1,5 @@
 mcap-protobuf-support<0.6,>=0.5
 numpy<3,>=2
 pydantic
-reforge-core[all]==2.0.22
-scipy
+reforge-core[all]
 standardbots
