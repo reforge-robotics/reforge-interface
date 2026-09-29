@@ -491,10 +491,10 @@
     },
     "src/robot/requirements.txt": {
       "mode": 420,
-      "sha256": "e1cc402c2b8d0dae17f3c3a5d131514dc4c4844ba6f3c7e57a6263425b16f941",
+      "sha256": "a96ba424781476e272786e9aa662bd864a02c517a3bcd3aeb754d84e18b8ca72",
       "sources": [
         {
-          "sha256": "6170c3c7da13af867647e2e91e2a1937a77617a71836d11652b2c272053a83ea"
+          "sha256": "bfa1474bfa0f0e1c300c018266b84e4e9a580e2b97eb75040eaa468dddbbd979"
         },
         {
           "sha256": "090beb68c663d2b094dad92f3a5b33bf492ba7006fbcc35e4825b96fc9372dde"
@@ -564,6 +564,6 @@
     "url": "https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"
   },
   "source_input_basis": "working_tree",
-  "source_revision": "d83b2f2c1e3792d66c27362a25d13d8954accafc",
+  "source_revision": "b7ef11acbdebac1e8cac915884f1e13c407da705",
   "target": "ufactory_xarm"
 }
