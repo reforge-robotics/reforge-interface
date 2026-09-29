@@ -2,4 +2,5 @@ mcap-protobuf-support<0.6,>=0.5
 numpy<3,>=2
 pydantic
 reforge-core[all]
+scipy
 xarm-python-sdk
