@@ -13,22 +13,12 @@ from scipy.spatial.transform import Rotation
 
 from reforge_core.hw_interfaces.arm_client import ArmClient
 from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
-from reforge_core.util.backlash_comp.tcp_tools import VirtualTcpDefinition
 
 # Trossen WidowX AI follower configuration.
 # robot_ip = 192.168.1.3
 # BOT_ID = "dd65af8b-1ea9-47db-83c7-8a75c4d0d817"
 BOT_ID = "78554eb2-209e-4075-af33-d1d5ede177a5"
 URDF_PATH = "urdf/trossen/wxai_follower.urdf"
-BACKLASH_NO_END_EFFECTOR_TCP = VirtualTcpDefinition(
-    name="trossen_virtual_tcp",
-    flange_link_name="centered_fixture",
-    flange_to_tcp_position_m=(0.063, 0.0, 0.0),
-    provenance=(
-        "Trossen KineCal deployment: centered_fixture attachment and "
-        "trossen_calibration_link offset_x_m=0.063 from probe_params.toml."
-    ),
-)
 ROBOT_MAX_FREQ = 200  # Trossen's documented high-rate recording frequency [Hz].
 TROSSEN_MODEL = trossen_arm.Model.wxai_v0
 TROSSEN_END_EFFECTOR = trossen_arm.StandardEndEffector.wxai_v0_follower
