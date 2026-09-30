@@ -180,6 +180,10 @@ cython_debug/
 # Local robot outputs and generated model artifacts
 src/robot/data/*
 !src/robot/data/README.md
+!src/robot/data/shaper_validation/
+src/robot/data/shaper_validation/*
+!src/robot/data/shaper_validation/identification_parameters.csv
+!src/robot/data/shaper_validation/robotData_motion_*.csv
 src/robot/vibration_data/
 src/robot/example_usage/kinecal/example_results/
 src/robot/models/*
