@@ -132,6 +132,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             ),
             kinecal_source_urdf_path=default_sim_urdf,
             default_robot_urdf_path=default_sim_urdf,
+            no_end_effector_tcp=robot_interface.BACKLASH_NO_END_EFFECTOR_TCP,
         )
 
 
