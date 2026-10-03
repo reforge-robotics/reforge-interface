@@ -68,11 +68,12 @@ RUN set -eu; \
     printf '%s  %s\n' "$SDK_CANDIDATE_SHA256" "$candidate_path" | sha256sum --check --status; \
     python -c 'import email,re,sys,zipfile; wheel=zipfile.ZipFile(sys.argv[1]); paths=[name for name in wheel.namelist() if name.endswith(".dist-info/METADATA")]; assert len(paths)==1; metadata=email.message_from_bytes(wheel.read(paths[0])); assert re.sub(r"[-_.]+","-",metadata["Name"]).lower()=="reforge-core"; candidate_version=metadata["Version"]; assert candidate_version and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.!+_-]*",candidate_version); print(candidate_version)' \
       "$candidate_path" > /opt/reforge-core-candidate-version; \
-    python -m pip install --no-cache-dir --no-deps "$candidate_path"; \
     rm -f "$candidate_path"
-RUN python -m pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir \
+      --index-url https://pypi.org/simple \
+      -r requirements.txt
 
 COPY . .
 RUN python -m pip install --no-cache-dir -e . && \
     python -m pip check && \
-    python -c 'from importlib.metadata import version; from pathlib import Path; assert version("reforge-core")==Path("/opt/reforge-core-candidate-version").read_text().strip()'
+    python -c 'from importlib.metadata import version; from pathlib import Path; installed=version("reforge-core"); candidate=Path("/opt/reforge-core-candidate-version").read_text().strip(); assert installed==candidate, f"SDK candidate {candidate} is stale; PyPI requirements installed {installed}"'
