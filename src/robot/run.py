@@ -8,7 +8,7 @@ from importlib.resources import as_file, files
 from importlib.resources.abc import Traversable
 from pathlib import Path
 
-from reforge_core.calibration import run_helpers
+from reforge_core.calibration import run_helpers, validate_robot_interface
 import robot.robot_interface as robot_interface
 
 
@@ -118,6 +118,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             default_robot_id=robot_interface.BOT_ID,
             argv=argv,
             script_path=Path(__file__).resolve(),
+            application_routes=validate_robot_interface.get_application_routes(),
             default_kinecal_config_path=default_kinecal_config_path,
             default_kinecal_restore_config_path=default_kinecal_restore_config_path,
             kinecal_probe_parameters_path=kinecal_probe_parameters_path,
@@ -130,6 +131,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                 / "recent_taught_tcps.json"
             ),
             kinecal_source_urdf_path=default_sim_urdf,
+            default_robot_urdf_path=default_sim_urdf,
         )
 
 

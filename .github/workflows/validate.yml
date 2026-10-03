@@ -205,7 +205,6 @@ jobs:
             "$REFORGE_CORE_CANDIDATE_URL" --output "$candidate_path"
           printf '%s  %s\n' "$REFORGE_CORE_CANDIDATE_SHA256" "$candidate_path" \
             | sha256sum --check --status
-          echo "REFORGE_CORE_CANDIDATE_PATH=${candidate_path}" >> "$GITHUB_ENV"
 
           candidate_version="$(python - "$candidate_path" <<'PY'
           import email
@@ -233,22 +232,73 @@ jobs:
           )"
           echo "REFORGE_CORE_CANDIDATE_VERSION=${candidate_version}" >> "$GITHUB_ENV"
 
-      - name: Install candidate and public package
+      - name: Find the latest compatible PyPI SDK release
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --no-cache-dir --no-deps \
-            "$REFORGE_CORE_CANDIDATE_PATH"
-          python -m pip install --no-cache-dir -r src/robot/requirements.txt
-          python -m pip install --no-cache-dir -e src/robot
-          python -m pip check
           python - <<'PY'
+          import json
+          import os
+          from pip._vendor.packaging.version import Version
+          from urllib.request import urlopen
+
+          with urlopen("https://pypi.org/pypi/reforge-core/json", timeout=30) as response:
+              project = json.load(response)
+
+          compatible_versions = []
+          for release_version, release_files in project["releases"].items():
+              parsed_version = Version(release_version)
+              if parsed_version.is_prerelease or parsed_version.is_devrelease:
+                  continue
+              expected_filename = (
+                  f"reforge_core-{release_version}-cp311-cp311-"
+                  "manylinux_2_28_x86_64.whl"
+              )
+              compatible_files = [
+                  release_file
+                  for release_file in release_files
+                  if release_file["filename"] == expected_filename
+                  and not release_file["yanked"]
+              ]
+              if len(compatible_files) == 1:
+                  compatible_versions.append((parsed_version, release_version))
+              elif compatible_files:
+                  raise AssertionError(
+                      f"PyPI release {release_version} has duplicate compatible "
+                      "CPython 3.11 manylinux x86-64 wheels"
+                  )
+          assert compatible_versions, (
+              "PyPI has no non-yanked CPython 3.11 manylinux x86-64 wheel"
+          )
+          latest_version = max(compatible_versions)[1]
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as github_env:
+              github_env.write(f"REFORGE_CORE_LATEST_VERSION={latest_version}\n")
+          print(f"Latest compatible public SDK: {latest_version}")
+          PY
+
+      - name: Install the README package requirements into a fresh environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          readme_venv="${RUNNER_TEMP}/ufactory-readme-venv"
+          python -m venv "${readme_venv}"
+          echo "VIRTUAL_ENV=${readme_venv}" >> "$GITHUB_ENV"
+          echo "${readme_venv}/bin" >> "$GITHUB_PATH"
+          "${readme_venv}/bin/python" -m pip install --no-cache-dir \
+            --index-url https://pypi.org/simple \
+            -r src/robot/requirements.txt
+          "${readme_venv}/bin/python" -m pip install --no-cache-dir -e src/robot
+          "${readme_venv}/bin/python" -m pip check
+          "${readme_venv}/bin/python" - <<'PY'
           import os
           from importlib.metadata import version
 
-          assert version("reforge-core") == os.environ[
-              "REFORGE_CORE_CANDIDATE_VERSION"
-          ]
+          installed_version = version("reforge-core")
+          latest_version = os.environ["REFORGE_CORE_LATEST_VERSION"]
+          assert installed_version == latest_version, (
+              "README requirements did not install the latest compatible PyPI "
+              f"SDK: installed {installed_version}, expected {latest_version}"
+          )
           PY
 
       - name: Run import, resource, and offline help smoke checks
@@ -347,3 +397,12 @@ jobs:
                   )
           PY
           python -m robot.run --help
+
+      - name: Fail when the fixed candidate wheel is stale
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$REFORGE_CORE_CANDIDATE_VERSION" != "$REFORGE_CORE_LATEST_VERSION" ]]; then
+            echo "The reviewed SDK candidate is stale: ${REFORGE_CORE_CANDIDATE_VERSION}; latest compatible PyPI release is ${REFORGE_CORE_LATEST_VERSION}. Update all sdk_candidate URL, SHA256, and filename fields." >&2
+            exit 1
+          fi
