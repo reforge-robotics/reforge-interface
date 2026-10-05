@@ -5,10 +5,10 @@
   "managed_files": {
     ".github/workflows/validate.yml": {
       "mode": 420,
-      "sha256": "13dc72e289b1bfe0eb6075b7bb352130d09f0f640512ed7c4b0f0d7236ac103a",
+      "sha256": "be47ba0d5375c9221023e2b18c75b58bbcd45dd4806d1dfe19d5e427d40e451c",
       "sources": [
         {
-          "sha256": "3bef28d553a291dd8b9e664d0a5b19c540787f7af1badd313c42b554bc625887"
+          "sha256": "65de1b3f546d9f64a9d643a5d30e8b4ef90865d201110aacb3123b15a93d279d"
         }
       ]
     },
@@ -564,6 +564,6 @@
     "url": "https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"
   },
   "source_input_basis": "working_tree",
-  "source_revision": "7f25fc2dd89521a125698376d92128812f346135",
+  "source_revision": "4e14f5fec99a859252fd7fd7985d67bca53c0560",
   "target": "ufactory_xarm"
 }
