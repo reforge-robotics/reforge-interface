@@ -5,10 +5,10 @@
   "managed_files": {
     ".github/workflows/validate.yml": {
       "mode": 420,
-      "sha256": "6b6dff955ffab59905a1c756725e98504c7c9059b5cee04118b13430ba1fa1a4",
+      "sha256": "3926e4f8fc2b42a6898ee60dd41c0ee6aeaaf5fd5b784c5772c6f5f4634db4a8",
       "sources": [
         {
-          "sha256": "3bef28d553a291dd8b9e664d0a5b19c540787f7af1badd313c42b554bc625887"
+          "sha256": "65de1b3f546d9f64a9d643a5d30e8b4ef90865d201110aacb3123b15a93d279d"
         }
       ]
     },
@@ -420,6 +420,6 @@
     "url": "https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"
   },
   "source_input_basis": "working_tree",
-  "source_revision": "7f25fc2dd89521a125698376d92128812f346135",
+  "source_revision": "4e14f5fec99a859252fd7fd7985d67bca53c0560",
   "target": "template"
 }
