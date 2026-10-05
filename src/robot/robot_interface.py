@@ -48,6 +48,12 @@ URDF_PATH = "urdf/NEX07C00/NEX07C00.urdf"
 ROBOT_MAX_FREQ = 250  # ACU monitor request ceiling [Hz], not a proven stable rate.
 DEFAULT_FEEDBACK_RATE_HZ = 25.0
 SERVO_CONFIRMATION_TEXT = "I_CONFIRM_SERVOS_ARE_ON"
+DEFAULT_QUEUED_MOVE_SPEED_PERCENT = 10.0
+DEFAULT_QUEUED_ACCELERATION_PERCENT = 20.0
+IK_POSITION_TOLERANCE_M = 1.0e-3
+IK_ORIENTATION_TOLERANCE_RAD = np.deg2rad(1.0)
+IK_MAX_ITERATIONS = 300
+IK_SOLVER_TOLERANCE = 1.0e-6
 
 # Fully stretched position of the robot for calibration.
 FULL_STRETCH_XYZ = [0.0, 0.0, 0.0]  # Unverified until the NEX7 pose is approved [m].
@@ -406,14 +412,15 @@ class RobotInterface(ArmClient):
         self,
         target_joints: np.ndarray | list[float] | tuple[float, ...],
         *,
-        speed: float = 50.0,
+        speed: float = DEFAULT_QUEUED_MOVE_SPEED_PERCENT,
         wait: bool = True,
     ) -> int:
         """Queue point-to-point joint motion through an explicit motion client.
 
         Args:
             target_joints: Target joint positions [rad] as a list or array.
-            speed: Speed percentage for the motion, if supported by the robot. Default is 50%.
+            speed: Controller-rated joint speed percentage. Defaults to the
+                conservative initial Yaskawa test limit of 10%.
             wait: If `True`, block until the motion is complete. If `False`, return immediately after sending the command.
 
         Raises:
@@ -421,9 +428,14 @@ class RobotInterface(ArmClient):
         """
         motion_client = getattr(self, "_motion_client", None)
         if isinstance(motion_client, YaskawaMotionClient):
+            # Queued and incremental motion may not overlap. This is a no-op
+            # when no incremental task exists and fail-closed when cleanup fails.
+            motion_client.stop_servo_session()
             return motion_client.move_j(
                 list(target_joints),
                 speed_percent=speed,
+                acceleration_percent=DEFAULT_QUEUED_ACCELERATION_PERCENT,
+                deceleration_percent=DEFAULT_QUEUED_ACCELERATION_PERCENT,
                 wait=wait,
             )
         raise NotImplementedError(
@@ -436,26 +448,80 @@ class RobotInterface(ArmClient):
         target_quat: np.ndarray | list[float],
         target_xyz: np.ndarray | list[float],
         *,
-        speed: float = 50.0,
+        speed: float = DEFAULT_QUEUED_MOVE_SPEED_PERCENT,
         wait: bool = True,
         locked_joints: Mapping[int, float] | None = None,
     ) -> int:
-        """Reject Cartesian motion until Yaskawa frame semantics are confirmed.
+        """Solve a Cartesian target with URDF IK and queue the joint solution.
 
         Args:
             target_quat: Target TCP orientation as a quaternion `[qx, qy, qz, qw]` [-] in the robot's base frame.
             target_xyz: Target TCP position `[x, y, z]` [m] in the robot's base frame.
-            speed: Speed percentage for the motion, if supported by the robot. Default is 50%.
+            speed: Controller-rated joint speed percentage. Defaults to the
+                conservative initial Yaskawa test limit of 10%.
             wait: If `True`, block until the motion is complete. If `False`, return immediately after sending the command.
             locked_joints: Simulator-only joint-index to fixed position map [rad].
 
+        Returns:
+            Zero after the validated joint target completes or is accepted.
+
         Raises:
-            NotImplementedError: Cartesian motion remains blocked in Phase 4.
+            RuntimeError: If IK is unavailable or does not satisfy the reviewed
+                position and orientation tolerances.
+            ValueError: If a target is malformed or simulator-only joint locks
+                are requested on hardware.
         """
-        del target_quat, target_xyz, speed, wait, locked_joints
-        raise NotImplementedError(
-            "Yaskawa motion is disabled: Cartesian motion is blocked until frame, tool, configuration, "
-            "and Euler semantics are confirmed by a known-pose sample."
+        if locked_joints is not None:
+            raise ValueError("locked_joints is only supported in simulator mode.")
+        motion_client = getattr(self, "_motion_client", None)
+        if not isinstance(motion_client, YaskawaMotionClient):
+            raise NotImplementedError(
+                "Yaskawa motion is disabled unless an explicit Phase 4 motion "
+                "client is injected."
+            )
+        model = getattr(self, "model", None)
+        if model is None:
+            raise RuntimeError(
+                "Yaskawa Cartesian motion requires the loaded URDF model."
+            )
+
+        xyz = np.asarray(target_xyz, dtype=float)
+        quat = np.asarray(target_quat, dtype=float)
+        if xyz.shape != (3,) or not np.all(np.isfinite(xyz)):
+            raise ValueError("target_xyz must be a finite three-vector in meters.")
+        if quat.shape != (4,) or not np.all(np.isfinite(quat)):
+            raise ValueError("target_quat must be a finite quaternion [x, y, z, w].")
+        quat_norm = float(np.linalg.norm(quat))
+        if quat_norm <= np.finfo(float).eps:
+            raise ValueError("target_quat must have non-zero magnitude.")
+
+        current_joints = np.asarray(
+            motion_client.state_client.latest().joint_positions_rad,
+            dtype=float,
+        )
+        target_pose = np.concatenate((xyz, quat / quat_norm))
+        solved_joints, report = model.get_inverse_kinematics(
+            target_pose=target_pose,
+            initial_angles=current_joints,
+            max_iters=IK_MAX_ITERATIONS,
+            tol=IK_SOLVER_TOLERANCE,
+            get_report=True,
+        )
+        if (
+            not report.converged
+            or report.position_error_mag > IK_POSITION_TOLERANCE_M
+            or report.rotation_error_mag > IK_ORIENTATION_TOLERANCE_RAD
+        ):
+            raise RuntimeError(
+                "Yaskawa Cartesian target has no validated URDF IK solution: "
+                f"converged={report.converged}, "
+                f"position_error_m={report.position_error_mag:.6g}, "
+                f"orientation_error_rad={report.rotation_error_mag:.6g}."
+            )
+        return self.command_move_j(
+            np.asarray(solved_joints, dtype=float),
+            speed=speed,
+            wait=wait,
         )
 
     def command_servo_j(
@@ -482,13 +548,21 @@ class RobotInterface(ArmClient):
         )
 
     def enter_position_mode(self) -> Optional[int | None]:
-        """Reject controller-mode changes unsupported by the ACU SDK.
+        """Stop incremental motion before queued point-to-point commands.
+
+        Returns:
+            Zero after no incremental task remains active.
 
         Raises:
-            NotImplementedError: Always; the vendor contract is read-only for mode.
+            NotImplementedError: If no explicit motion client was injected.
         """
+        motion_client = getattr(self, "_motion_client", None)
+        if isinstance(motion_client, YaskawaMotionClient):
+            motion_client.stop_servo_session()
+            return 0
         raise NotImplementedError(
-            "Yaskawa controller mode changes are unavailable in the vendor contract."
+            "Yaskawa motion is disabled unless an explicit Phase 4 motion client "
+            "is injected."
         )
 
     def enter_servo_mode(self) -> Optional[int | None]:
@@ -634,12 +708,17 @@ class RobotInterface(ArmClient):
         # velocity/acceleration feedforward. Otherwise, the default
         # implementation in `ArmClient` will stream each sample using
         # `command_servo_j()` at the specified timing.
-        return super().command_joint_trajectory(
-            time_data=time_data,
-            position_stream=position_stream,
-            velocity_stream=velocity_stream,
-            acceleration_stream=acceleration_stream,
-            Ts=Ts,
-        )
+        motion_client = getattr(self, "_motion_client", None)
+        try:
+            return super().command_joint_trajectory(
+                time_data=time_data,
+                position_stream=position_stream,
+                velocity_stream=velocity_stream,
+                acceleration_stream=acceleration_stream,
+                Ts=Ts,
+            )
+        finally:
+            if isinstance(motion_client, YaskawaMotionClient):
+                motion_client.stop_servo_session()
 
     # {~.~} END OF OPTIONAL OVERRIDES
