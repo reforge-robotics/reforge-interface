@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from contextlib import ExitStack
+import argparse
+from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager, ExitStack
 from importlib.resources import as_file, files
 from importlib.resources.abc import Traversable
 from pathlib import Path
@@ -43,6 +44,8 @@ def _materialize_optional_resource(
 def main(argv: Sequence[str] | None = None) -> None:
     """Parse robot CLI arguments and dispatch to the SDK-owned implementation.
 
+    Adapters with a CLI session hook are parsed before preparation; the hook
+    then owns selected-model and live-interface resources through dispatch.
     May connect to robot hardware, run calibration, or write model files.
 
     Args:
@@ -50,11 +53,19 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     Raises:
         SystemExit: If argument parsing fails.
+        FileNotFoundError: If the selected adapter model is unavailable.
     """
     packaged_resources = files("robot")
     urdf_path = robot_interface.URDF_PATH
+    hook: (
+        Callable[
+            [argparse.Namespace],
+            AbstractContextManager[tuple[run_helpers.RobotInterfaceFactory, Path]],
+        ]
+        | None
+    ) = getattr(robot_interface, "prepare_cli_session", None)
     packaged_urdf = packaged_resources.joinpath(urdf_path)
-    if not packaged_urdf.is_file():
+    if hook is None and not packaged_urdf.is_file():
         raise FileNotFoundError(f"Robot URDF resource not found: {urdf_path}")
 
     data_location_prefix = robot_interface.DATA_LOCATION_PREFIX
@@ -90,8 +101,8 @@ def main(argv: Sequence[str] | None = None) -> None:
             robot_interface, "KINECAL_PROBE_PARAMS_PATH", None
         )
 
+    application_routes = validate_robot_interface.get_application_routes()
     with ExitStack() as resource_stack:
-        default_sim_urdf = resource_stack.enter_context(as_file(packaged_urdf))
         default_kinecal_config_path = _materialize_optional_resource(
             resource_stack, packaged_resources, kinecal_config_path
         )
@@ -101,8 +112,33 @@ def main(argv: Sequence[str] | None = None) -> None:
         kinecal_probe_parameters_path = _materialize_optional_resource(
             resource_stack, packaged_resources, kinecal_probe_params_path
         )
+
+        session_factory = robot_interface.RobotInterface
+        if hook is not None:
+            # Parse first so help and invalid commands cannot trigger adapter
+            # preparation, file writes, or hardware construction.
+            parser = run_helpers.build_parser(
+                default_robot_id=robot_interface.BOT_ID,
+                application_routes=application_routes,
+                default_kinecal_config_path=default_kinecal_config_path,
+                default_kinecal_restore_config_path=(
+                    default_kinecal_restore_config_path
+                ),
+            )
+            parsed_args = parser.parse_args(argv)
+            # SDK dispatch parses again; see docs/robot/almond-cli-session.md.
+            session_factory, default_sim_urdf = resource_stack.enter_context(
+                hook(parsed_args)
+            )
+        else:
+            default_sim_urdf = resource_stack.enter_context(as_file(packaged_urdf))
+
+        if not default_sim_urdf.is_file():
+            raise FileNotFoundError(
+                f"Robot URDF resource not found: {default_sim_urdf}"
+            )
         return run_helpers.main(
-            robot_interface_class=robot_interface.RobotInterface,
+            robot_interface_class=session_factory,
             simulator_configuration=run_helpers.SimulatorConfiguration(
                 urdf_path=default_sim_urdf,
                 name="My Robot",
@@ -118,7 +154,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             default_robot_id=robot_interface.BOT_ID,
             argv=argv,
             script_path=Path(__file__).resolve(),
-            application_routes=validate_robot_interface.get_application_routes(),
+            application_routes=application_routes,
             default_kinecal_config_path=default_kinecal_config_path,
             default_kinecal_restore_config_path=default_kinecal_restore_config_path,
             kinecal_probe_parameters_path=kinecal_probe_parameters_path,
