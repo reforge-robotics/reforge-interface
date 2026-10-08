@@ -225,10 +225,10 @@
     <limit effort="0.000000" lower="-6.283185" upper="6.283185" velocity="17.453293" />
   </joint>
   <link name="base" />
-  <joint name="BASE-base" type="fixed">
-    <origin rpy="-0.000000 -0.000000 -0.000000" xyz="0.000000 0.000000 0.330000" />
-    <parent link="BASE" />
-    <child link="base" />
+  <joint name="base-BASE" type="fixed">
+    <origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 -0.330000" />
+    <parent link="base" />
+    <child link="BASE" />
   </joint>
   <link name="flange" />
   <joint name="T-flange" type="fixed">
