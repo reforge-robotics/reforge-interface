@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   validate:
-    name: Public package checks (Python 3.12)
+    name: Public package checks (Python 3.11)
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     # Phase 5 replaces all three sentinels only after the exact candidate
@@ -19,9 +19,9 @@ jobs:
     # must not pass while any value is still a sentinel.
     env:
       REFORGE_ROBOT_INTEGRATION_ID: "template"
-      REFORGE_CORE_CANDIDATE_URL: "https://files.pythonhosted.org/packages/98/1b/41746aa6ebc32c930edc689b5df3d7246a0db89e77bc038ad619fc1eb6e0/reforge_core-3.0.6-cp312-cp312-manylinux_2_28_x86_64.whl"
-      REFORGE_CORE_CANDIDATE_SHA256: "c3a71e695e72732dc05f5694b7b8fad98e770f3c7c81dfaa6fd92fe0de5e38f6"
-      REFORGE_CORE_CANDIDATE_FILENAME: "reforge_core-3.0.6-cp312-cp312-manylinux_2_28_x86_64.whl"
+      REFORGE_CORE_CANDIDATE_URL: "https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"
+      REFORGE_CORE_CANDIDATE_SHA256: "8beda2097e728a7e3f11c7fd496d5534cc70494737bc6b408256e2c57973d0b2"
+      REFORGE_CORE_CANDIDATE_FILENAME: "reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"
 
     steps:
       - name: Check out public source
@@ -29,10 +29,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Python 3.12
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
           cache: pip
           cache-dependency-path: src/robot/requirements.txt
 
@@ -87,7 +87,7 @@ jobs:
               Path("src/robot/pyproject.toml").read_text(encoding="utf-8")
           )
           project = manifest["project"]
-          assert project["requires-python"] == ">=3.12"
+          assert project["requires-python"] == ">=3.11"
           assert project["dynamic"] == ["dependencies"]
           assert "dependencies" not in project
           assert "optional-dependencies" not in project

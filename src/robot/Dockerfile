@@ -1,6 +1,6 @@
 # Public package image template. The exporter renders the integration token
 # before publishing a target-specific package tree.
-FROM python:3.12-slim-bookworm
+FROM python:3.11-slim-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=UTC \
@@ -21,9 +21,9 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 ARG ROBOT_INTEGRATION_ID=template
-ARG SDK_CANDIDATE_URL=https://files.pythonhosted.org/packages/98/1b/41746aa6ebc32c930edc689b5df3d7246a0db89e77bc038ad619fc1eb6e0/reforge_core-3.0.6-cp312-cp312-manylinux_2_28_x86_64.whl
-ARG SDK_CANDIDATE_SHA256=c3a71e695e72732dc05f5694b7b8fad98e770f3c7c81dfaa6fd92fe0de5e38f6
-ARG SDK_CANDIDATE_FILENAME=reforge_core-3.0.6-cp312-cp312-manylinux_2_28_x86_64.whl
+ARG SDK_CANDIDATE_URL=https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl
+ARG SDK_CANDIDATE_SHA256=8beda2097e728a7e3f11c7fd496d5534cc70494737bc6b408256e2c57973d0b2
+ARG SDK_CANDIDATE_FILENAME=reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl
 ENV REFORGE_ROBOT_DATA_DIR=/opt/reforge-interface/src/robot/data \
     REFORGE_ROBOT_MODELS_DIR=/opt/reforge-interface/src/robot/models
 
