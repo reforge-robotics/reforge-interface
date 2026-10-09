@@ -10,7 +10,7 @@ name = "reforge-interface"
 version = "0.1.0"
 description = "Public robot adapter package for Reforge calibration workflows."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = { text = "Proprietary" }
 authors = [{ name = "Reforge Robotics", email = "info@reforgerobotics.com" }]
 dynamic = ["dependencies"]
