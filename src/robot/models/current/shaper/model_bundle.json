@@ -8,7 +8,7 @@
   "base_joint_reference_angles": [
     0.0
   ],
-  "calibration_schema_version": 1,
+  "calibration_schema_version": 3,
   "feature_names": [
     "j0_rad",
     "v_deg",
@@ -21,6 +21,7 @@
     "mm",
     "kg_m2"
   ],
+  "imu_to_tcp_rotation_provenance": null,
   "input_feature_count": 4,
   "model_type": "shaper_nn_v1",
   "native_artifact_filename": "shaper_models.native.json",
