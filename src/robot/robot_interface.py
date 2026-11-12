@@ -63,7 +63,7 @@ FULL_STRETCH_JOINTS = [
     1.5707963267948966,
     1.5707963267948966,
     0.0,
-    0.0,
+    1.5707963267948966,
     0.0,
 ]  # [rad].
 FULL_STRETCH_POSE_OVERRIDE = None
@@ -73,6 +73,7 @@ IS_DEGREES = False  # ArmClient-facing values are radians.
 DATA_LOCATION_PREFIX = "src/robot/data"  # {~.~} [CHANGE TO LOCATION DESIRED - will be robot/DATA_LOCATION_PREFIX/*]
 SIM_DATA_LOCATION_PREFIX = str(Path(__file__).resolve().parent / "data" / "sim")
 DEFAULT_TCP_PAYLOAD = 0.0  # {~.~} [CHANGE IF THE DEFAULT PAYLOAD IS NON_ZERO]
+TCP_LINK_NAME = "tool0"
 
 MAX_ROBOT_JOINTS_BANDWIDTH = (
     5.0  # {~.~} Servo motor bandwidth. Leave as is if you don't know [Hz]
@@ -80,7 +81,7 @@ MAX_ROBOT_JOINTS_BANDWIDTH = (
 
 # {~.~} IMU information
 USE_REFORGE_IMU = True
-DEFAULT_IMU_COMM_MODE: Literal["ble", "usb", "virtual"] = "usb"
+DEFAULT_IMU_COMM_MODE: Literal["ble", "usb", "virtual"] = "virtual"
 DEFAULT_IMU_RECORD_MODE: Literal["streaming", "logging"] = "streaming"
 DEFAULT_IMU_RECORD_FREQUENCY_HZ = ROBOT_MAX_FREQ
 
@@ -172,6 +173,7 @@ class RobotInterface(ArmClient):
         imu_recorder: ImuRecorder | None = None,
         tcp_payload: float = DEFAULT_TCP_PAYLOAD,
         tcp_payload_com: Sequence[float] | None = None,
+        tcp_link_name: str | None = TCP_LINK_NAME,
         read_only_client: YaskawaReadOnlyClient | None = None,
         motion_client: YaskawaMotionClient | None = None,
     ) -> None:
@@ -195,6 +197,7 @@ class RobotInterface(ArmClient):
                 by an application or integration test.
             tcp_payload: Payload mass attached at the TCP [kg].
             tcp_payload_com: Optional payload center of mass in TCP coordinates [m].
+            tcp_link_name: Optional URDF link to use as the default TCP frame.
             read_only_client: Configured validated state client. The caller
                 owns construction of the local ACU bridge transport.
             motion_client: Optional Phase 4 motion client. Its state client
@@ -205,9 +208,9 @@ class RobotInterface(ArmClient):
             Loads the URDF model and connects to robot hardware.
 
         Raises:
-            ValueError: If the simulator sentinel is passed to the hardware adapter.
+            ValueError: If the simulator sentinel, configured TCP link, payload,
+                or reported joint count is invalid.
             RuntimeError: If the robot connection fails.
-            ValueError: If reported joint counts do not match the URDF.
 
         Preconditions:
             The URDF file is available and the SDK is installed.
@@ -243,6 +246,7 @@ class RobotInterface(ArmClient):
                 urdf_path=self.urdf_path,
                 tcp_payload=tcp_payload,
                 tcp_payload_com=tcp_payload_com,
+                tcp_link_name=tcp_link_name,
             )
             # Use the model joint count as the ground truth for downstream
             # dynamics calls (the hardware may report extra fixed joints/grippers).

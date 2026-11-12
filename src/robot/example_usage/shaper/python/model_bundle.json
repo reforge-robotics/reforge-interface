@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "model_type": "shaper_nn_v1",
+  "num_axes": 1,
+  "output_sensor": "arm_imu",
+  "artifact_filenames": [
+    "axis0_model.pt"
+  ],
+  "feature_names": [
+    "j0_rad",
+    "v_deg",
+    "r_mm",
+    "inertia"
+  ],
+  "feature_units": [
+    "rad",
+    "deg",
+    "mm",
+    "kg_m2"
+  ],
+  "input_feature_count": 4,
+  "base_joint_count": 1,
+  "base_joint_reference_angles": [
+    0.0
+  ],
+  "calibration_schema_version": 2
+}

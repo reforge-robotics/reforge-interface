@@ -5,10 +5,10 @@
   "managed_files": {
     ".github/workflows/validate.yml": {
       "mode": 420,
-      "sha256": "60860e661e4bbe6645974467795bf040575b4c3a886297d45f4df344ef85a88d",
+      "sha256": "c15baf88871b05d35ab510c5ee0d3b34b9899f6c15271841e7473d580a5589ac",
       "sources": [
         {
-          "sha256": "73902bcbb55a2b9dd6ef078b86c25ea706a4f8b0bb5fa0cb69d3ccb09e9c3e1e"
+          "sha256": "65de1b3f546d9f64a9d643a5d30e8b4ef90865d201110aacb3123b15a93d279d"
         }
       ]
     },
@@ -77,10 +77,10 @@
     },
     "src/robot/Dockerfile": {
       "mode": 420,
-      "sha256": "b2275cb3d5582e91dcc7efeab62da02f95181abdc863cfa75f40a08af16bd9f9",
+      "sha256": "9c4ab62a76db56f1c8395091cf7ddddb2919e0836ac07e21d437c96b41f369a8",
       "sources": [
         {
-          "sha256": "e837e87f6bcfb1058451e13166c8cfdad9af6eb76f7bda33a26f973bfb91f603"
+          "sha256": "457128143b9b28378d9fca37d4b042290f5992cc07b7a66abe5710afe9b7da4e"
         }
       ]
     },
@@ -95,10 +95,10 @@
     },
     "src/robot/README.md": {
       "mode": 420,
-      "sha256": "d7f4b652dda19b48ce8087ad5a2ee9001027e68979384797e32d8a4019000e84",
+      "sha256": "f1682969df354ddbb32f8f67f267a1a01ed4994370b9a8fbe3f3064fbd090394",
       "sources": [
         {
-          "sha256": "11cc0a8ebe1d64062525b0d0d15839f62b7fdf32a3bfa432fe45dad4a0dbac71"
+          "sha256": "f1682969df354ddbb32f8f67f267a1a01ed4994370b9a8fbe3f3064fbd090394"
         }
       ]
     },
@@ -320,10 +320,10 @@
     },
     "src/robot/example_usage/shaper/python/axis0_model.pt": {
       "mode": 420,
-      "sha256": "9af89983d0912accc7d77023e6b9a3a6264f79dd51168f73da743ce0a7bb4f3c",
+      "sha256": "65aa7f2563ecf5fb690a285e664c0a29b1d7cb9c579bc801f3833406b43408d0",
       "sources": [
         {
-          "sha256": "9af89983d0912accc7d77023e6b9a3a6264f79dd51168f73da743ce0a7bb4f3c"
+          "sha256": "65aa7f2563ecf5fb690a285e664c0a29b1d7cb9c579bc801f3833406b43408d0"
         }
       ]
     },
@@ -333,6 +333,15 @@
       "sources": [
         {
           "sha256": "f240721382532dfff2c067c4d7b9fd021bec429456cbce7387e7eba3a6a86b1e"
+        }
+      ]
+    },
+    "src/robot/example_usage/shaper/python/model_bundle.json": {
+      "mode": 420,
+      "sha256": "4004af085f441c29ba7a79456fd0e8b38ef04003732cf7d3aec22de1c224839a",
+      "sources": [
+        {
+          "sha256": "4004af085f441c29ba7a79456fd0e8b38ef04003732cf7d3aec22de1c224839a"
         }
       ]
     },
@@ -356,10 +365,10 @@
     },
     "src/robot/grpc_transport.py": {
       "mode": 420,
-      "sha256": "88d34b26d69a8c23c7deab0b0dc2a821e18c6e596ba4108f55d21b9a522ab6a7",
+      "sha256": "0cf4b470dfe663639f279343b33c563670f3574d49709a53d3aa6c6a13c43406",
       "sources": [
         {
-          "sha256": "88d34b26d69a8c23c7deab0b0dc2a821e18c6e596ba4108f55d21b9a522ab6a7"
+          "sha256": "0cf4b470dfe663639f279343b33c563670f3574d49709a53d3aa6c6a13c43406"
         }
       ]
     },
@@ -374,7 +383,7 @@
     },
     "src/robot/pyproject.toml": {
       "mode": 420,
-      "sha256": "d346890bf3da302b7dd37b85bce90c3a88ef3066446b049e9676ec56e58472c7",
+      "sha256": "7fcdb74994fbfa33a27f02fe6b508e8999b165c9020ba4d7e409deb9673469b2",
       "sources": [
         {
           "sha256": "1be34906ad73f873f1ea155857b2fa612210a2955a54d29ab51e1e2486a956f4"
@@ -392,31 +401,31 @@
     },
     "src/robot/requirements.txt": {
       "mode": 420,
-      "sha256": "d83f278927ac9e3181fa6ffce8cbb62f3c7c68157d304b8e80c7c5c02145d2ce",
+      "sha256": "417ab73ce967179e8a88bdf2ae42480e73231193d1beb1f797d04e6707f0c355",
       "sources": [
         {
-          "sha256": "6170c3c7da13af867647e2e91e2a1937a77617a71836d11652b2c272053a83ea"
+          "sha256": "5ccb034f7cef10b2ece9f57fa1e222b86bdd092df37156f37d269c9804e2ddeb"
         },
         {
-          "sha256": "9725bdfabf817fcf36a1b8a8d24441712b8ad7f08148c0b2442c0336ef75a7cd"
+          "sha256": "91bd87840351e32fe754168e5afa92d18e07c91f69f6368dd13ff613768dc224"
         }
       ]
     },
     "src/robot/robot_interface.py": {
       "mode": 420,
-      "sha256": "0b04192b25040c3beae6684e0f9a3eb7f65106b283a60d40d2e937e67c467650",
+      "sha256": "52556670e13c2fc4c8eb442851c2a1b02c20b485af782aab9440491d3f7184ef",
       "sources": [
         {
-          "sha256": "0b04192b25040c3beae6684e0f9a3eb7f65106b283a60d40d2e937e67c467650"
+          "sha256": "52556670e13c2fc4c8eb442851c2a1b02c20b485af782aab9440491d3f7184ef"
         }
       ]
     },
     "src/robot/run.py": {
       "mode": 420,
-      "sha256": "5b027875e0e642ac95d5fbd561e337b009988856907f3d18fdfab4fc5968517e",
+      "sha256": "f4aa9c8ace239e33d4a957a0dcb10f3c996d6281718dae2de377b783101748ee",
       "sources": [
         {
-          "sha256": "5b027875e0e642ac95d5fbd561e337b009988856907f3d18fdfab4fc5968517e"
+          "sha256": "f4aa9c8ace239e33d4a957a0dcb10f3c996d6281718dae2de377b783101748ee"
         }
       ]
     },
@@ -431,10 +440,10 @@
     },
     "src/robot/urdf/NEX07C00/PROVENANCE.md": {
       "mode": 420,
-      "sha256": "abc8ef68d6af584eed4e8551152b3c4e0c2eddf246f50e9f257aea721dc5a3f0",
+      "sha256": "b40a8e1ced10d713e1e7f9961bb94714ea22c0580a3c3d6a7197e0648a300193",
       "sources": [
         {
-          "sha256": "abc8ef68d6af584eed4e8551152b3c4e0c2eddf246f50e9f257aea721dc5a3f0"
+          "sha256": "b40a8e1ced10d713e1e7f9961bb94714ea22c0580a3c3d6a7197e0648a300193"
         }
       ]
     },
@@ -980,7 +989,7 @@
     }
   },
   "mapping_revision": {
-    "sha256": "d3e6fbfc7453fc3daaebb3cdba5a946940acdae40ae1be0c3767548e07c76538"
+    "sha256": "cb4967607ce138b2ed18c1eaa6c5fd2cc8b351474f0d6f2bef9a76252a2da1be"
   },
   "ownership_origin": {
     "revision": "1c4652acd3a0ca3d39dfbac6a18a01050ba992d1",
@@ -996,6 +1005,6 @@
     "url": "https://files.pythonhosted.org/packages/b9/11/4b4061f0dad7d20951e843d390b7409d4e335c259efe34de8a2f036e1152/reforge_core-2.0.22-cp311-cp311-manylinux_2_28_x86_64.whl"
   },
   "source_input_basis": "working_tree",
-  "source_revision": "e69f30d0990782c4517167dd40ebcef9a762fe6c",
+  "source_revision": "883eb1d20924e679f95a242c6cbe3e7f0c04df6c",
   "target": "yaskawa_sdk"
 }

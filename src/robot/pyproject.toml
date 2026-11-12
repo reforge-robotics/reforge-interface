@@ -61,6 +61,7 @@ robot = [
     "example_usage/shaper/python/README.md",
     "example_usage/shaper/python/axis0_model.pt",
     "example_usage/shaper/python/example_utility.py",
+    "example_usage/shaper/python/model_bundle.json",
     "example_usage/shaper/python/shaper_example_usage.py",
     "example_usage/shaper/python/test_robot.urdf",
     "requirements.txt",

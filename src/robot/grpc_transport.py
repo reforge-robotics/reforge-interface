@@ -19,7 +19,7 @@ from .vendor import reforge_yaskawa_bridge_pb2_grpc as bridge_pb2_grpc
 
 BRIDGE_CONTRACT_MAJOR = 1
 BRIDGE_SDK_VERSION = "1.10.0"
-DEFAULT_BRIDGE_PORT = 50051
+DEFAULT_BRIDGE_PORT = 55051
 DEFAULT_COMMAND_LEASE_MS = 60_000
 DEFAULT_RPC_TIMEOUT_S = 10.0
 MAX_PENDING_TIMESTAMPS = 128
@@ -32,9 +32,8 @@ class YaskawaGrpcTransportError(RuntimeError):
 class YaskawaGrpcTransport:
     """Adapt the generated bridge stub to the state and motion protocols.
 
-    The endpoint must be the locally forwarded bridge address. The ACU bridge
-    itself accepts loopback connections only; establishing an approved tunnel
-    or controller-network forward remains a deployment prerequisite.
+    The endpoint must be the bridge address forwarded by the ACU on its trusted
+    controller network. Port 55051 is used when the endpoint omits a port.
 
     Args:
         endpoint: Local bridge endpoint as ``host`` or ``host:port``.
