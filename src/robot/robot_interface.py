@@ -9,6 +9,7 @@ from importlib.resources import files, as_file
 from typing import Any, Optional, Sequence, TypeVar, cast
 
 import numpy as np
+from collections.abc import Mapping
 
 from reforge_core.hw_interfaces.arm_client import ArmClient
 from reforge_core.hw_interfaces.imu_recorder import ImuRecorder
@@ -43,9 +44,9 @@ URDF_PATH = "urdf/RO1/modelone.urdf"
 ROBOT_MAX_FREQ = 200  # [Hz]
 
 # Fully stretched position of the robot for calibration.
-FULL_STRETCH_XYZ = [1.28989, 0.36866, 0.171]  # {~.~} [m]
+FULL_STRETCH_XYZ = [-1.28989, -0.36866, 0.171]  # {~.~} [m]
 FULL_STRETCH_QUAT = [0.499, 0.499, 0.499, 0.499]  # {~.~} [1]
-FULL_STRETCH_JOINTS = [0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0]  # {~.~} [rad]
+FULL_STRETCH_JOINTS = [np.pi, np.pi / 2, 0.0, 0.0, 0.0, 0.0]  # {~.~} [rad]
 FULL_STRETCH_POSE_OVERRIDE = None  # {~.~} list of home pose (xyz and quaternion) to override additional height not in base height
 
 # General constants
@@ -265,7 +266,7 @@ class RobotInterface(ArmClient):
             self.num_joints = self.model.num_joints
 
         self.use_reforge_imu = use_reforge_imu
-        self._ros_initialized_by_interface = False
+        self._ros_servo_context: Any | None = None
         self._ros_servo_node: Any | None = None
         self._ros_joint_publisher: Any | None = None
         self._ros_servo_executor: Any | None = None
@@ -462,6 +463,7 @@ class RobotInterface(ArmClient):
         *,
         speed: float = 50.0,
         wait: bool = True,
+        locked_joints: Mapping[int, float] | None = None,
     ) -> int:
         """Send a blocking/non-blocking point-to-point pose command using the
         robot's native position control interface.
@@ -508,6 +510,8 @@ class RobotInterface(ArmClient):
         target_joints: np.ndarray | list[float],
         *,
         wait: bool = False,
+        target_velocities: Sequence[float] | None = None,
+        target_accelerations: Sequence[float] | None = None,
     ) -> int:
         """Send one servo command in radians.
 
@@ -515,6 +519,8 @@ class RobotInterface(ArmClient):
 
         Args:
             target_joints: Target joint position [rad] as a list or array.
+            target_velocities: Optional joint velocity commands [rad/s].
+            target_accelerations: Optional joint acceleration commands [rad/s^2].
             wait: If `True`, block until the motion is complete. If `False`, return immediately after sending the command.
 
         Returns:
@@ -523,23 +529,41 @@ class RobotInterface(ArmClient):
         Raises:
             RuntimeError: If the ROS servo publisher cannot be initialized.
         """
+        target_joints_sdk_units = _joint_values_for_sdk(target_joints)
+        derivative_fields = {}
+        for name, values in (
+            ("velocities", target_velocities),
+            ("accelerations", target_accelerations),
+        ):
+            if values is not None:
+                derivative_values = np.asarray(values, dtype=float)
+                if (
+                    derivative_values.shape != (len(target_joints_sdk_units),)
+                    or not np.isfinite(derivative_values).all()
+                ):
+                    raise ValueError(
+                        f"Servo {name} must contain one finite value per joint"
+                    )
+                derivative_fields[name] = list(_joint_values_for_sdk(derivative_values))
         if self._ros_joint_publisher is None:
             self.enter_servo_mode()
-            self._ensure_ros_servo_publisher()
+        self._ensure_ros_servo_publisher()
 
-        from builtin_interfaces.msg import Duration as DurationMsg
         from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
-        target_joints_sdk_units = _joint_values_for_sdk(target_joints)
         point = JointTrajectoryPoint()
         point.positions = list(target_joints_sdk_units)
-        point.time_from_start = DurationMsg(
-            sec=0,
-            nanosec=int(ROS_SERVO_POINT_DURATION_S * 1e9),
+        for name, values in derivative_fields.items():
+            setattr(point, name, values)
+        # This controller's one-point streaming convention uses a zero header
+        # and the current ROS clock in the point, rather than a relative horizon.
+        ros_now = self._ros_servo_node.get_clock().now()
+        point.time_from_start.sec, point.time_from_start.nanosec = divmod(
+            ros_now.nanoseconds,
+            1_000_000_000,
         )
 
         message = JointTrajectory()
-        message.header.stamp = self._ros_servo_node.get_clock().now().to_msg()
         message.joint_names = [f"joint{i}" for i in range(len(point.positions))]
         message.points.append(point)
         self._ros_joint_publisher.publish(message)
@@ -672,8 +696,10 @@ class RobotInterface(ArmClient):
                     point.velocities = velocity_values[cmd_idx - 1]
                 if acceleration_values:
                     point.accelerations = acceleration_values[cmd_idx - 1]
-                point.time_from_start.sec = int(ros_now.nanoseconds * 1e-9)
-                point.time_from_start.nanosec = int(ros_now.nanoseconds % 1e9)
+                point.time_from_start.sec, point.time_from_start.nanosec = divmod(
+                    ros_now.nanoseconds,
+                    1_000_000_000,
+                )
 
                 message = JointTrajectory()
                 message.joint_names = [f"joint{i}" for i in range(len(positions))]
@@ -801,15 +827,20 @@ class RobotInterface(ArmClient):
             `None`.
 
         Side Effects:
-            Initializes ROS, creates a node, and creates a joint trajectory publisher.
+            Creates a private ROS context, node, and joint trajectory publisher.
 
         Raises:
-            RuntimeError: If the robot ID is not available.
+            RuntimeError: If the robot ID is unavailable or a cached context is stopped.
 
         Preconditions:
             The Standard Bots controller has ROS control enabled.
         """
         if self._ros_joint_publisher is not None:
+            if self._ros_servo_context is None or not self._ros_servo_context.ok():
+                raise RuntimeError(
+                    "ROS servo context has been shut down; call enter_position_mode() "
+                    "to release the old publisher before starting a new servo session."
+                )
             return
         if not self.id:
             raise RuntimeError(
@@ -817,37 +848,47 @@ class RobotInterface(ArmClient):
             )
 
         from robot.ros_manager import JOINT_PUBLISHER, rclpy
+        from rclpy.context import Context
         from rclpy.executors import SingleThreadedExecutor
         from trajectory_msgs.msg import JointTrajectory
 
-        if not rclpy.ok():
-            rclpy.init()
-            self._ros_initialized_by_interface = True
-        self._ros_servo_node = rclpy.create_node("standardbots_servo_publisher")
-        self._ros_servo_topic = JOINT_PUBLISHER.replace("<BOT_ID>", self.id)
-        self._ros_joint_publisher = self._ros_servo_node.create_publisher(
-            JointTrajectory,
-            self._ros_servo_topic,
-            10,
-        )
-        self._ros_servo_executor = SingleThreadedExecutor()
-        self._ros_servo_executor.add_node(self._ros_servo_node)
-        self._ros_servo_spin_thread = threading.Thread(
-            target=self._spin_ros_servo_executor,
-            name="standardbots_servo_publisher_spin",
-            daemon=True,
-        )
-        self._ros_servo_spin_thread.start()
-        discovery_deadline_s = time.time() + ROS_SERVO_DISCOVERY_TIMEOUT_S
+        self._ros_servo_context = Context()
+        try:
+            rclpy.init(context=self._ros_servo_context)
+            self._ros_servo_node = rclpy.create_node(
+                "standardbots_servo_publisher",
+                context=self._ros_servo_context,
+            )
+            self._ros_servo_topic = JOINT_PUBLISHER.replace("<BOT_ID>", self.id)
+            self._ros_joint_publisher = self._ros_servo_node.create_publisher(
+                JointTrajectory,
+                self._ros_servo_topic,
+                10,
+            )
+            self._ros_servo_executor = SingleThreadedExecutor(
+                context=self._ros_servo_context,
+            )
+            self._ros_servo_executor.add_node(self._ros_servo_node)
+            self._ros_servo_spin_thread = threading.Thread(
+                target=self._spin_ros_servo_executor,
+                args=(self._ros_servo_executor,),
+                name="standardbots_servo_publisher_spin",
+                daemon=True,
+            )
+            self._ros_servo_spin_thread.start()
+            discovery_deadline_s = time.time() + ROS_SERVO_DISCOVERY_TIMEOUT_S
 
-        # Give DDS discovery a short window before the high-rate command loop.
-        while (
-            self._ros_joint_publisher.get_subscription_count() == 0
-            and time.time() < discovery_deadline_s
-        ):
-            time.sleep(ROS_SERVO_DISCOVERY_POLL_S)
+            # Give DDS discovery a short window before the high-rate command loop.
+            while (
+                self._ros_joint_publisher.get_subscription_count() == 0
+                and time.time() < discovery_deadline_s
+            ):
+                time.sleep(ROS_SERVO_DISCOVERY_POLL_S)
+        except BaseException:
+            self._teardown_ros_servo_publisher()
+            raise
 
-    def _spin_ros_servo_executor(self) -> None:
+    def _spin_ros_servo_executor(self, executor: Any) -> None:
         """Spin the servo publisher executor until ROS shutdown.
 
         Returns:
@@ -856,10 +897,8 @@ class RobotInterface(ArmClient):
         Raises:
             None.
         """
-        if self._ros_servo_executor is None:
-            return
         try:
-            self._ros_servo_executor.spin()
+            executor.spin()
         except Exception as exc:
             if exc.__class__.__name__ != "ExternalShutdownException":
                 raise
@@ -874,8 +913,7 @@ class RobotInterface(ArmClient):
             `None`.
 
         Side Effects:
-            Destroys the ROS publisher node and shuts down ROS if this adapter
-            initialized it.
+            Destroys the servo publisher and shuts down only its private context.
 
         Raises:
             None.
@@ -883,25 +921,28 @@ class RobotInterface(ArmClient):
         Preconditions:
             None.
         """
-        if self._ros_servo_node is None and not self._ros_initialized_by_interface:
-            return
-
-        from robot.ros_manager import rclpy
-
-        if self._ros_servo_executor is not None:
-            self._ros_servo_executor.shutdown()
-            self._ros_servo_executor = None
-        if self._ros_servo_spin_thread is not None:
-            self._ros_servo_spin_thread.join(timeout=1.0)
-            self._ros_servo_spin_thread = None
-        if self._ros_servo_node is not None:
-            self._ros_servo_node.destroy_node()
+        context = self._ros_servo_context
+        executor = self._ros_servo_executor
+        spin_thread = self._ros_servo_spin_thread
+        node = self._ros_servo_node
+        self._ros_servo_context = None
+        self._ros_servo_executor = None
+        self._ros_servo_spin_thread = None
         self._ros_joint_publisher = None
         self._ros_servo_node = None
         self._ros_servo_topic = ""
         self._ros_servo_missing_subscriber_warning_printed = False
-        if self._ros_initialized_by_interface and rclpy.ok():
-            rclpy.shutdown()
-        self._ros_initialized_by_interface = False
+        try:
+            try:
+                if executor is not None:
+                    executor.shutdown()
+                if spin_thread is not None and spin_thread.ident is not None:
+                    spin_thread.join(timeout=1.0)
+            finally:
+                if node is not None:
+                    node.destroy_node()
+        finally:
+            if context is not None:
+                context.try_shutdown()
 
     # {~.~} END OF REQUIRED METHODS
