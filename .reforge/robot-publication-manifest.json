@@ -987,7 +987,7 @@
     "tree_sha256": "a681c01bdb8feae8f46114bc138babf27ad531128cf67de1993f6b5a24c7a095"
   },
   "public_limitations": "The Yaskawa NEX7 adapter, Reforge-owned ACU bridge client, and Yaskawa-supplied NEX07C00 model are an unqualified customer-review candidate. Public redistribution approval for the model was reported by the user on 2026-09-28. Production publication and hardware motion remain disabled pending controller/model and trajectory qualification.",
-  "publication_enabled": false,
+  "publication_enabled": true,
   "repository": "reforge-robotics/reforge-interface",
   "schema_version": 1,
   "sdk_candidate": {
