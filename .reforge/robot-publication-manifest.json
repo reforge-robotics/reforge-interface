@@ -422,10 +422,10 @@
     },
     "src/robot/urdf/NEX07C00/NEX07C00.urdf": {
       "mode": 420,
-      "sha256": "972cb8776c68744c8864d9d22fae05d627cd4b2d82b861ba05e8b3618951d60a",
+      "sha256": "116ac05272f0c843eac7e2c5f65c0b6c948c2c62d0a7a44776e46efbb1de3154",
       "sources": [
         {
-          "sha256": "972cb8776c68744c8864d9d22fae05d627cd4b2d82b861ba05e8b3618951d60a"
+          "sha256": "116ac05272f0c843eac7e2c5f65c0b6c948c2c62d0a7a44776e46efbb1de3154"
         }
       ]
     },
